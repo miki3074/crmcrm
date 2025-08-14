@@ -1,0 +1,75 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crmiq_app
+    ports:
+      - "8080:80"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    # volumes:
+    #   - ./.env.docker:/var/www/html/.env:ro  # можно оставить, если удобно
+
+  db:
+    image: mysql:8.0
+    container_name: crmiq_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: crmiq
+      MYSQL_USER: crmiq
+      MYSQL_PASSWORD: crmiq
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  dbdata:
+
+
+# version: "3.9"
+# services:
+#   app:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: crmiq_app
+#     ports:
+#       - "8080:80"
+#     env_file:
+#       - .env.docker
+#     volumes:
+#       # В ПРОДЕ этого нет. Для локали можно монтировать .env
+#       - ./.env.docker:/var/www/html/.env:ro
+#       # Если хочешь правки кода видеть сразу — раскомментируй,
+#       # но тогда прод‑сборка ассетов может конфликтовать.
+#       # - .:/var/www/html
+#     depends_on:
+#       - db
+
+#   db:
+#     image: mysql:8.0
+#     container_name: crmiq_db
+#     restart: unless-stopped
+#     environment:
+#       MYSQL_DATABASE: crmiq
+#       MYSQL_USER: crmiq
+#       MYSQL_PASSWORD: crmiq
+#       MYSQL_ROOT_PASSWORD: root
+#     volumes:
+#       - dbdata:/var/lib/mysql
+#     ports:
+#       - "3307:3306"  # чтобы не конфликтовать с локальным MySQL
+
+# volumes:
+#   dbdata:

@@ -1,41 +1,36 @@
 <?php
 
+// database/seeders/RolesAndPermissionsSeeder.php
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use App\Models\User;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Очистка кэша (важно!)
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        // сброс кеша прав
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Создание ролей
-        $admin    = Role::firstOrCreate(['name' => 'admin']);
-        $manager  = Role::firstOrCreate(['name' => 'manager']);
-        $employee = Role::firstOrCreate(['name' => 'employee']);
+        // ВСЕГДА указываем guard_name = web
+        $admin    = Role::firstOrCreate(['name' => 'admin',    'guard_name' => 'web']);
+        $manager  = Role::firstOrCreate(['name' => 'manager',  'guard_name' => 'web']);
+        $employee = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
 
-        // (Опционально) Создание прав
-        Permission::firstOrCreate(['name' => 'view projects']);
-        Permission::firstOrCreate(['name' => 'edit tasks']);
-        Permission::firstOrCreate(['name' => 'assign tasks']);
+        Permission::firstOrCreate(['name' => 'view projects', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'edit tasks',    'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'assign tasks',  'guard_name' => 'web']);
 
-        // Назначение прав ролям
         $admin->givePermissionTo(Permission::all());
         $manager->givePermissionTo(['view projects', 'assign tasks']);
         $employee->givePermissionTo(['view projects']);
 
-        // Назначение роли пользователю (например, первому пользователю)
-        $user = User::find(1);
-        if ($user) {
+        // Можно сразу выдать роль первому пользователю, если есть
+        if ($user = User::find(1)) {
             $user->assignRole('admin');
         }
     }
