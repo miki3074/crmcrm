@@ -67,4 +67,21 @@ Route::middleware(['auth', 'verified'])->get('/calendar', function () {
     return Inertia::render('Calendar/Index');
 });
 
+
+Route::middleware(['auth','verified'])->group(function () {
+    Route::get('/clients', fn() => Inertia::render('Clients/Index'))->name('clients.index');
+    Route::get('/clients/{id}', fn($id) => Inertia::render('Clients/Show', ['id' => (int)$id]))->name('clients.show');
+});
+
+
+Route::middleware(['auth','verified'])->group(function () {
+    Route::get('/file-storage', fn() => Inertia::render('Storage/Index'))
+        ->name('storage.index');
+
+    Route::get('/file-storage/companies/{id}', fn($id) =>
+        Inertia::render('Storage/Company', ['id' => (int)$id])
+    )->name('storage.company');
+});
+
+
 require __DIR__.'/auth.php';

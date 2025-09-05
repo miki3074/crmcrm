@@ -1,94 +1,82 @@
 <script setup>
-import Checkbox from '@/Components/Checkbox.vue';
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import GuestLayout from '@/Layouts/GuestLayout.vue'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 
 defineProps({
-    canResetPassword: {
-        type: Boolean,
-    },
-    status: {
-        type: String,
-    },
-});
+  canResetPassword: Boolean,
+  status: String,
+})
 
 const form = useForm({
-    email: '',
-    password: '',
-    remember: false,
-});
+  email: '',
+  password: '',
+  remember: false,
+})
 
 const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
-    });
-};
+  form.post(route('login'), {
+    onFinish: () => form.reset('password'),
+  })
+}
+
+const baseInput =
+  'mt-1 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 ' +
+  'px-3 py-2 text-sm outline-none ring-0 focus:border-slate-400 dark:focus:border-slate-600'
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Log in" />
+  <GuestLayout>
+    <Head title="Вход" />
 
-        <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
-            {{ status }}
-        </div>
+    <div class="text-center space-y-2 mb-6">
+      <h1 class="text-2xl font-bold tracking-tight" style="color: aliceblue;">С возвращением</h1>
+      <p class="text-sm text-slate-500">Войдите в аккаунт, чтобы продолжить</p>
+    </div>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
+    <div v-if="status" class="mb-4 text-sm font-medium text-emerald-600">
+      {{ status }}
+    </div>
 
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
+    <form @submit.prevent="submit" class="space-y-4">
+      <div>
+        <label for="email" class="text-sm font-medium" style="color: aliceblue;">Email</label>
+        <input id="email" type="email" v-model="form.email" required autofocus autocomplete="username" :class="baseInput" />
+        <p v-if="form.errors.email" class="mt-1 text-xs text-red-600">{{ form.errors.email }}</p>
+      </div>
 
-                <InputError class="mt-2" :message="form.errors.email" />
-            </div>
+      <div>
+        <label for="password" class="text-sm font-medium" style="color: aliceblue;">Пароль</label>
+        <input id="password" type="password" v-model="form.password" required autocomplete="current-password" :class="baseInput" />
+        <p v-if="form.errors.password" class="mt-1 text-xs text-red-600">{{ form.errors.password }}</p>
+      </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+      <div class="flex items-center justify-between">
+        <label class="inline-flex items-center gap-2 text-sm" style="color: aliceblue;">
+          <input type="checkbox" v-model="form.remember" class="rounded border-slate-300 text-slate-900 focus:ring-0" />
+          Запомнить меня
+        </label>
 
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="current-password"
-                />
+        <Link
+          v-if="canResetPassword"
+          :href="route('password.request')"
+          class="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline"
+        >
+          Забыли пароль?
+        </Link>
+      </div>
 
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
+      <button
+        type="submit"
+        :disabled="form.processing"
+        class="w-full inline-flex justify-center items-center gap-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+      >
+        Войти
+      </button>
+    </form>
 
-            <div class="block mt-4">
-                <label class="flex items-center">
-                    <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                </label>
-            </div>
-
-            <div class="flex items-center justify-end mt-4">
-                <Link
-                    v-if="canResetPassword"
-                    :href="route('password.request')"
-                    class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
-                >
-                    Forgot your password?
-                </Link>
-
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Log in
-                </PrimaryButton>
-            </div>
-        </form>
-    </GuestLayout>
+    <div class="mt-6 text-center text-sm text-slate-500">
+      Нет аккаунта?
+      <Link :href="route('register')" class="font-medium text-slate-900 dark:text-white underline">Зарегистрироваться</Link>
+    </div>
+  </GuestLayout>
 </template>

@@ -4,15 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class Task extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'title', 'priority', 'start_date', 'due_date',
-        'executor_id', 'responsible_id', 'project_id',
-        'company_id', 'creator_id',  'progress',
+        'title','priority','start_date','due_date',
+        'executor_id','responsible_id','project_id','company_id',
+        'creator_id','progress','completed','completed_at',
     ];
 
     public function executor() {
@@ -43,5 +44,25 @@ class Task extends Model
 {
     return $this->hasMany(Subtask::class);
 }
+
+
+public function comments()
+{
+    return $this->hasMany(\App\Models\TaskComment::class)->latest();
+}
+
+
+protected $casts = [
+        'completed' => 'boolean',
+        'completed_at' => 'datetime',
+    ];
+
+    // 🚀 Глобальный scope — исключает завершённые задачи
+    protected static function booted()
+    {
+        static::addGlobalScope('not_completed', function (Builder $builder) {
+            $builder->where('completed', false);
+        });
+    }
 
 }

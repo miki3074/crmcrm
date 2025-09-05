@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Subtask;
+use Carbon\Carbon;
 
 class CompanyController extends Controller
 {
@@ -108,12 +109,26 @@ $responsibleCompanies = $responsibleGrouped->map(function ($tasks, $companyId) {
 // 5. Компании, где он исполнитель подзадач
 
 
-$subtaskCompanies = Subtask::with(['task.project.company', 'task.project.manager'])
-    ->where('executor_id', $userId)
-    ->get()
-    ->groupBy(fn($subtask) => $subtask->task->project->company->id);
+// $subtaskCompanies = Subtask::with(['task.project.company', 'task.project.manager'])
+//     ->where('executor_id', $userId)
+//     ->get()
+//     ->groupBy(fn($subtask) => $subtask->task->project->company->id);
 
-$subtaskCompanies = $subtaskCompanies->map(function ($subtasks, $companyId) {
+$subtaskCompanies = Subtask::query()
+    // Берём только те подзадачи, у которых есть НЕ завершённая родительская задача
+    ->whereHas('task') // этого достаточно, т.к. на Task висит глобальный скоуп not_completed
+    ->with([
+        // Важно: грузим те же связи через task
+        'task.project.company',
+        'task.project.manager',
+    ])
+    ->where('executor_id', $userId)
+    ->get();
+
+$subtaskCompanies = $subtaskCompanies
+    ->filter(fn($s) => $s->task && $s->task->project && $s->task->project->company) // защита
+    ->groupBy(fn($s) => $s->task->project->company->id)
+    ->map(function ($subtasks, $companyId) {
     $company = $subtasks->first()->task->project->company;
     $projects = $subtasks->groupBy(fn($s) => $s->task->project_id)->map(function ($subtasks) {
         $project = $subtasks->first()->task->project;
@@ -313,5 +328,58 @@ public function show(Company $company)
 
     return response()->json($employees);
 }
+
+public function summary(Request $request)
+    {
+        $user = $request->user();
+        $today = Carbon::today();
+
+        // Проекты, где пользователь — руководитель
+        $managingProjects = Project::with(['company:id,name'])
+            ->withCount('tasks') // просто считаем все задачи, без completed_at
+            ->where('manager_id', $user->id)
+            ->latest('id')->take(8)
+            ->get(['id','name','company_id','manager_id']);
+
+        // Мои задачи (я исполнитель) — без фильтра по completed_at
+        $myTasks = Task::with([
+                'project:id,name,company_id',
+                'project.company:id,name'
+            ])
+            ->where('executor_id', $user->id)
+            ->orderByRaw('due_date IS NULL, due_date ASC') // NULL в конец
+            ->take(12)
+            ->get(['id','title','priority','progress','start_date','due_date','project_id']);
+
+        // Мои подзадачи (я исполнитель) — тоже без completed_at
+        $mySubtasks = Subtask::with([
+                'task:id,title,project_id',
+                'task.project:id,name,company_id',
+                'task.project.company:id,name'
+            ])
+            ->where('executor_id', $user->id)
+            ->orderByRaw('due_date IS NULL, due_date ASC')
+            ->take(12)
+            ->get(['id','title','start_date','due_date','task_id']);
+
+        // Срезы по срокам
+        $dueToday = $myTasks->filter(fn($t) =>
+            !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
+        )->values();
+
+        $overdue = $myTasks->filter(fn($t) =>
+            !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
+        )->values();
+
+        return response()->json([
+            'managing_projects' => $managingProjects,
+            'my_tasks'          => $myTasks,
+            'my_subtasks'       => $mySubtasks,
+            'due_today'         => $dueToday,
+            'overdue'           => $overdue,
+        ]);
+    }
+
+
 
 }

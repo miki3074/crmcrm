@@ -12,6 +12,14 @@ use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\SubtaskController;
 use App\Http\Controllers\API\CalendarController;
 
+use App\Http\Controllers\API\ClientController;
+use App\Http\Controllers\API\InteractionController;
+use App\Http\Controllers\API\DealController;
+
+use App\Http\Controllers\API\TaskCommentController;
+
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -70,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/subtasks', [SubtaskController::class, 'index']);
     Route::post('/tasks/{task}/subtasks', [SubtaskController::class, 'store']);
     Route::get('/subtasks/{subtask}', [SubtaskController::class, 'show']);
+    
 });
 
 
@@ -85,4 +94,53 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/calendar/events/{event}', [CalendarController::class, 'destroy']);
 
     Route::get('/companies/{company}/employees', [CompanyController::class, 'employees']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/dashboard/summary', [CompanyController::class, 'summary']);
+});
+
+Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])
+    ->middleware(['auth:sanctum']);
+    
+
+    Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])
+    ->middleware('auth:sanctum');
+
+Route::patch('/subtasks/{subtask}/complete', [SubtaskController::class, 'complete'])
+    ->middleware('auth:sanctum');
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('clients', ClientController::class)->only(['index','store','show','update']);
+
+    // вложенные:
+    Route::post('clients/{client}/interactions', [InteractionController::class, 'store']);
+    Route::get('clients/{client}/deals', [DealController::class, 'indexByClient']);
+    Route::post('clients/{client}/deals', [DealController::class, 'store']);
+
+    // изменение статуса сделки:
+    Route::patch('deals/{deal}/status', [DealController::class, 'updateStatus']);
+});
+
+
+Route::middleware('auth:sanctum')->prefix('storage')->group(function () {
+    Route::get('/companies', [\App\Http\Controllers\API\StorageController::class, 'companies']);
+    Route::get('/companies/{company}', [\App\Http\Controllers\API\StorageController::class, 'company']);
+
+    Route::post('/companies/{company}/managers', [\App\Http\Controllers\API\StorageController::class, 'saveManagers']);
+
+    Route::post('/companies/{company}/files', [\App\Http\Controllers\API\StorageController::class, 'upload']);
+    Route::get('/files/{file}/download', [\App\Http\Controllers\API\StorageController::class, 'download']);
+    Route::delete('/files/{file}', [\App\Http\Controllers\API\StorageController::class, 'destroy']);
+});
+
+// routes/api.php
+Route::patch('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('auth:sanctum');
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/tasks/{task}/comments', [TaskCommentController::class, 'index']);
+    Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store']);
+    Route::delete('/task-comments/{comment}', [TaskCommentController::class, 'destroy']);
 });

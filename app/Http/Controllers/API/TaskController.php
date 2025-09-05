@@ -46,15 +46,16 @@ public function show($id)
         'creator:id,name',
         'executor:id,name',
         'responsible:id,name',
-        'project:id,name,company_id',
+        'project:id,name,company_id,manager_id',
         'project.company:id,name',
         'files:id,task_id,file_path',
-        'subtasks.executor:id,name', 
-        'subtasks.creator:id,name'   
+        // добавили completed
+        'subtasks:id,task_id,title,executor_id,creator_id,start_date,due_date,completed',
+        'subtasks.executor:id,name',
+        'subtasks.creator:id,name',
     ])->findOrFail($id);
 
-    $this->authorize('view', $task); // если используешь политику
-
+    $this->authorize('view', $task);
     return response()->json($task);
 }
 
@@ -90,6 +91,46 @@ public function addFiles(Request $request, Task $task)
 
     return response()->json(['message' => 'Файлы успешно добавлены']);
 }
+
+public function complete(Task $task)
+    {
+        $this->authorize('update', $task);
+
+        // Притянем подзадачи (чтобы не попасть в N+1 при фронтовом show)
+        $task->loadMissing('subtasks:id,task_id,completed');
+
+        if ((int)$task->progress < 100) {
+            throw ValidationException::withMessages([
+                'progress' => 'Задачу можно завершить только при прогрессе 100%.',
+            ]);
+        }
+
+        $hasOpenSubtasks = $task->subtasks()->where('completed', false)->exists();
+        if ($hasOpenSubtasks) {
+            throw ValidationException::withMessages([
+                'subtasks' => 'Нельзя завершить: есть незавершённые подзадачи.',
+            ]);
+        }
+
+        $task->forceFill([
+            'completed'    => true,
+            'completed_at' => now(),
+            'progress'     => 100, // на всякий случай зафиксируем
+        ])->save();
+
+        return response()->json([
+            'message' => 'Задача завершена.',
+            'task'    => $task->fresh()->load([
+                'creator:id,name',
+                'executor:id,name',
+                'responsible:id,name',
+                'project:id,name,company_id,manager_id',
+                'project.company:id,name',
+                'files:id,task_id,file_path',
+                'subtasks:id,task_id,title,completed',
+            ]),
+        ]);
+    }
 
 
 }

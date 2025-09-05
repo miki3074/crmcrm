@@ -16,8 +16,17 @@ class Subtask extends Model
         'executor_id',
         'start_date',
         'due_date',
-        'creator_id'
+        'progress',
+        'creator_id',
+        'completed',
+        'completed_at',
     ];
+
+    protected $casts = [
+    'progress' => 'integer',
+    'completed' => 'boolean',
+    'completed_at' => 'datetime',
+];
 
     public function task()
     {

@@ -59,4 +59,31 @@ class User extends Authenticatable
     {
         return $this->belongsTo(\App\Models\Company::class);
     }
+
+
+public function managedStorages()
+{
+    return $this->belongsToMany(Company::class, 'company_storage_managers')
+        ->withTimestamps();
+}
+
+public function uploadedStorageFiles()
+{
+    return $this->hasMany(StorageFile::class, 'uploader_id');
+}
+
+public function accessibleStorageFiles()
+{
+    // для выборочного доступа
+    return $this->belongsToMany(StorageFile::class, 'storage_file_user')
+        ->withTimestamps();
+}
+
+
+public function storageManagedCompanies()
+{
+    return $this->belongsToMany(Company::class, 'company_storage_managers')->withTimestamps();
+}
+
+
 }

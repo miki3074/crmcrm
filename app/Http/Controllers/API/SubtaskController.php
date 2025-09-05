@@ -39,7 +39,7 @@ public function index(Task $task)
         return response()->json($subtask, 201);
     }
 
-    public function show(Subtask $subtask)
+   public function show(Subtask $subtask)
 {
     $subtask->load([
         'task.project.company',
@@ -50,6 +50,49 @@ public function index(Task $task)
     $this->authorize('view', $subtask);
 
     return response()->json($subtask);
+}
+
+public function updateProgress(Request $request, Subtask $subtask)
+{
+    $this->authorize('updateProgress', $subtask);
+
+    $data = $request->validate([
+        'progress' => 'required|integer|min:0|max:100',
+    ]);
+
+    $subtask->update(['progress' => $data['progress']]);
+
+    return response()->json(['message' => 'Прогресс обновлён', 'progress' => $subtask->progress]);
+}
+
+public function complete(Request $request, \App\Models\Subtask $subtask)
+{
+    $this->authorize('complete', $subtask);
+
+    if ((int)$subtask->progress < 100) {
+        return response()->json([
+            'message' => 'Подзадачу можно завершить только при прогрессе 100%.'
+        ], 422);
+    }
+
+    if ($subtask->completed) {
+        return response()->json([
+            'message' => 'Подзадача уже завершена.',
+            'completed' => true,
+            'completed_at' => $subtask->completed_at,
+        ]);
+    }
+
+    $subtask->forceFill([
+        'completed' => true,
+        'completed_at' => now(),
+    ])->save();
+
+    return response()->json([
+        'message' => 'Подзадача завершена.',
+        'completed' => true,
+        'completed_at' => $subtask->completed_at,
+    ]);
 }
 
 }
