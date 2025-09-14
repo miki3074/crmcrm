@@ -38,6 +38,7 @@ class ProjectController extends Controller
         'manager:id,name',
         'company:id,name,user_id', 
         'initiator:id,name',
+         'subprojects.responsible',
         'tasks' => function ($q) {
             $q->with([
                 'creator:id,name',
@@ -53,17 +54,38 @@ class ProjectController extends Controller
     return response()->json($project);
 }
 
-            public function employees(Project $project)
+//             public function employees(Project $project)
+// {
+//     $company = $project->company;
+
+//     // Все сотрудники компании (созданные этим пользователем)
+//     $employees = \App\Models\User::where('created_by', $company->user_id)
+//         ->orWhere('id', $company->user_id) // Добавляем владельца компании
+//         ->get(['id', 'name']);
+
+//     return response()->json($employees);
+// }
+
+public function employees(Project $project)
 {
     $company = $project->company;
 
-    // Все сотрудники компании (созданные этим пользователем)
-    $employees = \App\Models\User::where('created_by', $company->user_id)
-        ->orWhere('id', $company->user_id) // Добавляем владельца компании
-        ->get(['id', 'name']);
+    // 1. Пользователи, созданные владельцем компании + сам владелец
+    $createdUsers = \App\Models\User::where('created_by', $company->user_id)
+        ->orWhere('id', $company->user_id)
+        ->get(['id', 'name', 'email']);
+
+    // 2. Пользователи, прикрепленные через pivot company_user
+    $attachedUsers = $company->users()
+        ->get(['users.id', 'users.name', 'users.email']); // явно указываем таблицу
+
+    // 3. Объединяем коллекции, исключаем дубликаты по id
+    $employees = $createdUsers->merge($attachedUsers)->unique('id')->values();
 
     return response()->json($employees);
 }
+
+
 
 
 public function updateBudget(Request $request, Project $project)

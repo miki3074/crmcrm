@@ -31,6 +31,8 @@ const taskForm = ref({
   files: null,
 })
 
+
+
 // perms
 const roles = props.auth?.roles || []
 const user = props.auth?.user
@@ -74,10 +76,15 @@ const fetchProject = async () => {
     project.value = data
     budgetForm.value.budget = data?.budget ?? ''
     descriptionForm.value.description = data?.description ?? ''
+
+    // сразу загрузим сотрудников
+    const res = await axios.get(`/api/projects/${projectId}/employees`)
+    employees.value = res.data
   } finally {
     loading.value = false
   }
 }
+
 
 const fetchEmployees = async () => {
   const { data } = await axios.get(`/api/projects/${projectId}/employees`)
@@ -134,6 +141,35 @@ const saveDescription = async () => {
   showDescriptionModal.value = false
   await fetchProject()
 }
+
+const subprojectForm = ref({
+  title: '',
+  responsible_id: null,
+})
+
+const creatingSubproject = ref(false)
+const subprojectError = ref('')
+
+const createSubproject = async () => {
+  subprojectError.value = ''
+  creatingSubproject.value = true
+
+  try {
+    await axios.get('/sanctum/csrf-cookie')
+    await axios.post(`/api/projects/${projectId}/subprojects`, subprojectForm.value)
+
+    // сбрасываем форму
+    subprojectForm.value = { title: '', responsible_id: null }
+
+    // перезагрузим проект, чтобы сразу увидеть подпроекты
+    await fetchProject()
+  } catch (e) {
+    subprojectError.value = e?.response?.data?.message || 'Не удалось создать подпроект'
+  } finally {
+    creatingSubproject.value = false
+  }
+}
+
 
 onMounted(fetchProject)
 </script>
@@ -292,6 +328,13 @@ onMounted(fetchProject)
           </div>
         </div>
 
+
+
+
+    
+
+
+
         <!-- Боковая панель -->
         <div class="space-y-4">
           <div class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
@@ -324,6 +367,74 @@ onMounted(fetchProject)
         </div>
       </div>
     </div>
+
+
+<!-- Подпроекты -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-10">
+  <h2 class="text-lg font-bold mb-4" style="color: aliceblue;">Подпроекты</h2>
+
+  <!-- Форма создания подпроекта -->
+  <div
+    v-if="isAdmin || isCompanyOwner || isProjectManager"
+    class="flex gap-2 items-center mb-6"
+  >
+    <input
+      v-model="subprojectForm.title"
+      type="text"
+      placeholder="Название подпроекта"
+      class="border p-2 rounded flex-1 dark:bg-gray-800 dark:text-white"
+    />
+
+   <select
+  v-model="subprojectForm.responsible_id"
+  class="border p-2 rounded dark:bg-gray-800 dark:text-white"
+>
+  <option :value="null">--Без ответственного--</option>
+  <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+    {{ emp.name }}
+  </option>
+</select>
+
+    <button
+      @click="createSubproject"
+      :disabled="creatingSubproject"
+      class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+    >
+      {{ creatingSubproject ? 'Создаём...' : 'Добавить подпроект' }}
+    </button>
+  </div>
+
+  <p v-if="subprojectError" class="text-red-600 mb-4">{{ subprojectError }}</p>
+
+  <!-- Список подпроектов -->
+  <ul v-if="project?.subprojects?.length" class="space-y-3">
+    <li
+      v-for="sub in project.subprojects"
+      :key="sub.id"
+      class="p-4 border rounded bg-white dark:bg-gray-800 shadow"
+    >
+      <div class="flex justify-between items-center">
+        <div>
+          <a
+            :href="`/subprojects/${sub.id}`"
+            class="text-blue-600 underline font-medium"
+          >
+            {{ sub.title }}
+          </a>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Ответственный: {{ sub.responsible?.name ?? 'не назначен' }}
+          </p>
+        </div>
+        <span
+          class="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+        >
+          {{ sub.tasks_count ?? 0 }} задач
+        </span>
+      </div>
+    </li>
+  </ul>
+  <p v-else class="text-gray-500 dark:text-gray-400">Подпроектов пока нет</p>
+</div>
 
     <!-- Модалка: Новая задача -->
     <div v-if="showTaskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">

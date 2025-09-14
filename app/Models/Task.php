@@ -51,6 +51,16 @@ public function comments()
     return $this->hasMany(\App\Models\TaskComment::class)->latest();
 }
 
+public function checklists()
+{
+    return $this->hasMany(TaskChecklist::class);
+}
+
+
+public function subproject()
+{
+    return $this->belongsTo(Subproject::class);
+}
 
 protected $casts = [
         'completed' => 'boolean',

@@ -37,4 +37,9 @@ public function tasks()
     return $this->hasMany(\App\Models\Task::class);
 }
 
+public function subprojects()
+{
+    return $this->hasMany(Subproject::class);
+}
+
 }

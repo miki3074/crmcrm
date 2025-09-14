@@ -19,10 +19,18 @@ class TaskController extends Controller
         'due_date' => 'required|date|after_or_equal:start_date',
         'executor_id' => 'required|exists:users,id',
         'responsible_id' => 'required|exists:users,id',
-        'project_id' => 'required|exists:projects,id',
-        'company_id' => 'required|exists:companies,id',
+        'project_id' => 'nullable|exists:projects,id',
+        'subproject_id' => 'nullable|exists:subprojects,id',
+        'company_id' => 'nullable|exists:companies,id',
         'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
     ]);
+
+    // если subproject_id передан, то подтянем project_id и company_id
+    if (!empty($validated['subproject_id'])) {
+        $subproject = \App\Models\Subproject::with('project.company')->findOrFail($validated['subproject_id']);
+        $validated['project_id'] = $subproject->project_id;
+        $validated['company_id'] = $subproject->project->company_id;
+    }
 
     $task = Task::create([
         ...$validated,

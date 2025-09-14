@@ -10,6 +10,9 @@ use App\Models\Company;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Subtask;
+
+use App\Models\Subproject;
+
 use Carbon\Carbon;
 
 class CompanyController extends Controller
@@ -330,55 +333,68 @@ public function show(Company $company)
 }
 
 public function summary(Request $request)
-    {
-        $user = $request->user();
-        $today = Carbon::today();
+{
+    $user = $request->user();
+    $today = Carbon::today();
 
-        // Проекты, где пользователь — руководитель
-        $managingProjects = Project::with(['company:id,name'])
-            ->withCount('tasks') // просто считаем все задачи, без completed_at
-            ->where('manager_id', $user->id)
-            ->latest('id')->take(8)
-            ->get(['id','name','company_id','manager_id']);
+    // Проекты, где пользователь — руководитель
+    $managingProjects = Project::with(['company:id,name'])
+        ->withCount('tasks')
+        ->where('manager_id', $user->id)
+        ->latest('id')->take(8)
+        ->get(['id','name','company_id','manager_id']);
 
-        // Мои задачи (я исполнитель) — без фильтра по completed_at
-        $myTasks = Task::with([
-                'project:id,name,company_id',
-                'project.company:id,name'
-            ])
-            ->where('executor_id', $user->id)
-            ->orderByRaw('due_date IS NULL, due_date ASC') // NULL в конец
-            ->take(12)
-            ->get(['id','title','priority','progress','start_date','due_date','project_id']);
+    // Мои задачи (я исполнитель)
+    $myTasks = Task::with([
+            'project:id,name,company_id',
+            'project.company:id,name'
+        ])
+        ->where('executor_id', $user->id)
+        ->orderByRaw('due_date IS NULL, due_date ASC')
+        ->take(12)
+        ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
-        // Мои подзадачи (я исполнитель) — тоже без completed_at
-        $mySubtasks = Subtask::with([
-                'task:id,title,project_id',
-                'task.project:id,name,company_id',
-                'task.project.company:id,name'
-            ])
-            ->where('executor_id', $user->id)
-            ->orderByRaw('due_date IS NULL, due_date ASC')
-            ->take(12)
-            ->get(['id','title','start_date','due_date','task_id']);
+    // Мои подзадачи (я исполнитель)
+    $mySubtasks = Subtask::with([
+            'task:id,title,project_id',
+            'task.project:id,name,company_id',
+            'task.project.company:id,name'
+        ])
+        ->where('executor_id', $user->id)
+        ->orderByRaw('due_date IS NULL, due_date ASC')
+        ->take(12)
+        ->get(['id','title','start_date','due_date','task_id']);
 
-        // Срезы по срокам
-        $dueToday = $myTasks->filter(fn($t) =>
-            !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
-        )->values();
+    // Подпроекты, где я ответственный
+    $responsibleSubprojects = Subproject::with([
+            'project:id,name,company_id',
+            'project.company:id,name'
+        ])
+        ->withCount(['tasks as open_tasks_count' => function ($q) {
+            $q->where('completed', false);
+        }])
+        ->where('responsible_id', $user->id)
+        ->latest('id')->take(8)
+        ->get(['id','title','project_id','responsible_id']);
 
-        $overdue = $myTasks->filter(fn($t) =>
-            !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
-        )->values();
+    // Срезы по срокам
+    $dueToday = $myTasks->filter(fn($t) =>
+        !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
+    )->values();
 
-        return response()->json([
-            'managing_projects' => $managingProjects,
-            'my_tasks'          => $myTasks,
-            'my_subtasks'       => $mySubtasks,
-            'due_today'         => $dueToday,
-            'overdue'           => $overdue,
-        ]);
-    }
+    $overdue = $myTasks->filter(fn($t) =>
+        !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
+    )->values();
+
+    return response()->json([
+        'managing_projects'      => $managingProjects,
+        'my_tasks'               => $myTasks,
+        'my_subtasks'            => $mySubtasks,
+        'responsible_subprojects'=> $responsibleSubprojects,
+        'due_today'              => $dueToday,
+        'overdue'                => $overdue,
+    ]);
+}
 
 
 

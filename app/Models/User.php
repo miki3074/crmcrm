@@ -85,5 +85,13 @@ public function storageManagedCompanies()
     return $this->belongsToMany(Company::class, 'company_storage_managers')->withTimestamps();
 }
 
+public function attachedCompanies()
+{
+    // company_user — имя pivot таблицы
+    return $this->belongsToMany(Company::class, 'company_user')
+                ->withPivot('role', 'created_by')
+                ->withTimestamps();
+}
+
 
 }

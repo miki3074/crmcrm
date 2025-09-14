@@ -62,7 +62,7 @@ const fetchCompany = async () => {
 }
 
 const fetchManagers = async () => {
-  const { data } = await axios.get('/api/users/managers')
+  const { data } = await axios.get(`/api/users/managers?company_id=${companyId}`)
   managers.value = data
 }
 

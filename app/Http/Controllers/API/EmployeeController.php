@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
+use Illuminate\Validation\Rule;
+use App\Models\Company;
 
 class EmployeeController extends Controller
 {
@@ -15,44 +17,148 @@ public function index()
 {
     abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden');
 
-    $companyIds = \App\Models\Company::where('user_id', auth()->id())->pluck('id');
+    $ownerId = auth()->id();
 
-    $users = User::whereIn('company_id', $companyIds)
-        ->with(['roles:id,name','company:id,name'])
-        ->get(['id','name','email','company_id']);
+    // Берём только компании текущего владельца
+    $companies = Company::where('user_id', $ownerId)->pluck('id');
 
-    return response()->json($users);
+    // Пользователи через pivot company_user,
+    // но только для этих компаний
+    $users = \DB::table('company_user')
+        ->join('users', 'company_user.user_id', '=', 'users.id')
+        ->join('companies', 'company_user.company_id', '=', 'companies.id')
+        ->whereIn('companies.id', $companies)
+        ->select(
+            'users.id',
+            'users.name',
+            'users.email',
+            'companies.id as company_id',
+            'companies.name as company_name',
+            'company_user.role',
+            'company_user.created_by'
+        )
+        ->get()
+        ->map(function ($row) {
+            return [
+                'id'    => $row->id,
+                'name'  => $row->name,
+                'email' => $row->email,
+                'company' => [
+                    'id'   => $row->company_id,
+                    'name' => $row->company_name,
+                ],
+                'role'       => $row->role,
+                'created_by' => $row->created_by,
+            ];
+        });
+
+    return response()->json($users->values());
 }
+
+
+
+
+
 
 
     public function store(Request $request)
 {
     $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email',
-        'password' => 'required|confirmed|min:6',
-        'role' => 'required|in:manager,employee',
+        'name'       => 'required|string|max:255',
+        'email'      => 'required|email|unique:users,email',
+        'password'   => 'required|confirmed|min:6',
+        'role'       => 'required|in:manager,employee',
         'company_id' => 'required|exists:companies,id',
     ]);
 
-    // компания должна принадлежать текущему владельцу
-    $isOwned = \App\Models\Company::where('id', $request->company_id)
+    // проверяем, что компания принадлежит текущему владельцу
+    $company = \App\Models\Company::where('id', $request->company_id)
         ->where('user_id', auth()->id())
-        ->exists();
+        ->firstOrFail();
 
-    abort_unless($isOwned, 403, 'Forbidden');
-
+    // создаём нового пользователя
     $employee = User::create([
-        'name' => $request->name,
-        'email' => $request->email,
-        'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+        'name'       => $request->name,
+        'email'      => $request->email,
+        'password'   => \Illuminate\Support\Facades\Hash::make($request->password),
         'created_by' => auth()->id(),
-        'company_id' => $request->company_id,
     ]);
 
-    $employee->assignRole($request->role);
+    // вместо assignRole — пишем в pivot company_user
+    $company->users()->attach($employee->id, [
+        'role'       => $request->role,
+        'created_by' => auth()->id(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
-    return response()->json($employee->load('company:id,name'), 201);
+    return response()->json(
+        $employee->load(['companies' => fn($q) => $q->where('id', $company->id)]),
+        201
+    );
 }
+
+
+public function usersForAttach()
+    {
+        $ownerId = auth()->id();
+
+        // компании, которыми владеет текущий админ
+        $companyIds = Company::where('user_id', $ownerId)->pluck('id')->toArray();
+
+        // если у владельца нет компаний — вернуть пустой список
+        if (empty($companyIds)) {
+            return response()->json([], 200);
+        }
+
+        // id пользователей, уже прикреплённых к этим компаниям через pivot company_user
+        $attachedUserIds = \DB::table('company_user')
+            ->whereIn('company_id', $companyIds)
+            ->pluck('user_id')
+            ->unique()
+            ->toArray();
+
+        // исключаем текущего владельца и уже прикреплённых
+        $excluded = array_merge([$ownerId], $attachedUserIds);
+
+        $users = User::whereNotIn('id', $excluded)
+            ->select(['id','name','email'])
+            ->get();
+
+        return response()->json($users);
+    }
+
+    /**
+     * Пример attach (если ещё нет) — привязывает существующего юзера к компании через pivot
+     */
+    public function attach(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'company_id' => 'required|exists:companies,id',
+            'role' => 'required|in:owner,manager,employee',
+        ]);
+
+        // проверка, что компания принадлежит текущему владельцу
+        $company = Company::where('id', $request->company_id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+
+        $user = User::findOrFail($request->user_id);
+
+        // привязываем в pivot, не меняя глобальную роль Spatie
+        $user->attachedCompanies()->syncWithoutDetaching([
+            $company->id => [
+                'role' => $request->role,
+                'created_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        ]);
+
+        return response()->json(['message' => 'User attached'], 200);
+    }
+
+
 
 }

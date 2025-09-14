@@ -33,7 +33,9 @@ class Company extends Model
 
 public function users()
 {
-    return $this->hasMany(User::class);
+    return $this->belongsToMany(\App\Models\User::class, 'company_user')
+                ->withPivot('role', 'created_by')
+                ->withTimestamps();
 }
 
 

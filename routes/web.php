@@ -5,6 +5,9 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+
+use App\Models\Subproject;
+use App\Models\User;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -55,6 +58,26 @@ Route::middleware(['auth'])->get('/projects/{id}', function ($id) {
     ]);
 });
 
+
+
+Route::middleware(['auth'])->get('/subprojects/{id}', function ($id) {
+    $subproject = Subproject::with([
+        'responsible:id,name',
+        'tasks.executor:id,name',
+        'tasks.responsible:id,name',
+    ])->findOrFail($id);
+
+    // Кого можно назначать — например, всех пользователей компании проекта
+    $users = User::where('company_id', $subproject->project->company_id ?? null)
+        ->get(['id','name']);
+
+    return Inertia::render('Subprojects/Show', [
+        'subproject' => $subproject,
+        'users'      => $users,
+    ]);
+});
+
+
 Route::get('/tasks/{id}', function ($id) {
     return Inertia::render('Tasks/Show', ['id' => (int)$id]);
 })->middleware(['auth']);
@@ -82,6 +105,9 @@ Route::middleware(['auth','verified'])->group(function () {
         Inertia::render('Storage/Company', ['id' => (int)$id])
     )->name('storage.company');
 });
+
+
+
 
 
 require __DIR__.'/auth.php';

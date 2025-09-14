@@ -3,11 +3,14 @@ import { ref, computed, onMounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import axios from 'axios'
+import { usePage } from '@inertiajs/vue3'
 
 // базовые настройки
 axios.defaults.withCredentials = true
 
 // ===== state
+const { props } = usePage()
+
 const loading = ref(false)
 const saving  = ref(false)
 const list    = ref([])          // сотрудники
@@ -100,6 +103,75 @@ const submit = async () => {
   }
 }
 
+const showAttachModal = ref(false)
+const allUsers = ref([])        // все зарегистрированные пользователи
+const ownerCompanies = ref([])  // компании текущего владельца
+const attachForm = ref({
+  user_id: '',
+  role: 'employee',
+  company_id: ''
+})
+const loadingUsers = ref(false)
+const attaching = ref(false)
+const qAttach = ref('') // поиск в модалке
+
+// Загрузить все зарегистрированные пользователи (исключим текущего владельца)
+const loadUsers = async () => {
+  loadingUsers.value = true
+  try {
+    const { data } = await axios.get('/api/users/for-attach') // см. backend ниже
+    allUsers.value = data
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
+// Загрузить компании текущего владельца (или используемые ранее)
+const loadOwnerCompanies = async () => {
+  const { data } = await axios.get('/api/companies') // у тебя уже есть такой метод; он возвращает только компании владельца
+  ownerCompanies.value = data
+  if (data.length && !attachForm.value.company_id) {
+    attachForm.value.company_id = String(data[0].id)
+  }
+}
+
+const openAttach = async () => {
+  showAttachModal.value = true
+  await Promise.all([loadUsers(), loadOwnerCompanies()])
+}
+
+// Фильтр в модалке
+const filteredAttachUsers = computed(() => {
+  if (!qAttach.value) return allUsers.value
+  const q = qAttach.value.toLowerCase()
+  return allUsers.value.filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
+})
+
+// Отправка
+const attachExisting = async () => {
+  if (!attachForm.value.user_id || !attachForm.value.company_id || !attachForm.value.role) return
+  attaching.value = true
+  try {
+    const { data } = await axios.post('/api/employees/attach', {
+      user_id: attachForm.value.user_id,
+      company_id: attachForm.value.company_id,
+      role: attachForm.value.role,
+    })
+    // Успех — можно закрыть модалку и обновить список сотрудников
+    showAttachModal.value = false
+    // Обновляем таблицу (если есть метод loadEmployees() — вызови его)
+    // await loadEmployees()
+    // Сброс формы
+    attachForm.value = { user_id: '', role: 'employee', company_id: attachForm.value.company_id }
+    alert('Пользователь добавлен')
+  } catch (err) {
+    console.error(err)
+    alert(err?.response?.data?.message || 'Ошибка')
+  } finally {
+    attaching.value = false
+  }
+}
+
 onMounted(async () => {
   await Promise.all([fetchCompanies(), fetchEmployees()])
 })
@@ -117,6 +189,14 @@ onMounted(async () => {
         >
           + Сотрудник
         </button>
+
+<button
+  class="ms-3 rounded-xl bg-green-600 text-white px-4 py-2 hover:bg-green-700"
+  @click="openAttach"
+>
+  Сотрудники 2
+</button>
+
       </div>
     </template>
 
@@ -180,7 +260,7 @@ onMounted(async () => {
                   class="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1"
                   :class="badgeClass(u.roles?.[0]?.name ?? 'employee')"
                 >
-                  {{ (u.roles?.[0]?.name === 'manager') ? 'Менеджер' : 'Сотрудник' }}
+                  {{ (u.role === 'manager') ? 'Менеджер' : 'Сотрудник' }}
                 </span>
               </td>
             </tr>
@@ -258,5 +338,60 @@ onMounted(async () => {
         </form>
       </div>
     </div>
+
+
+    <div v-if="showAttachModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-3xl p-4">
+    <h3 class="text-lg font-semibold mb-3">Добавить зарегистрированного пользователя</h3>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-sm mb-1">Поиск</label>
+        <input v-model="qAttach" class="w-full border rounded px-3 py-2" placeholder="Имя или email" />
+      </div>
+
+      <div>
+        <label class="block text-sm mb-1">Компания (куда добавить)</label>
+        <select v-model="attachForm.company_id" class="w-full border rounded px-3 py-2">
+          <option v-for="c in ownerCompanies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3 max-h-64 overflow-auto border rounded p-2">
+      <template v-if="loadingUsers">
+        <div>Загрузка пользователей...</div>
+      </template>
+      <template v-else>
+        <div v-for="u in filteredAttachUsers" :key="u.id" class="flex items-center justify-between gap-3 p-2 hover:bg-gray-50 rounded">
+          <div>
+            <div class="font-medium">{{ u.name }}</div>
+            <div class="text-xs text-gray-500">{{ u.email }}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs">Роль</label>
+            <select v-model="attachForm.role" class="border rounded px-2 py-1">
+              <option value="employee">Сотрудник</option>
+              <option value="manager">Менеджер</option>
+            </select>
+
+            <button @click="attachForm.user_id = u.id" class="ms-2 px-3 py-1 rounded bg-indigo-600 text-white">Выбрать</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button @click="showAttachModal = false" class="px-4 py-2 bg-gray-400 text-white rounded">Отмена</button>
+      <button @click="attachExisting" :disabled="attaching" class="px-4 py-2 bg-green-600 text-white rounded">
+        Добавить
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+    
   </AuthenticatedLayout>
 </template>

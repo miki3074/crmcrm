@@ -17,7 +17,10 @@ use App\Http\Controllers\API\InteractionController;
 use App\Http\Controllers\API\DealController;
 
 use App\Http\Controllers\API\TaskCommentController;
+use App\Http\Controllers\API\TaskChecklistController;
 
+
+use App\Http\Controllers\API\SubprojectController;
 
 
 /*
@@ -143,4 +146,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/comments', [TaskCommentController::class, 'index']);
     Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store']);
     Route::delete('/task-comments/{comment}', [TaskCommentController::class, 'destroy']);
+});
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users/for-attach', [EmployeeController::class, 'usersForAttach']);
+    Route::post('/employees/attach', [EmployeeController::class, 'attach']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/tasks/{task}/checklists', [TaskChecklistController::class, 'index']);
+    Route::post('/tasks/{task}/checklists', [TaskChecklistController::class, 'store']);
+    Route::patch('/checklists/{checklist}/toggle', [TaskChecklistController::class, 'toggle']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/projects/{project}/subprojects', [SubprojectController::class, 'store']);
+    Route::get('/subprojects/{subproject}', [SubprojectController::class, 'show']);
+
+    // Можно так же вложить роуты для задач подпроекта
+    Route::post('/subprojects/{subproject}/tasks', [TaskController::class, 'store']);
 });

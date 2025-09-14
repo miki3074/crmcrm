@@ -5,6 +5,7 @@ import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 import TaskChat from '@/Components/TaskChat.vue'
+import TaskChecklists from '@/Components/TaskChecklists.vue'
 
 const { props } = usePage()
 const taskId = props.id
@@ -349,12 +350,23 @@ onMounted(fetchTask)
               </dd></div>
             </dl>
           </div>
+
+<div v-if="task" class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
+  <TaskChecklists
+    :task-id="task.id"
+    :executor="task.executor"
+    :responsible="task.responsible"
+    :creator="task.creator"
+  />
+</div>
+
+
         </div>
 
 
 <div class="space-y-4" v-if="task">
   <div class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
-    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Кратко о задаче</h3>
+    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Чат</h3>
 
     <!-- чат появится только когда task уже есть -->
     <TaskChat :task-id="task.id" :can-chat="true" />

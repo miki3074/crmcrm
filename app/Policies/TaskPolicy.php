@@ -93,10 +93,36 @@ public function deleteComment(User $user, \App\Models\TaskComment $comment): boo
     /**
      * Determine whether the user can update the model.
      */
+    // public function update(User $user, Task $task): bool
+    // {
+    //    return $user->id === $task->executor_id || $user->id === $task->responsible_id;
+    // }
+
     public function update(User $user, Task $task): bool
-    {
-       return $user->id === $task->executor_id || $user->id === $task->responsible_id;
+{
+    // Админ может всё
+    if ($user->hasRole('admin')) {
+        return true;
     }
+
+    // Владелец компании
+    if (optional($task->project->company)->user_id === $user->id) {
+        return true;
+    }
+
+    // Менеджер проекта
+    if ($user->id === ($task->project->manager_id ?? 0)) {
+        return true;
+    }
+
+    // Исполнитель или ответственный
+    if ($user->id === $task->executor_id || $user->id === $task->responsible_id) {
+        return true;
+    }
+
+    // Если участвует в подзадачах
+    return $this->participates($user, $task);
+}
 
     /**
      * Determine whether the user can delete the model.
