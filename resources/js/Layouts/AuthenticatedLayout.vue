@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted  } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -8,6 +8,30 @@ import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+
+const isDark = ref(false)
+
+onMounted(() => {
+  // Проверим localStorage при загрузке
+  if (localStorage.theme === 'dark' || 
+      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark')
+    isDark.value = true
+  }
+})
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  if (isDark.value) {
+    document.documentElement.classList.add('dark')
+    localStorage.theme = 'dark'
+  } else {
+    document.documentElement.classList.remove('dark')
+    localStorage.theme = 'light'
+  }
+}
+
+
 </script>
 
 <template>
@@ -33,6 +57,29 @@ const showingNavigationDropdown = ref(false);
                                     Главная
                                 </NavLink>
                             </div>
+
+
+                            <div class="shrink-0 flex items-center" style="margin-left: 19%;">
+
+                                <button
+  @click="toggleTheme"
+  class="relative inline-flex items-center justify-center w-10 h-10 rounded-full
+         bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500
+         dark:from-gray-600 dark:via-gray-700 dark:to-gray-800
+         text-white shadow-lg transition-all duration-500 ease-in-out
+         hover:scale-110 hover:rotate-12 focus:outline-none " 
+>
+  <transition name="fade" mode="out-in">
+    <span v-if="!isDark" key="sun" class="text-xl">🌻</span>
+    <span v-else key="moon" class="text-xl">🌘</span>
+  </transition>
+</button>
+                            </div>
+                           
+
+      
+
+                            
                         </div>
 
                         <div class="hidden sm:flex sm:items-center sm:ms-6">
@@ -149,4 +196,7 @@ const showingNavigationDropdown = ref(false);
             </main>
         </div>
     </div>
+
+
+    
 </template>
