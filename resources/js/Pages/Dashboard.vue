@@ -420,8 +420,8 @@ onMounted(async () => {
            class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
            @click="$inertia.visit(`/subprojects/${sp.id}`)">
         <div class="font-semibold truncate text-slate-500" >{{ sp.title }}</div>
-        <div class="mt-1 text-xs text-slate-400">Проект: {{ sp.project?.name }}</div>
-        <div class="mt-2 text-xs text-slate-500">Открытых задач: {{ sp.open_tasks_count }}</div>
+        <div class="mt-1 text-xs text-slate-500">Проект: {{ sp.project?.name }}</div>
+        <div class="mt-2 text-xs text-slate-600">Открытых задач: {{ sp.open_tasks_count }}</div>
       </div>
     </div>
   </div>
@@ -507,7 +507,6 @@ onMounted(async () => {
     </ul>
   </div>
 </div>
-
     </div>
 
 

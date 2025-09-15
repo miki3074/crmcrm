@@ -403,10 +403,10 @@ onMounted(fetchProject)
 
 
 <!-- Подпроекты -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-10">
-  <h2 class="text-lg font-bold mb-4" style="color: aliceblue;">Подпроекты <span style="color: red;">(доработка) </span></h2>
+<!-- <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-10">
+  <h2 class="text-lg font-bold mb-4 text-slate-500">Подпроекты <span style="color: red;">(доработка) </span></h2>
 
-  <!-- Форма создания подпроекта -->
+ 
   <div
     v-if="isAdmin || isCompanyOwner || isProjectManager"
     class="flex gap-2 items-center mb-6"
@@ -439,7 +439,7 @@ onMounted(fetchProject)
 
   <p v-if="subprojectError" class="text-red-600 mb-4">{{ subprojectError }}</p>
 
-  <!-- Список подпроектов -->
+
   <ul v-if="project?.subprojects?.length" class="space-y-3">
     <li
       v-for="sub in project.subprojects"
@@ -467,7 +467,7 @@ onMounted(fetchProject)
     </li>
   </ul>
   <p v-else class="text-gray-500 dark:text-gray-400">Подпроектов пока нет</p>
-</div>
+</div> -->
 
     <!-- Модалка: Новая задача -->
     <div v-if="showTaskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
