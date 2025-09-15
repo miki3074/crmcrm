@@ -404,7 +404,7 @@ onMounted(fetchProject)
 
 <!-- Подпроекты -->
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-10">
-  <h2 class="text-lg font-bold mb-4" style="color: aliceblue;">Подпроекты</h2>
+  <h2 class="text-lg font-bold mb-4" style="color: aliceblue;">Подпроекты <span style="color: red;">(доработка) </span></h2>
 
   <!-- Форма создания подпроекта -->
   <div
@@ -428,7 +428,7 @@ onMounted(fetchProject)
   </option>
 </select>
 
-    <button
+    <button disabled
       @click="createSubproject"
       :disabled="creatingSubproject"
       class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

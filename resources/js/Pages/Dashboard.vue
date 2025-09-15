@@ -179,7 +179,7 @@ onMounted(async () => {
               <span class="i">📅</span>
             </div>
             <div>
-              <div class="font-semibold" style="color: aliceblue;">Календарь</div>
+              <div class="font-semibold text-slate-500" >Календарь</div>
               <div class="text-xs text-slate-500">События и встречи</div>
             </div>
           </div>
@@ -194,7 +194,7 @@ onMounted(async () => {
               <span class="i">📂</span>
             </div>
             <div>
-              <div class="font-semibold" style="color: aliceblue;">Хранилище</div>
+              <div class="font-semibold text-slate-500">Хранилище</div>
               <div class="text-xs text-slate-500">файлы</div>
             </div>
           </div>
@@ -212,7 +212,7 @@ onMounted(async () => {
               <span class="i">👥</span>
             </div>
             <div>
-              <div class="font-semibold" style="color: aliceblue;">Сотрудники</div>
+              <div class="font-semibold text-slate-500">Сотрудники</div>
               <div class="text-xs text-slate-500">Роли и доступы</div>
             </div>
           </div>
@@ -227,7 +227,7 @@ onMounted(async () => {
               <span class="i">➕</span>
             </div>
             <div>
-              <div class="font-semibold" style="color: aliceblue;">Новая компания</div>
+              <div class="font-semibold  text-slate-500" >Новая компания</div>
               <div class="text-xs text-slate-500">Создать организацию</div>
             </div>
           </div>
@@ -268,7 +268,7 @@ onMounted(async () => {
   <!-- Проверка, есть ли вообще компании -->
   <div v-if="!filtered.length" class="text-center py-16 border border-dashed rounded-2xl dark:border-slate-800">
     <div class="text-4xl mb-2">🏢</div>
-    <div class="font-medium" style="color: aliceblue;">Пока нет компаний</div>
+    <div class="font-medium text-slate-500">Пока нет компаний</div>
     <p class="text-sm text-slate-500 mt-1">Создайте первую компанию, чтобы начать работу.</p>
     <button
       v-if="isAdmin"
@@ -280,7 +280,7 @@ onMounted(async () => {
 
   <!-- Мои компании -->
   <div v-if="myCompanies.length">
-    <h3 class="text-lg font-semibold mb-2" style="color: aliceblue;">Мои компании</h3>
+    <h3 class="text-lg font-semibold mb-2 text-slate-500">Мои компании</h3>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="company in myCompanies"
@@ -299,7 +299,7 @@ onMounted(async () => {
             🏢
           </div>
           <div class="min-w-0">
-            <div class="font-semibold truncate" style="color: aliceblue;">{{ company.name }}</div>
+            <div class="font-semibold truncate text-slate-500">{{ company.name }}</div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
           </div>
         </div>
@@ -309,7 +309,7 @@ onMounted(async () => {
 
   <!-- Другие компании -->
   <div v-if="otherCompanies.length" class="mt-8">
-    <h3 class="text-lg font-semibold mb-2" style="color: aliceblue;">Другие компании</h3>
+    <h3 class="text-lg font-semibold mb-2 text-slate-500">Другие компании</h3>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div
         v-for="company in otherCompanies"
@@ -328,7 +328,7 @@ onMounted(async () => {
             🏢
           </div>
           <div class="min-w-0">
-            <div class="font-semibold truncate" style="color: aliceblue;">{{ company.name }}</div>
+            <div class="font-semibold truncate text-slate-500">{{ company.name }}</div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
           </div>
         </div>
@@ -343,7 +343,7 @@ onMounted(async () => {
         <div class="absolute inset-0 bg-black/50" @click="showModal=false"></div>
         <div class="relative w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-lg" style="color: aliceblue;">Новая компания</h3>
+            <h3 class="font-semibold text-lg text-slate-500">Новая компания</h3>
             <button @click="showModal=false" class="text-slate-400 hover:text-slate-600">✕</button>
           </div>
           <form @submit.prevent="createCompany" class="space-y-4">
@@ -360,8 +360,8 @@ onMounted(async () => {
                      class="mt-1 w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white dark:file:bg-white dark:file:text-slate-900 file:px-3 file:py-2" />
             </div>
             <div class="flex justify-end gap-2 pt-2">
-              <button style="color: aliceblue;" type="button" @click="showModal=false"
-                      class="rounded-xl px-4 py-2 text-sm border border-slate-200 dark:border-slate-800">
+              <button  type="button" @click="showModal=false"
+                      class=" text-slate-500 rounded-xl px-4 py-2 text-sm border border-slate-200 dark:border-slate-800 dark:text-slate-900" >
                 Отмена
               </button>
               <button type="submit" :disabled="submitting || !form.name.trim()"
@@ -377,7 +377,7 @@ onMounted(async () => {
 <!-- ================= Я руковожу ================= -->
 <div class="mt-12 space-y-4">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold" style="color: aliceblue;">Я руковожу</h3>
+    <h3 class="text-lg font-semibold text-slate-500" >Я руковожу</h3>
   </div>
 
   <div v-if="loadingSummary">
@@ -388,7 +388,7 @@ onMounted(async () => {
 
   <div v-else>
     <div v-for="(projects, companyName) in managingByCompany" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2" style="color: aliceblue;">Компания: {{ companyName }}</h4>
+      <h4 class="font-semibold mb-2" >Компания: {{ companyName }}</h4>
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="p in projects" :key="p.id"
              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
@@ -403,7 +403,7 @@ onMounted(async () => {
 
 <div class="mt-12 space-y-4">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold" style="color: aliceblue;">Я отвечаю за подпроекты</h3>
+    <h3 class="text-lg font-semibold text-slate-500" >Я отвечаю за подпроекты</h3>
   </div>
 
   <div v-if="loadingSummary">
@@ -414,12 +414,12 @@ onMounted(async () => {
 
  <div v-else>
   <div v-for="(subprojects, companyName) in responsibleSubprojectsByCompany" :key="companyName" class="mb-6">
-    <h4 class="font-semibold mb-2" style="color: aliceblue;">Компания: {{ companyName }}</h4>
+    <h4 class="font-semibold mb-2 text-slate-500" >Компания: {{ companyName }}</h4>
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="sp in subprojects" :key="sp.id"
            class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
            @click="$inertia.visit(`/subprojects/${sp.id}`)">
-        <div class="font-semibold truncate" style="color: aliceblue;">{{ sp.title }}</div>
+        <div class="font-semibold truncate text-slate-500" >{{ sp.title }}</div>
         <div class="mt-1 text-xs text-slate-400">Проект: {{ sp.project?.name }}</div>
         <div class="mt-2 text-xs text-slate-500">Открытых задач: {{ sp.open_tasks_count }}</div>
       </div>
@@ -432,7 +432,7 @@ onMounted(async () => {
 <!-- ================= Я исполнитель ================= -->
 <div class="mt-12 space-y-4">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold" style="color: aliceblue;">Я исполнитель</h3>
+    <h3 class="text-lg font-semibold text-slate-500" >Я исполнитель</h3>
   </div>
 
   <div v-if="loadingSummary">
@@ -443,10 +443,10 @@ onMounted(async () => {
 
   <div v-else>
     <div v-for="(projects, companyName) in tasksByCompanyAndProject" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2" style="color: aliceblue;">Компания: {{ companyName }}</h4>
+      <h4 class="font-semibold mb-2 text-slate-500" >Компания: {{ companyName }}</h4>
 
       <div v-for="(tasks, projectName) in projects" :key="projectName" class="mb-4">
-        <h5 class="text-sm font-medium mb-1" style="color: aliceblue;">Проект: {{ projectName }}</h5>
+        <h5 class="text-sm font-medium mb-1 text-slate-500" >Проект: {{ projectName }}</h5>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="t in tasks" :key="t.id"
@@ -473,7 +473,7 @@ onMounted(async () => {
 <div class="mt-12 grid md:grid-cols-2 gap-6">
   <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="font-semibold" style="color: aliceblue;">Сроки сегодня</h3>
+      <h3 class="font-semibold text-slate-500" >Сроки сегодня</h3>
       <span class="text-xs text-slate-500">{{ summary.due_today.length }}</span>
     </div>
     <div v-if="loadingSummary" class="space-y-2">
@@ -481,7 +481,7 @@ onMounted(async () => {
     </div>
     <ul v-else class="space-y-2">
       <li v-for="t in summary.due_today" :key="t.id" class="text-sm flex justify-between gap-3">
-        <span class="truncate" style="color: aliceblue;">{{ t.title }}</span>
+        <span class="truncate text-slate-500" >{{ t.title }}</span>
         <button class="text-xs text-slate-500 hover:text-slate-700"
                 @click="$inertia.visit(`/tasks/${t.id}`)">Открыть</button>
       </li>
@@ -491,7 +491,7 @@ onMounted(async () => {
 
   <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="font-semibold" style="color: aliceblue;">Просрочено</h3>
+      <h3 class="font-semibold text-slate-500" >Просрочено</h3>
       <span class="text-xs text-slate-500">{{ summary.overdue.length }}</span>
     </div>
     <div v-if="loadingSummary" class="space-y-2">
@@ -499,7 +499,7 @@ onMounted(async () => {
     </div>
     <ul v-else class="space-y-2">
       <li v-for="t in summary.overdue" :key="t.id" class="text-sm flex justify-between gap-3">
-        <span class="truncate" style="color: aliceblue;">⚠️ {{ t.title }}</span>
+        <span class="truncate text-slate-500" >⚠️ {{ t.title }}</span>
         <button class="text-xs text-slate-500 hover:text-slate-700"
                 @click="$inertia.visit(`/tasks/${t.id}`)">Открыть</button>
       </li>
