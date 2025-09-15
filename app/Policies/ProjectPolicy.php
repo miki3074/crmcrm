@@ -36,7 +36,7 @@ public function view(User $user, Project $project): bool
         return true;
     }
 
-    // ✅ Исполнитель хотя бы одной подзадачи в проекте
+    
     if (\App\Models\Subtask::whereHas('task', function ($query) use ($project) {
         $query->where('project_id', $project->id);
     })->where('executor_id', $user->id)->exists()) {
