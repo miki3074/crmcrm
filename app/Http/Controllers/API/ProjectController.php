@@ -115,4 +115,21 @@ public function updateDescription(Request $request, Project $project)
 }
 
 
+public function updateName(Request $request, Project $project)
+{
+    $this->authorize('update', $project);
+
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+    ]);
+
+    $project->update(['name' => $validated['name']]);
+
+    return response()->json([
+        'message' => 'Название проекта обновлено',
+        'project' => $project
+    ]);
+}
+
+
 }

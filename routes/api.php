@@ -167,3 +167,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Можно так же вложить роуты для задач подпроекта
     Route::post('/subprojects/{subproject}/tasks', [TaskController::class, 'store']);
 });
+
+
+Route::middleware('auth:sanctum')->patch('/projects/{project}/name', [ProjectController::class, 'updateName']);

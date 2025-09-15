@@ -170,6 +170,30 @@ const createSubproject = async () => {
   }
 }
 
+const showNameModal = ref(false)
+const nameForm = ref({ name: '' })
+const nameError = ref('')
+const savingName = ref(false)
+
+const openNameModal = () => {
+  nameForm.value.name = project.value?.name || ''
+  showNameModal.value = true
+}
+
+const saveName = async () => {
+  savingName.value = true
+  nameError.value = ''
+  try {
+    await axios.patch(`/api/projects/${projectId}/name`, { name: nameForm.value.name })
+    showNameModal.value = false
+    await fetchProject() // обновим данные проекта
+  } catch (e) {
+    nameError.value = e?.response?.data?.message || 'Ошибка при обновлении названия'
+  } finally {
+    savingName.value = false
+  }
+}
+
 
 onMounted(fetchProject)
 </script>
@@ -234,6 +258,15 @@ onMounted(fetchProject)
             >
               + Задача
             </button>
+
+             <button
+    v-if="isAdmin || isCompanyOwner"
+    @click="showNameModal = true"
+    class="rounded-xl bg-blue-400/95 hover:bg-blue-500 text-white px-4 py-2 font-medium"
+  >
+    Изменить
+  </button>
+
           </div>
         </div>
       </div>
@@ -547,5 +580,29 @@ onMounted(fetchProject)
         </form>
       </div>
     </div>
+
+
+<div v-if="showNameModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Изменить название проекта</h3>
+
+    <input
+      v-model="nameForm.name"
+      type="text"
+      class="w-full border rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-white"
+    />
+    <p v-if="nameError" class="mt-2 text-sm text-rose-600">{{ nameError }}</p>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button @click="showNameModal=false" class="px-4 py-2 rounded bg-gray-500 text-white">Отмена</button>
+      <button @click="saveName" :disabled="savingName" class="px-4 py-2 rounded bg-blue-600 text-white">
+        {{ savingName ? 'Сохраняю…' : 'Сохранить' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
   </AuthenticatedLayout>
 </template>

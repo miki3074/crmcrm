@@ -59,9 +59,11 @@ public function view(User $user, Project $project): bool
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Project $project): bool
+   public function update(User $user, Project $project): bool
     {
-        //
+        return $user->id === $project->manager_id
+            || $user->id === $project->company->user_id
+            || $user->hasRole('admin');
     }
 
     public function updateBudget(User $user, Project $project): bool
