@@ -30,10 +30,12 @@ public function index()
 ])->where('user_id', $userId)->get();
 
     // 2. Компании, где он руководитель проектов
-    $managedProjects = Project::with('company')
-        ->where('manager_id', $userId)
-        ->get()
-        ->groupBy('company_id');
+   $managedProjects = Project::with('company', 'managers')
+    ->whereHas('managers', function ($q) use ($userId) {
+        $q->where('users.id', $userId);
+    })
+    ->get()
+    ->groupBy('company_id');
 
     $managedCompanies = collect();
     foreach ($managedProjects as $companyId => $projects) {
@@ -42,10 +44,10 @@ public function index()
             return [
                 'id' => $project->id,
                 'name' => $project->name,
-                'manager' => [
-                    'id' => $project->manager->id,
-                    'name' => $project->manager->name,
-                ],
+                 'managers' => $project->managers->map(fn($m) => [
+            'id' => $m->id,
+            'name' => $m->name,
+        ]),
             ];
         });
         if (!$createdCompanies->contains('id', $company->id)) {
@@ -55,8 +57,8 @@ public function index()
 
     // 3. Компании, где он исполнитель задач
     $executorTasks = Task::with(['project.company', 'project.manager'])
-        ->where('executor_id', $userId)
-        ->get();
+        ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+    ->get();
 
     $groupedByCompany = $executorTasks->groupBy(fn($task) => $task->project->company->id);
     $executorCompanies = $groupedByCompany->map(function ($tasks, $companyId) {
@@ -81,8 +83,8 @@ public function index()
     })->values();
 
     // 4. Компании, где он ответственный по задачам
-$responsibleTasks = Task::with(['project.company', 'project.manager'])
-    ->where('responsible_id', $userId)
+$responsibleTasks = Task::with(['project.company', 'project.managers'])
+    ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
     ->get();
 
 $responsibleGrouped = $responsibleTasks->groupBy(fn($task) => $task->project->company->id);
@@ -123,10 +125,15 @@ $subtaskCompanies = Subtask::query()
     ->with([
         // Важно: грузим те же связи через task
         'task.project.company',
-        'task.project.manager',
+        'task.project.managers',
     ])
-    ->where('executor_id', $userId)
+    ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
     ->get();
+
+   $memberCompanies = Company::with('projects')
+    ->whereHas('users', fn($q) => $q->where('user_id', $userId))
+    ->get();
+
 
 $subtaskCompanies = $subtaskCompanies
     ->filter(fn($s) => $s->task && $s->task->project && $s->task->project->company) // защита
@@ -146,10 +153,14 @@ $subtaskCompanies = $subtaskCompanies
                         'title' => $s->title,
                         'start_date' => $s->start_date,
                         'due_date' => $s->due_date,
-                        'executor' => [
-                            'id' => $s->executor->id,
-                            'name' => $s->executor->name,
-                        ],
+                        'executors' => $s->executors->map(fn($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+        ]),
+         'responsibles' => $s->responsibles->map(fn($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+        ]),
                         'creator' => [
                             'id' => $s->creator->id,
                             'name' => $s->creator->name,
@@ -184,6 +195,7 @@ $subtaskCompanies = $subtaskCompanies
             ->concat($executorCompanies)
             ->concat($responsibleCompanies)
             ->concat($subtaskCompanies)
+             ->concat($memberCompanies) 
             ->unique('id')
             ->values()
     );
@@ -219,15 +231,14 @@ public function show(Company $company)
 
     $company->load([
         'projects' => function ($q) use ($userId) {
-            $q->with([
-                'manager:id,name',
-                'tasks.subtasks' => function ($s) use ($userId) {
-                    $s->where('executor_id', $userId);
-                },
-                'tasks.executor:id,name',
-                'tasks.responsible:id,name'
-            ]);
-        }
+    $q->with([
+        'managers:id,name',
+        'tasks' => fn($t) => $t->whereHas('executors', fn($e) => $e->where('users.id', $userId)),
+        'tasks.executors:id,name',
+        'tasks.responsibles:id,name',
+    ]);
+}
+
     ]);
 
     $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
@@ -237,17 +248,18 @@ public function show(Company $company)
     }
 
     // 2. Если он менеджер проекта
-    if ($project->manager_id === $userId) {
+    if ($project->managers->contains('id', $userId)) {
         return true;
     }
 
     // 3. Есть задачи, где он исполнитель или ответственный
-    if ($project->tasks->where('executor_id', $userId)->isNotEmpty()) {
-        return true;
-    }
-    if ($project->tasks->where('responsible_id', $userId)->isNotEmpty()) {
-        return true;
-    }
+    if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) {
+    return true;
+}
+   if ($project->tasks->contains(fn($task) => $task->responsibles->contains('id', $userId))) {
+    return true;
+}
+
 
     // 4. Есть подзадачи, где он исполнитель
     foreach ($project->tasks as $task) {
@@ -260,23 +272,24 @@ public function show(Company $company)
 })->values();
 
     return response()->json([
-        'id' => $company->id,
-        'name' => $company->name,
-        'logo' => $company->logo,
-        'user_id' => $company->user_id,
-        'projects' => $company->projects->map(function ($project) {
-            return [
-                'id' => $project->id,
-                'name' => $project->name,
-                'start_date' => $project->start_date,
-                'duration_days' => $project->duration_days,
-                'manager' => [
-                    'id' => $project->manager->id ?? null,
-                    'name' => $project->manager->name ?? '—',
-                ],
-            ];
-        }),
-    ]);
+    'id' => $company->id,
+    'name' => $company->name,
+    'logo' => $company->logo,
+    'user_id' => $company->user_id,
+    'projects' => $company->projects->map(function ($project) {
+        return [
+            'id' => $project->id,
+            'name' => $project->name,
+            'start_date' => $project->start_date,
+            'duration_days' => $project->duration_days,
+            'managers' => $project->managers->map(fn($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+            ]),
+        ];
+    }),
+]);
+
 }
 
 
@@ -287,8 +300,10 @@ public function show(Company $company)
 
         // Получаем проекты с привязкой к компаниям
         $projects = \App\Models\Project::with('company')
-            ->where('manager_id', $userId)
-            ->get();
+            ->whereHas('managers', function ($q) use ($userId) {
+        $q->where('users.id', $userId);
+    })
+    ->get();
 
         // Группируем проекты по company_id
         $grouped = $projects->groupBy('company_id')->map(function ($projects) {
@@ -339,17 +354,21 @@ public function summary(Request $request)
 
     // Проекты, где пользователь — руководитель
     $managingProjects = Project::with(['company:id,name'])
-        ->withCount('tasks')
-        ->where('manager_id', $user->id)
-        ->latest('id')->take(8)
-        ->get(['id','name','company_id','manager_id']);
+    ->withCount('tasks')
+    ->whereHas('managers', function ($q) use ($user) {
+        $q->where('users.id', $user->id);
+    })
+    ->latest('id')->take(8)
+    ->get(['id','name','company_id']);
 
     // Мои задачи (я исполнитель)
     $myTasks = Task::with([
             'project:id,name,company_id',
             'project.company:id,name'
         ])
-        ->where('executor_id', $user->id)
+         ->whereHas('executors', function ($q) use ($user) {
+        $q->where('users.id', $user->id);
+    })
         ->orderByRaw('due_date IS NULL, due_date ASC')
         ->take(12)
         ->get(['id','title','priority','progress','start_date','due_date','project_id']);
@@ -360,22 +379,25 @@ public function summary(Request $request)
             'task.project:id,name,company_id',
             'task.project.company:id,name'
         ])
-        ->where('executor_id', $user->id)
+         ->whereHas('executors', function ($q) use ($user) {
+        $q->where('users.id', $user->id);
+    })
         ->orderByRaw('due_date IS NULL, due_date ASC')
         ->take(12)
         ->get(['id','title','start_date','due_date','task_id']);
 
     // Подпроекты, где я ответственный
-    $responsibleSubprojects = Subproject::with([
-            'project:id,name,company_id',
-            'project.company:id,name'
-        ])
-        ->withCount(['tasks as open_tasks_count' => function ($q) {
-            $q->where('completed', false);
-        }])
-        ->where('responsible_id', $user->id)
-        ->latest('id')->take(8)
-        ->get(['id','title','project_id','responsible_id']);
+   $responsibleSubprojects = Subproject::with([
+        'project:id,name,company_id',
+        'project.company:id,name'
+    ])
+    ->withCount(['tasks as open_tasks_count' => function ($q) {
+        $q->where('completed', false);
+    }])
+    ->where('responsible_id', $user->id)   // пока работает, если колонка осталась
+    ->latest('id')->take(8)
+    ->get(['id','title','project_id','responsible_id']);
+
 
     // Срезы по срокам
     $dueToday = $myTasks->filter(fn($t) =>

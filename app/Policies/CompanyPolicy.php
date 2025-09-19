@@ -27,23 +27,24 @@ public function view(User $user, Company $company): bool
     }
 
     // Менеджер хотя бы одного проекта в этой компании
-    if ($company->projects()->where('manager_id', $user->id)->exists()) {
-        return true;
-    }
+    if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+    return true;
+}
+
 
     // Исполнитель хотя бы одной задачи
     if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
-        ->where('executor_id', $user->id)
-        ->exists()) {
-        return true;
-    }
+    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
 
     // ✅ Ответственный хотя бы одной задачи
     if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
-        ->where('responsible_id', $user->id)
-        ->exists()) {
-        return true;
-    }
+    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
 
     if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
         $query->whereIn('project_id', $company->projects()->pluck('id'));

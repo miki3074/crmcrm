@@ -36,6 +36,18 @@ class TaskChecklistController extends Controller
             }
         }
 
+        if (!empty($validated['assigned_to'])) {
+        $user = \App\Models\User::find($validated['assigned_to']);
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "📝 Вам назначен новый пункт чеклиста: <b>{$checklist->title}</b>\n".
+                "Задача: {$task->title}\n".
+                ($validated['important'] ? "⚠️ Важно!" : "")
+            );
+        }
+    }
+
         return response()->json($checklist->load('assignee', 'files'), 201);
     }
 

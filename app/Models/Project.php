@@ -13,7 +13,6 @@ class Project extends Model
     'name',
     'company_id',
     'initiator_id',
-    'manager_id',
     'start_date',
     'duration_days',
     'budget',
@@ -41,5 +40,11 @@ public function subprojects()
 {
     return $this->hasMany(Subproject::class);
 }
+
+
+public function managers()
+    {
+        return $this->belongsToMany(User::class, 'project_user');
+    }
 
 }

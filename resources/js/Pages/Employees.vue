@@ -340,55 +340,84 @@ onMounted(async () => {
     </div>
 
 
-    <div v-if="showAttachModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-3xl p-4">
-    <h3 class="text-lg font-semibold mb-3">Добавить зарегистрированного пользователя</h3>
+    <div v-if="showAttachModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+  <div class="relative w-full max-w-3xl rounded-2xl shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+    <!-- Заголовок -->
+    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">
+        Добавить зарегистрированного пользователя
+      </h3>
+      <button @click="showAttachModal = false"
+              class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+        ✕
+      </button>
+    </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+    <!-- Форма поиска -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-4">
       <div>
-        <label class="block text-sm mb-1">Поиск</label>
-        <input v-model="qAttach" class="w-full border rounded px-3 py-2" placeholder="Имя или email" />
+        <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Поиск</label>
+        <input v-model="qAttach"
+               class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+               placeholder="Имя или email" />
       </div>
 
       <div>
-        <label class="block text-sm mb-1">Компания (куда добавить)</label>
-        <select v-model="attachForm.company_id" class="w-full border rounded px-3 py-2">
+        <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Компания</label>
+        <select v-model="attachForm.company_id"
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
           <option v-for="c in ownerCompanies" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
         </select>
       </div>
     </div>
 
-    <div class="mb-3 max-h-64 overflow-auto border rounded p-2">
-      <template v-if="loadingUsers">
-        <div>Загрузка пользователей...</div>
-      </template>
-      <template v-else>
-        <div v-for="u in filteredAttachUsers" :key="u.id" class="flex items-center justify-between gap-3 p-2 hover:bg-gray-50 rounded">
-          <div>
-            <div class="font-medium">{{ u.name }}</div>
-            <div class="text-xs text-gray-500">{{ u.email }}</div>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-xs">Роль</label>
-            <select v-model="attachForm.role" class="border rounded px-2 py-1">
-              <option value="employee">Сотрудник</option>
-              <option value="manager">Менеджер</option>
-            </select>
+    <!-- Список пользователей -->
+    <div class="px-6 pb-4">
+      <div class="mb-3 max-h-64 overflow-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-700">
+        <template v-if="loadingUsers">
+          <div class="p-4 text-sm text-slate-500">Загрузка пользователей...</div>
+        </template>
 
-            <button @click="attachForm.user_id = u.id" class="ms-2 px-3 py-1 rounded bg-indigo-600 text-white">Выбрать</button>
+        <template v-else>
+          <div v-for="u in filteredAttachUsers"
+               :key="u.id"
+               class="flex items-center justify-between gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition rounded">
+            <div>
+              <div class="font-medium text-slate-800 dark:text-slate-100">{{ u.name }}</div>
+              <div class="text-xs text-slate-500">{{ u.email }}</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs text-slate-500">Роль</label>
+              <select v-model="attachForm.role"
+                      class="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm px-2 py-1">
+                <option value="employee">Сотрудник</option>
+                <option value="manager">Менеджер</option>
+              </select>
+
+              <button @click="attachForm.user_id = u.id"
+                      class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
+                Выбрать
+              </button>
+            </div>
           </div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>
 
-    <div class="flex justify-end gap-2 mt-4">
-      <button @click="showAttachModal = false" class="px-4 py-2 bg-gray-400 text-white rounded">Отмена</button>
-      <button @click="attachExisting" :disabled="attaching" class="px-4 py-2 bg-green-600 text-white rounded">
-        Добавить
+    <!-- Кнопки -->
+    <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+      <button @click="showAttachModal = false"
+              class="px-4 py-2 rounded-xl bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 hover:opacity-80 transition">
+        Отмена
+      </button>
+      <button @click="attachExisting" :disabled="attaching"
+              class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-60 transition">
+        {{ attaching ? 'Добавление...' : 'Добавить' }}
       </button>
     </div>
   </div>
 </div>
+
 
 
 

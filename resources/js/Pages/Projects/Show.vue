@@ -23,13 +23,14 @@ const descriptionForm = ref({ description: '' })
 
 const taskForm = ref({
   title: '',
-  executor_id: '',
-  responsible_id: '',
-  priority: 'low', // low|medium|high — соответствует контроллеру
+  executor_ids: [],
+  responsible_ids: [],
+  priority: 'low',
   start_date: new Date().toISOString().slice(0, 10),
   due_date: '',
   files: null,
 })
+
 
 
 
@@ -38,11 +39,28 @@ const roles = props.auth?.roles || []
 const user = props.auth?.user
 const isAdmin = computed(() => roles.includes('admin'))
 const isCompanyOwner = computed(() => project.value?.company?.user_id === user?.id)
-const isProjectManager = computed(() => project.value?.manager_id === user?.id)
-const canCreateTask = computed(() => isAdmin.value || isCompanyOwner.value || isProjectManager.value)
-const canEditBudget = computed(() => isAdmin.value || isCompanyOwner.value)
-const canEditDescription = computed(() => isAdmin.value || isCompanyOwner.value || isProjectManager.value)
+const isProjectManager = computed(() =>
+  project.value?.managers?.some(m => m.id === user?.id)
+)
 
+const canCreateTask = computed(() =>
+  user?.id === project.value?.company?.user_id ||
+  project.value?.managers?.some(m => m.id === user?.id)
+)
+
+const canEditName = computed(() =>
+  user?.id === project.value?.company?.user_id ||
+  project.value?.managers?.some(m => m.id === user?.id)
+)
+
+const canEditBudget = computed(() =>
+  user?.id === project.value?.company?.user_id
+)
+
+const canEditDescription = computed(() =>
+  user?.id === project.value?.company?.user_id ||
+  project.value?.managers?.some(m => m.id === user?.id)
+)
 // helpers
 const daysLeft = (startDate, duration) => {
   if (!startDate || !duration) return '—'
@@ -105,8 +123,10 @@ const createTask = async () => {
   submitLoading.value = true
   const formData = new FormData()
   formData.append('title', taskForm.value.title)
-  formData.append('executor_id', taskForm.value.executor_id)
-  formData.append('responsible_id', taskForm.value.responsible_id)
+  
+taskForm.value.executor_ids.forEach(id => formData.append('executor_ids[]', id))
+taskForm.value.responsible_ids.forEach(id => formData.append('responsible_ids[]', id))
+
   formData.append('priority', taskForm.value.priority) // low|medium|high
   formData.append('start_date', taskForm.value.start_date)
   formData.append('due_date', taskForm.value.due_date)
@@ -214,9 +234,18 @@ onMounted(fetchProject)
               <span class="px-2 py-1 rounded-full bg-white/20">
                 Компания: <b>{{ project?.company?.name ?? '—' }}</b>
               </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Руководитель: <b>{{ project?.manager?.name ?? '—' }}</b>
-              </span>
+              <span
+  v-for="m in project?.managers || []"
+  :key="m.id"
+  class="px-2 py-1 rounded-full bg-white/20 inline-block"
+>
+  Руководитель: <b>{{ m.name }}</b>
+</span>
+
+<span v-if="!project?.managers?.length" class="px-2 py-1 rounded-full bg-white/20">
+  Руководители: <b>—</b>
+</span>
+
               <span class="px-2 py-1 rounded-full bg-white/20">
                 Старт: <b>{{ project?.start_date ?? '—' }}</b>
               </span>
@@ -260,7 +289,7 @@ onMounted(fetchProject)
             </button>
 
              <button
-    v-if="isAdmin || isCompanyOwner"
+    v-if="canEditName"
     @click="showNameModal = true"
     class="rounded-xl bg-blue-400/95 hover:bg-blue-500 text-white px-4 py-2 font-medium"
   >
@@ -331,13 +360,32 @@ onMounted(fetchProject)
                     <span>С {{ t.start_date }} по {{ t.due_date }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.2 0 4-1.79 4-4s-1.8-4-4-4-4 1.79-4 4 1.8 4 4 4zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/></svg>
-                    <span>От: <b>{{ t.creator?.name ?? '—' }}</b> → Кому: <b>{{ t.executor?.name ?? '—' }}</b></span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l4 7H8l4-7zm0 20l-4-7h8l-4 7zM2 12l7-4v8l-7-4zm20 0l-7 4V8l7 4z"/></svg>
-                    <span>Ответственный: <b>{{ t.responsible?.name ?? '—' }}</b></span>
-                  </div>
+  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 12c2.2 0 4-1.79 4-4s-1.8-4-4-4-4 1.79-4 4 1.8 4 4 4zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
+  </svg>
+  <span>
+    От: <b>{{ t.creator?.name ?? '—' }}</b> → 
+    Кому: 
+    <b v-if="t.executors?.length">
+      {{ t.executors.map(e => e.name).join(', ') }}
+    </b>
+    <b v-else>—</b>
+  </span>
+</div>
+
+<div class="flex items-center gap-2">
+  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2l4 7H8l4-7zm0 20l-4-7h8l-4 7zM2 12l7-4v8l-7-4zm20 0l-7 4V8l7 4z"/>
+  </svg>
+  <span>
+    Ответственные: 
+    <b v-if="t.responsibles?.length">
+      {{ t.responsibles.map(r => r.name).join(', ') }}
+    </b>
+    <b v-else>—</b>
+  </span>
+</div>
+
                 </div>
 
                 <div v-if="t.files?.length" class="mt-3 pt-3 border-t">
@@ -362,7 +410,30 @@ onMounted(fetchProject)
         </div>
 
 
+<!-- <div class="mt-12">
+  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+    Файлы задач
+  </h2>
 
+  <div v-if="project?.tasks?.length" class="space-y-6">
+    <div v-for="t in project.tasks" :key="t.id" class="border rounded-xl p-4 bg-white dark:bg-gray-800">
+      <h3 class="font-medium text-lg text-gray-800 dark:text-gray-200 mb-2">
+        {{ t.title }}
+      </h3>
+
+      <ul v-if="t.files && t.files.length" class="space-y-1">
+        <li v-for="f in t.files" :key="f.id" class="text-sm text-blue-600 dark:text-blue-400">
+          <a :href="`/storage/${f.file_path}`" target="_blank" class="hover:underline">
+            {{ f.file_path.split('/').pop() }}
+          </a>
+        </li>
+      </ul>
+      <p v-else class="text-sm text-gray-500">Нет файлов</p>
+    </div>
+  </div>
+
+  <p v-else class="text-gray-500">Задачи пока не созданы</p>
+</div> -->
 
     
 
@@ -487,21 +558,46 @@ onMounted(fetchProject)
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Исполнитель</label>
-              <select v-model="taskForm.executor_id" class="w-full rounded-xl border px-3 py-2 bg-white dark:bg-gray-700 dark:text-white" required>
-                <option disabled value="">Выберите сотрудника</option>
-                <option v-for="u in employees" :key="u.id" :value="u.id">{{ u.name }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Ответственный</label>
-              <select v-model="taskForm.responsible_id" class="w-full rounded-xl border px-3 py-2 bg-white dark:bg-gray-700 dark:text-white" required>
-                <option disabled value="">Выберите сотрудника</option>
-                <option v-for="u in employees" :key="u.id" :value="u.id">{{ u.name }}</option>
-              </select>
-            </div>
-          </div>
+  <!-- Исполнители -->
+  <div>
+    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Исполнители</label>
+    <div class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-white dark:bg-gray-700">
+      <div v-for="u in employees" :key="u.id" class="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          :id="`executor-${u.id}`"
+          :value="u.id"
+          v-model="taskForm.executor_ids"
+          class="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+        />
+        <label :for="`executor-${u.id}`" class="text-sm text-gray-700 dark:text-gray-300">
+          {{ u.name }}
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ответственные -->
+  <div>
+    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Ответственные</label>
+    <div class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-white dark:bg-gray-700">
+      <div v-for="u in employees" :key="u.id" class="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          :id="`responsible-${u.id}`"
+          :value="u.id"
+          v-model="taskForm.responsible_ids"
+          class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+        />
+        <label :for="`responsible-${u.id}`" class="text-sm text-gray-700 dark:text-gray-300">
+          {{ u.name }}
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>

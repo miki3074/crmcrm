@@ -2,105 +2,112 @@
 
 namespace App\Policies;
 
-use Illuminate\Auth\Access\Response;
 use App\Models\Project;
 use App\Models\User;
 
 class ProjectPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Просмотр списка проектов
      */
     public function viewAny(User $user): bool
     {
-        //
+        // например, все аутентифицированные могут видеть список
+        return $user !== null;
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Просмотр конкретного проекта
      */
-public function view(User $user, Project $project): bool
-{
-    // Владелец проекта (инициатор) или руководитель
-    if ($user->id === $project->initiator_id || $user->id === $project->manager_id) {
-        return true;
+    public function view(User $user, Project $project): bool
+    {
+        // Владелец компании или инициатор
+        if ($user->id === $project->company->user_id || $user->id === $project->initiator_id) {
+            return true;
+        }
+
+        // Один из руководителей
+        if ($project->managers->contains('id', $user->id)) {
+            return true;
+        }
+
+        // Исполнитель хотя бы одной задачи
+        if ($project->tasks()->where('executor_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Ответственный хотя бы одной задачи
+        if ($project->tasks()->where('responsible_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Исполнитель подзадачи
+        if (\App\Models\Subtask::whereHas('task', function ($q) use ($project) {
+            $q->where('project_id', $project->id);
+        })->where('executor_id', $user->id)->exists()) {
+            return true;
+        }
+
+        return false;
     }
-
-    // Исполнитель хотя бы одной задачи
-    if ($project->tasks()->where('executor_id', $user->id)->exists()) {
-        return true;
-    }
-
-    // Ответственный хотя бы одной задачи
-    if ($project->tasks()->where('responsible_id', $user->id)->exists()) {
-        return true;
-    }
-
-    
-    if (\App\Models\Subtask::whereHas('task', function ($query) use ($project) {
-        $query->where('project_id', $project->id);
-    })->where('executor_id', $user->id)->exists()) {
-        return true;
-    }
-
-    return false;
-}
-
-
 
     /**
-     * Determine whether the user can create models.
+     * Создание проекта
      */
     public function create(User $user): bool
     {
-        //
+        // только владелец компании (или админ, если нужно)
+        return true;
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Создание задач внутри проекта
      */
-   public function update(User $user, Project $project): bool
+    public function createTask(User $user, Project $project): bool
     {
-        return $user->id === $project->manager_id
-            || $user->id === $project->company->user_id
-            || $user->hasRole('admin');
+        return $project->managers->contains('id', $user->id)
+            || $user->id === $project->company->user_id;
     }
 
-    public function updateBudget(User $user, Project $project): bool
-{
-    // только владелец компании
-    return $user->id === $project->company->user_id || $user->hasRole('admin');
-}
-
-public function updateDescription(User $user, Project $project): bool
-{
-    // руководитель проекта или владелец компании (и админ, если нужно)
-    return $user->id === $project->manager_id
-        || $user->id === $project->company->user_id
-        || $user->hasRole('admin');
-}
+    /**
+     * Обновление проекта
+     */
+    public function update(User $user, Project $project): bool
+    {
+        return $project->managers->contains('id', $user->id)
+            || $user->id === $project->company->user_id;
+    }
 
     /**
-     * Determine whether the user can delete the model.
+     * Обновление бюджета
      */
+    public function updateBudget(User $user, Project $project): bool
+    {
+        // только владелец компании
+        return $user->id === $project->company->user_id;
+    }
+
+    /**
+     * Обновление описания
+     */
+    public function updateDescription(User $user, Project $project): bool
+    {
+        return $project->managers->contains('id', $user->id)
+            || $user->id === $project->company->user_id;
+    }
+
     public function delete(User $user, Project $project): bool
     {
-        //
+        return $user->id === $project->company->user_id;
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Project $project): bool
     {
-        //
+        return false;
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Project $project): bool
     {
-        //
+        return false;
     }
 }

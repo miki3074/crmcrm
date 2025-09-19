@@ -5,6 +5,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Str;
+
 
 
 class UserController extends Controller
@@ -18,11 +20,9 @@ public function managers(Request $request)
 
     $managers = collect();
 
-    // 1) если пришёл company_id — берем менеджеров из pivot company_user с role = 'manager'
+    // 1) менеджеры из pivot company_user
     if ($companyId) {
-        $company = \App\Models\Company::with(['users' => function($q) {
-            // ничего тут не фильтруем — фильтруем ниже по pivot
-        }])->find($companyId);
+        $company = \App\Models\Company::find($companyId);
 
         if ($company) {
             $managers = $company->users()
@@ -32,22 +32,61 @@ public function managers(Request $request)
         }
     }
 
-    // 2) доп. — менеджеры, созданные владельцем (legacy / удобно)
+    // 2) менеджеры, созданные владельцем
     $createdManagers = \App\Models\User::role('manager')
         ->where('created_by', $owner->id)
         ->select('id', 'name')
         ->get();
 
-    // объединяем, убираем дубликаты, сбрасываем ключи
+    // объединяем
     $result = $managers->merge($createdManagers)->unique('id')->values();
 
-    // 3) гарантированно добавляем самого владельца в начало (если нужно)
+    // 3) добавляем владельца
     if (! $result->contains('id', $owner->id)) {
-        $result->prepend(collect($owner->only(['id','name'])));
-        $result = $result->flatten(1); // в случае коллекций в коллекции
+        $result->prepend([
+            'id'   => $owner->id,
+            'name' => $owner->name,
+        ]);
     }
 
-    return response()->json($result);
+    return response()->json($result->values());
 }
+
+public function generateTelegramToken(Request $request)
+    {
+        $user = $request->user();
+
+        // создаём уникальный токен
+        $token = Str::random(32);
+
+        $user->telegram_token = $token;
+        $user->save();
+
+        return response()->json([
+            'token' => $token,
+            'link' => "https://t.me/".env('TELEGRAM_BOT_NAME')."?start={$token}",
+            'instruction' => "Отправьте боту команду /start {$token}, чтобы привязать ваш Telegram."
+        ]);
+    }
+
+
+ public function saveChatId(Request $request)
+{
+    $request->validate([
+        'chat_id' => 'required|string|max:50',
+    ]);
+
+    $user = $request->user();
+    $user->telegram_chat_id = $request->chat_id;
+    $user->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Telegram ID сохранён',
+        'chat_id' => $user->telegram_chat_id,
+    ]);
+}
+   
+
 
 }

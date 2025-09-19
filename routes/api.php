@@ -19,8 +19,9 @@ use App\Http\Controllers\API\DealController;
 use App\Http\Controllers\API\TaskCommentController;
 use App\Http\Controllers\API\TaskChecklistController;
 
-
 use App\Http\Controllers\API\SubprojectController;
+use App\Http\Controllers\API\TelegramController;
+
 
 
 /*
@@ -170,3 +171,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 Route::middleware('auth:sanctum')->patch('/projects/{project}/name', [ProjectController::class, 'updateName']);
+
+Route::post('/telegram/webhook', [TelegramController::class, 'handle']);
+
+Route::middleware('auth:sanctum')->post('/user/telegram-token', [\App\Http\Controllers\API\UserController::class, 'generateTelegramToken']);
+
+Route::middleware('auth:sanctum')->post('/user/save-chat-id', [UserController::class, 'saveChatId']);

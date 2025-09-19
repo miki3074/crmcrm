@@ -27,6 +27,7 @@ const companyEmployees = ref([])
 const subtaskForm = ref({
   title: '',
   executor_id: '',
+  responsible_id: '',
   start_date: new Date().toISOString().slice(0, 10),
   due_date: '',
 })
@@ -34,8 +35,12 @@ const subtaskForm = ref({
 // permissions
 const canCreateSubtask = computed(() => {
   if (!task.value || !user) return false
-  return task.value.responsible?.id === user.id || task.value.project?.manager?.id === user.id
+  return (
+    (task.value.responsibles || []).some(r => r.id === user.id) ||
+    (task.value.project?.managers || []).some(m => m.id === user.id)
+  )
 })
+
 
 // helpers
 const priorityBadge = (p) =>
@@ -96,6 +101,7 @@ const createSubtask = async () => {
     subtaskForm.value = {
       title: '',
       executor_id: '',
+       responsible_id: '',
       start_date: new Date().toISOString().slice(0, 10),
       due_date: '',
     }
@@ -131,8 +137,19 @@ const canManageTask = computed(() => {
   const userId = props.auth?.user?.id
   if (!userId || !task.value) return false
   return (
-    userId === task.value.executor_id ||
-    userId === task.value.responsible_id
+    (task.value.executors || []).some(e => e.id === userId) ||
+    (task.value.responsibles || []).some(r => r.id === userId)
+  )
+})
+
+
+
+const canUploadFiles = computed(() => {
+  if (!task.value || !user) return false
+  return (
+    (task.value.executors || []).some(e => e.id === user.id) ||
+    (task.value.responsibles || []).some(r => r.id === user.id) ||
+    user.id === task.value.project?.company?.user_id
   )
 })
 
@@ -164,11 +181,25 @@ onMounted(fetchTask)
                 От: <b>{{ task?.creator?.name ?? '—' }}</b>
               </span>
               <span class="px-2 py-1 rounded-full bg-white/20">
-                Кому: <b>{{ task?.executor?.name ?? '—' }}</b>
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Ответственный: <b>{{ task?.responsible?.name ?? '—' }}</b>
-              </span>
+  Кому:
+  <b>
+    {{ task?.executors?.length
+        ? task.executors.map(e => e.name).join(', ')
+        : '—'
+    }}
+  </b>
+</span>
+
+<span class="px-2 py-1 rounded-full bg-white/20">
+  Ответственный:
+  <b>
+    {{ task?.responsibles?.length
+        ? task.responsibles.map(r => r.name).join(', ')
+        : '—'
+    }}
+  </b>
+</span>
+
               <span v-if="task" class="px-2 py-1 rounded-full ring-1 bg-white text-gray-900" :class="priorityBadge(task.priority)">
                 Приоритет: <b>{{ priorityLabel(task.priority) }}</b>
               </span>
@@ -251,16 +282,13 @@ onMounted(fetchTask)
 
           <!-- Файлы -->
           <div class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
-            <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Файлы</h2>
-              <div class="flex items-center gap-2">
-                <input type="file" multiple @change="handleFileChange" accept=".pdf,.doc,.docx,.xls,.xlsx"
-                       class="text-sm text-gray-600 dark:text-gray-300" />
-                <button @click="uploadFiles" class="rounded-xl bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
-                  Загрузить
-                </button>
-              </div>
-            </div>
+           <div class="flex items-center gap-2" v-if="canUploadFiles">
+  <input type="file" multiple @change="handleFileChange" accept=".pdf,.doc,.docx,.xls,.xlsx"
+         class="text-sm text-gray-600 dark:text-gray-300" />
+  <button @click="uploadFiles" class="rounded-xl bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
+    Загрузить
+  </button>
+</div>
 
             <!-- Скелетон -->
             <div v-if="loading" class="mt-4 grid grid-cols-2 gap-2">
@@ -325,7 +353,15 @@ onMounted(fetchTask)
                   <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">{{ s.title }}</h3>
                 </div>
                 <div class="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-                  <div>Исполнитель: <b>{{ s.executor?.name ?? '—' }}</b></div>
+                  <div>
+  Исполнитель:
+  <b>{{ s.executors?.map(e => e.name).join(', ') || '—' }}</b>
+</div>
+    <div>
+  Ответсвенный:
+    <b>{{ s.responsibles?.map(r => r.name).join(', ') || '—' }}</b>
+</div>
+
                   <div>Сроки: {{ s.start_date }} — {{ s.due_date }}</div>
                 </div>
               </div>
@@ -339,8 +375,16 @@ onMounted(fetchTask)
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Кратко о задаче</h3>
             <dl class="mt-3 space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <div class="flex justify-between"><dt>Автор</dt><dd class="font-medium">{{ task?.creator?.name ?? '—' }}</dd></div>
-              <div class="flex justify-between"><dt>Исполнитель</dt><dd class="font-medium">{{ task?.executor?.name ?? '—' }}</dd></div>
-              <div class="flex justify-between"><dt>Ответственный</dt><dd class="font-medium">{{ task?.responsible?.name ?? '—' }}</dd></div>
+              <div class="flex justify-between"><dt>Исполнитель</dt><dd class="font-medium"> {{ task?.executors?.length
+        ? task.executors.map(e => e.name).join(', ')
+        : '—'
+    }}</dd></div>
+              <div class="flex justify-between"><dt>Ответственный</dt><dd class="font-medium">
+                 {{ task?.responsibles?.length
+        ? task.responsibles.map(e => e.name).join(', ')
+        : '—'
+    }}
+              </dd></div>
               <div class="flex justify-between"><dt>Проект</dt><dd class="font-medium">{{ task?.project?.name ?? '—' }}</dd></div>
               <div class="flex justify-between"><dt>Компания</dt><dd class="font-medium">{{ task?.project?.company?.name ?? '—' }}</dd></div>
               <div class="flex justify-between"><dt>Приоритет</dt><dd>
@@ -353,11 +397,12 @@ onMounted(fetchTask)
 
 <div v-if="task" class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
   <TaskChecklists
-    :task-id="task.id"
-    :executor="task.executor"
-    :responsible="task.responsible"
-    :creator="task.creator"
-  />
+  :task-id="task.id"
+  :executors="task.executors"
+  :responsibles="task.responsibles"
+  :creator="task.creator"
+/>
+
 </div>
 
 
@@ -402,6 +447,17 @@ onMounted(fetchTask)
               <option v-for="u in companyEmployees" :key="u.id" :value="u.id">{{ u.name }}</option>
             </select>
           </div>
+
+          <div>
+  <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Ответственный</label>
+  <select v-model="subtaskForm.responsible_id"
+          class="w-full rounded-xl border px-3 py-2 bg-white dark:bg-gray-700 dark:text-white"
+          required>
+    <option disabled value="">Выберите сотрудника</option>
+    <option v-for="u in companyEmployees" :key="u.id" :value="u.id">{{ u.name }}</option>
+  </select>
+</div>
+
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Начало</label>

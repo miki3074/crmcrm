@@ -27,4 +27,10 @@ class TaskChecklist extends Model
     {
         return $this->hasMany(TaskChecklistFile::class, 'checklist_id');
     }
+
+    public function assignees()
+{
+    return $this->belongsToMany(User::class, 'checklist_assignees');
+}
+
 }

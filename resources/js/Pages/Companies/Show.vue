@@ -15,17 +15,26 @@ const showProjectModal = ref(false)
 const submitLoading = ref(false)
 const errorText = ref('')
 
+// const projectForm = ref({
+//   name: '',
+//   manager_id: '',
+//   start_date: new Date().toISOString().slice(0, 10),
+//   duration_days: '',
+// })
+
 const projectForm = ref({
   name: '',
-  manager_id: '',
+  manager_ids: [], // массив id
   start_date: new Date().toISOString().slice(0, 10),
   duration_days: '',
+  company_id: props.auth.user.company_id, // если есть
 })
 
 // perms
-const isAdmin = computed(() => (props.auth?.roles || []).includes('admin'))
+// const isAdmin = computed(() => (props.auth?.roles || []).includes('admin'))
 const isOwner = computed(() => company.value?.user_id === props.auth?.user?.id)
-const canCreateProject = computed(() => isAdmin.value || isOwner.value)
+// const canCreateProject = computed(() => isAdmin.value || isOwner.value)
+const canCreateProject = computed(() => isOwner.value)
 
 // helpers
 const today = new Date()
@@ -95,6 +104,25 @@ const createProject = async () => {
     submitLoading.value = false
   }
 }
+
+
+const managersWithOwnerFirst = computed(() => {
+  if (!managers.value.length || !props.auth?.user) return managers.value
+
+  const currentUserId = props.auth.user.id
+
+  // выделяем владельца
+  const sorted = [...managers.value].sort((a, b) => {
+    if (a.id === currentUserId) return -1
+    if (b.id === currentUserId) return 1
+    return 0
+  })
+
+  return sorted
+})
+
+
+
 
 onMounted(fetchCompany)
 </script>
@@ -201,19 +229,31 @@ onMounted(fetchCompany)
             </div>
 
             <div class="mt-3 space-y-1.5 text-sm text-gray-600 dark:text-gray-300">
-              <div class="flex items-center gap-2">
-                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-medium">
-                  {{ managerInitials(project.manager?.name) || 'PM' }}
-                </span>
-                <span class="truncate">
-                  Руководитель: <b class="text-gray-800 dark:text-white">{{ project.manager?.name ?? '—' }}</b>
-                </span>
-              </div>
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 11h5V6H7v5zm0 7h5v-5H7v5zm7 0h5v-5h-5v5zM14 6v5h5V6h-5z"/></svg>
-                <span>Старт: <b class="text-gray-800 dark:text-white">{{ project.start_date }}</b></span>
-              </div>
-            </div>
+  <div class="flex items-start gap-2">
+    <span class="truncate">Руководители:</span>
+    <div class="flex flex-wrap gap-2">
+      <div
+        v-for="m in project.managers"
+        :key="m.id"
+        class="flex items-center gap-1"
+      >
+        <span
+          class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-medium"
+        >
+          {{ managerInitials(m.name) }}
+        </span>
+        <span class="text-gray-800 dark:text-white text-sm">{{ m.name }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7 11h5V6H7v5zm0 7h5v-5H7v5zm7 0h5v-5h-5v5zM14 6v5h5V6h-5z"/>
+    </svg>
+    <span>Старт: <b class="text-gray-800 dark:text-white">{{ project.start_date }}</b></span>
+  </div>
+</div>
 
             <div class="mt-4 flex items-center justify-end">
               <span class="text-indigo-600 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 text-sm">
@@ -253,19 +293,32 @@ onMounted(fetchCompany)
             />
           </div>
 
-          <div>
-            <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Руководитель</label>
-            <select
-              v-model="projectForm.manager_id"
-              class="w-full rounded-xl border px-3 py-2 bg-white dark:bg-gray-700 dark:text-white"
-              required
-            >
-              <option disabled value="">Выберите менеджера</option>
-              <option v-for="m in managers" :key="m.id" :value="m.id">
-                {{ m.name }}
-              </option>
-            </select>
-          </div>
+         <div>
+  <label class="block text-sm mb-2 text-gray-700 dark:text-gray-300">Руководители</label>
+  <div class="space-y-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-white dark:bg-gray-700">
+    <div
+      v-for="m in managersWithOwnerFirst"
+      :key="m.id"
+      class="flex items-center space-x-2"
+    >
+      <input
+        type="checkbox"
+        :id="`manager-${m.id}`"
+        :value="m.id"
+        v-model="projectForm.manager_ids"
+        class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+      />
+      <label
+        :for="`manager-${m.id}`"
+        class="text-sm text-gray-700 dark:text-gray-300"
+      >
+        {{ m.id === props.auth.user.id ? 'Я' : m.name }}
+      </label>
+    </div>
+  </div>
+</div>
+
+
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

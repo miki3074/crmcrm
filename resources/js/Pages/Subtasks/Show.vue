@@ -89,9 +89,18 @@ onMounted(fetchSubtask)
               <p class="font-medium text-gray-900 dark:text-white">{{ subtask.creator?.name }}</p>
             </div>
             <div>
-              <p class="text-gray-500 dark:text-gray-400">Исполнитель</p>
-              <p class="font-medium text-gray-900 dark:text-white">{{ subtask.executor?.name }}</p>
-            </div>
+  <p class="text-gray-500 dark:text-gray-400">Исполнитель</p>
+  <p class="font-medium text-gray-900 dark:text-white">
+    {{ subtask.executors?.length ? subtask.executors.map(e => e.name).join(', ') : '—' }}
+  </p>
+</div>
+
+<div>
+  <p class="text-gray-500 dark:text-gray-400">Ответственный</p>
+  <p class="font-medium text-gray-900 dark:text-white">
+    {{ subtask.responsibles?.length ? subtask.responsibles.map(r => r.name).join(', ') : '—' }}
+  </p>
+</div>
             <div>
               <p class="text-gray-500 dark:text-gray-400">Дата начала</p>
               <p class="font-medium text-gray-900 dark:text-white">{{ subtask.start_date }}</p>

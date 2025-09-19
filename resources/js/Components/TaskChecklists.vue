@@ -3,18 +3,21 @@ import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
-  taskId: Number,
-  executor: Object,
-  responsible: Object,
-  creator: Object,
+  taskId: { type: Number, required: true },
+  executors: { type: Array, default: () => [] },
+  responsibles: { type: Array, default: () => [] },
+  creator: { type: Object, default: () => null },
 })
+
+
+
 
 const list = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const form = ref({
   title: '',
-  assigned_to: '',
+  assigned_to: [],
   important: false,
   files: [],
 })
@@ -75,12 +78,20 @@ onMounted(load)
         <input v-model="form.title" type="text" placeholder="Название" class="w-full border mb-2 p-2" />
 
         <label class="block text-sm">Ответственный</label>
-        <select v-model="form.assigned_to" class="w-full border mb-2 p-2">
-          <option value="">—</option>
-          <option :value="executor.id">{{ executor.name }}</option>
-          <option :value="responsible.id">{{ responsible.name }}</option>
-          <option :value="creator.id">{{ creator.name }}</option>
-        </select>
+       <select v-model="form.assigned_to" class="w-full border mb-2 p-2">
+  <option value="">—</option>
+  <option v-for="e in executors" :key="'exec-'+e.id" :value="e.id">
+    {{ e.name }}
+  </option>
+  <option v-for="r in responsibles" :key="'resp-'+r.id" :value="r.id">
+    {{ r.name }}
+  </option>
+  <option v-if="creator" :value="creator.id">
+    {{ creator.name }}
+  </option>
+</select>
+
+
 
         <label class="flex items-center gap-2 mb-2">
           <input type="checkbox" v-model="form.important" /> Важно

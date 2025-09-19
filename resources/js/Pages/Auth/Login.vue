@@ -29,7 +29,7 @@ const baseInput =
     <Head title="Вход" />
 
     <div class="text-center space-y-2 mb-6">
-      <h1 class="text-2xl font-bold tracking-tight" style="color: aliceblue;">С возвращением</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-500" >С возвращением</h1>
       <p class="text-sm text-slate-500">Войдите в аккаунт, чтобы продолжить</p>
     </div>
 
@@ -39,13 +39,13 @@ const baseInput =
 
     <form @submit.prevent="submit" class="space-y-4">
       <div>
-        <label for="email" class="text-sm font-medium" style="color: aliceblue;">Email</label>
+        <label for="email" class="text-sm font-medium text-slate-500" >Email</label>
         <input id="email" type="email" v-model="form.email" required autofocus autocomplete="username" :class="baseInput" />
         <p v-if="form.errors.email" class="mt-1 text-xs text-red-600">{{ form.errors.email }}</p>
       </div>
 
       <div>
-        <label for="password" class="text-sm font-medium" style="color: aliceblue;">Пароль</label>
+        <label for="password" class="text-sm font-medium text-slate-500">Пароль</label>
         <input id="password" type="password" v-model="form.password" required autocomplete="current-password" :class="baseInput" />
         <p v-if="form.errors.password" class="mt-1 text-xs text-red-600">{{ form.errors.password }}</p>
       </div>

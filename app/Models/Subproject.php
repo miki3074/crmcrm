@@ -25,4 +25,11 @@ class Subproject extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+public function responsibles()
+{
+    return $this->belongsToMany(User::class, 'subproject_responsibles');
+}
+
+
 }

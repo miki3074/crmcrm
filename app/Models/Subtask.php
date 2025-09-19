@@ -13,7 +13,7 @@ class Subtask extends Model
     protected $fillable = [
         'task_id',
         'title',
-        'executor_id',
+        // 'executor_id',
         'start_date',
         'due_date',
         'progress',
@@ -33,13 +33,26 @@ class Subtask extends Model
         return $this->belongsTo(Task::class);
     }
 
-    public function executor()
-    {
-        return $this->belongsTo(User::class, 'executor_id');
-    }
+    // public function executor()
+    // {
+    //     return $this->belongsTo(User::class, 'executor_id');
+    // }
 
     public function creator()
 {
     return $this->belongsTo(User::class, 'creator_id');
 }
+
+public function executors()
+{
+    return $this->belongsToMany(User::class, 'subtask_executors');
+}
+
+public function responsibles()
+{
+    return $this->belongsToMany(User::class, 'subtask_responsibles');
+}
+
+
+
 }

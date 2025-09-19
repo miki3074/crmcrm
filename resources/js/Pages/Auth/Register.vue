@@ -25,31 +25,31 @@ const baseInput =
     <Head title="Регистрация" />
 
     <div class="text-center space-y-2 mb-6">
-      <h1 class="text-2xl font-bold tracking-tight" style="color: aliceblue;">Создать аккаунт</h1>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-500" >Создать аккаунт</h1>
       <p class="text-sm text-slate-500">Пара минут — и готово 👍</p>
     </div>
 
     <form @submit.prevent="submit" class="space-y-4">
       <div>
-        <label for="name" class="text-sm font-medium" style="color: aliceblue;">Имя</label>
+        <label for="name" class="text-sm font-medium text-slate-500" >Имя</label>
         <input id="name" type="text" v-model="form.name" required autofocus autocomplete="name" :class="baseInput" />
         <p v-if="form.errors.name" class="mt-1 text-xs text-red-600">{{ form.errors.name }}</p>
       </div>
 
       <div>
-        <label for="email" class="text-sm font-medium" style="color: aliceblue;">Email</label>
+        <label for="email" class="text-sm font-medium text-slate-500" >Email</label>
         <input id="email" type="email" v-model="form.email" required autocomplete="username" :class="baseInput" />
         <p v-if="form.errors.email" class="mt-1 text-xs text-red-600">{{ form.errors.email }}</p>
       </div>
 
       <div>
-        <label for="password" class="text-sm font-medium" style="color: aliceblue;">Пароль</label>
+        <label for="password" class="text-sm font-medium text-slate-500" >Пароль</label>
         <input id="password" type="password" v-model="form.password" required autocomplete="new-password" :class="baseInput" />
         <p v-if="form.errors.password" class="mt-1 text-xs text-red-600">{{ form.errors.password }}</p>
       </div>
 
       <div>
-        <label for="password_confirmation" class="text-sm font-medium" style="color: aliceblue;">Подтверждение пароля</label>
+        <label for="password_confirmation" class="text-sm font-medium text-slate-500" >Подтверждение пароля</label>
         <input id="password_confirmation" type="password" v-model="form.password_confirmation" required autocomplete="new-password" :class="baseInput" />
         <p v-if="form.errors.password_confirmation" class="mt-1 text-xs text-red-600">{{ form.errors.password_confirmation }}</p>
       </div>

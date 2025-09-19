@@ -75,6 +75,34 @@ class CalendarController extends Controller
         $event->attendees()->sync($data['attendees']);
     }
 
+    $recipients = [];
+
+    if ($data['visibility'] === 'personal') {
+        // только сам создатель
+        $recipients = [$user->id];
+    } elseif ($data['visibility'] === 'company_all') {
+        // все сотрудники компании
+        $recipients = \App\Models\User::where('company_id', $data['company_id'])->pluck('id')->toArray();
+    } elseif ($data['visibility'] === 'company_selected') {
+        // только выбранные участники
+        $recipients = $data['attendees'] ?? [];
+    }
+
+    $recipients = array_unique($recipients);
+
+    foreach ($recipients as $uid) {
+        $u = \App\Models\User::find($uid);
+        if ($u && $u->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $u->telegram_chat_id,
+                "📅 Новое событие: <b>{$event->title}</b>\n".
+                ($event->description ? "Описание: {$event->description}\n" : "").
+                "Начало: {$event->start_at}\n".
+                "Окончание: {$event->end_at}"
+            );
+        }
+    }
+
     return response()->json($event->load('attendees:id,name'), 201);
 }
 
@@ -104,6 +132,31 @@ public function update(Request $request, \App\Models\Event $event)
         $event->attendees()->sync($data['attendees'] ?? []);
     }
 
+    $recipients = [];
+
+    if ($event->visibility === 'personal') {
+        $recipients = [$event->creator_id];
+    } elseif ($event->visibility === 'company_all') {
+        $recipients = \App\Models\User::where('company_id', $event->company_id)->pluck('id')->toArray();
+    } elseif ($event->visibility === 'company_selected') {
+        $recipients = $event->attendees()->pluck('users.id')->toArray();
+    }
+
+    $recipients = array_unique($recipients);
+
+    foreach ($recipients as $uid) {
+        $u = \App\Models\User::find($uid);
+        if ($u && $u->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $u->telegram_chat_id,
+                "✏️ Событие обновлено: <b>{$event->title}</b>\n".
+                ($event->description ? "Описание: {$event->description}\n" : "").
+                "Начало: {$event->start_at}\n".
+                "Окончание: {$event->end_at}"
+            );
+        }
+    }
+
     return response()->json($event->fresh()->load('attendees:id,name'));
 }
 
@@ -116,6 +169,31 @@ public function destroy(Request $request, \App\Models\Event $event)
     } else {
         abort_unless(optional($event->company)->user_id === $user->id, 403);
     }
+
+        $recipients = [];
+
+    if ($event->visibility === 'personal') {
+        $recipients = [$event->creator_id];
+    } elseif ($event->visibility === 'company_all') {
+        $recipients = \App\Models\User::where('company_id', $event->company_id)->pluck('id')->toArray();
+    } elseif ($event->visibility === 'company_selected') {
+        $recipients = $event->attendees()->pluck('users.id')->toArray();
+    }
+
+    $recipients = array_unique($recipients);
+
+    foreach ($recipients as $uid) {
+        $u = \App\Models\User::find($uid);
+        if ($u && $u->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $u->telegram_chat_id,
+                "🗑 Событие отменено: <b>{$event->title}</b>\n".
+                ($event->description ? "Описание: {$event->description}\n" : "").
+                "Период: {$event->start_at} → {$event->end_at}"
+            );
+        }
+    }
+
 
     $event->delete();
     return response()->json(['ok' => true]);

@@ -75,4 +75,17 @@ protected $casts = [
         });
     }
 
+
+public function executors()
+{
+    return $this->belongsToMany(User::class, 'task_executors');
+}
+
+public function responsibles()
+{
+    return $this->belongsToMany(User::class, 'task_responsibles');
+}
+
+
+
 }

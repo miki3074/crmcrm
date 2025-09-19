@@ -10,49 +10,130 @@ use App\Models\Company;
 
 class ProjectController extends Controller
 {
-        public function store(Request $request)
-            {
-                $request->validate([
-                    'name' => 'required|string|max:255',
-                    'manager_id' => 'required|exists:users,id',
-                    'start_date' => 'required|date',
-                    'duration_days' => 'required|integer|min:1',
-                    'company_id' => 'required|exists:companies,id',
-                ]);
+//        public function store(Request $request)
+// {
+//     $request->validate([
+//         'name' => 'required|string|max:255',
+//         'manager_id' => 'required|exists:users,id',
+//         'start_date' => 'required|date',
+//         'duration_days' => 'required|integer|min:1',
+//         'company_id' => 'required|exists:companies,id',
+//     ]);
 
-                $project = Project::create([
-                    'name' => $request->name,
-                    'manager_id' => $request->manager_id,
-                    'start_date' => $request->start_date,
-                    'duration_days' => $request->duration_days,
-                    'company_id' => $request->company_id,
-                    'initiator_id' => auth()->id(),
-                ]);
+//     $company = \App\Models\Company::findOrFail($request->company_id);
 
-                return response()->json($project, 201);
-            }
+//     // Проверяем, что текущий пользователь — владелец компании
+//     if ($company->user_id !== auth()->id()) {
+//         return response()->json(['message' => 'Только владелец компании может создавать проекты'], 403);
+//     }
 
-        public function show($id)
+//     $project = Project::create([
+//         'name' => $request->name,
+//         'manager_id' => $request->manager_id,
+//         'start_date' => $request->start_date,
+//         'duration_days' => $request->duration_days,
+//         'company_id' => $request->company_id,
+//         'initiator_id' => auth()->id(),
+//     ]);
+
+//     return response()->json($project, 201);
+// }
+
+public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'manager_ids' => 'required|array|min:1',
+        'manager_ids.*' => 'exists:users,id',
+        'start_date' => 'required|date',
+        'duration_days' => 'required|integer|min:1',
+        'company_id' => 'required|exists:companies,id',
+    ]);
+
+    $company = \App\Models\Company::findOrFail($request->company_id);
+
+    if ($company->user_id !== auth()->id()) {
+        return response()->json(['message' => 'Только владелец компании может создавать проекты'], 403);
+    }
+
+    $project = Project::create([
+        'name' => $request->name,
+        'start_date' => $request->start_date,
+        'duration_days' => $request->duration_days,
+        'company_id' => $request->company_id,
+        'initiator_id' => auth()->id(),
+    ]);
+
+    // прикрепляем руководителей
+    $project->managers()->attach($request->manager_ids);
+
+    foreach ($request->manager_ids as $userId) {
+        $user = \App\Models\User::find($userId);
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "📢 Вы назначены руководителем проекта: <b>{$project->name}</b>\n".
+                "Компания: {$company->name}\n".
+                "Дата начала: {$project->start_date}\n".
+                "Длительность: {$project->duration_days} дней"
+            );
+        }
+    }
+
+    return response()->json($project->load('managers'), 201);
+}
+
+
+
+
+public function show($id)
 {
     $project = Project::with([
-        'manager:id,name',
-        'company:id,name,user_id', 
+        'managers:id,name',
+        'company:id,name,user_id',
         'initiator:id,name',
-         'subprojects.responsible',
+        'subprojects.responsibles:id,name',
         'tasks' => function ($q) {
             $q->with([
                 'creator:id,name',
-                'executor:id,name',
-                'responsible:id,name',
+                'executors:id,name',     // many-to-many исполнители
+                'responsibles:id,name',  // many-to-many ответственные
                 'files:id,task_id,file_path',
             ]);
         }
     ])->findOrFail($id);
 
-    $this->authorize('view', $project); // если используется политика
+    $user = auth()->user();
+
+    foreach ($project->tasks as $task) {
+        // если пользователь владелец компании → видит все файлы
+        if ($user->id === $project->company->user_id) {
+            continue;
+        }
+
+        // если пользователь создатель задачи
+        if ($user->id === $task->creator_id) {
+            continue;
+        }
+
+        // если пользователь исполнитель
+        if ($task->executors->contains('id', $user->id)) {
+            continue;
+        }
+
+        // если пользователь ответственный
+        if ($task->responsibles->contains('id', $user->id)) {
+            continue;
+        }
+
+        // иначе скрываем файлы
+        $task->setRelation('files', collect([]));
+    }
 
     return response()->json($project);
 }
+
+
 
 //             public function employees(Project $project)
 // {

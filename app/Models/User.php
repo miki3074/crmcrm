@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'created_by', 
         'company_id',
+         'telegram_chat_id', 
     ];
 
     /**
@@ -91,6 +92,11 @@ public function attachedCompanies()
     return $this->belongsToMany(Company::class, 'company_user')
                 ->withPivot('role', 'created_by')
                 ->withTimestamps();
+}
+
+public function managedProjects()
+{
+    return $this->belongsToMany(Project::class, 'project_user');
 }
 
 

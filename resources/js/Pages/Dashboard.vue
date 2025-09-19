@@ -146,6 +146,35 @@ const prioBadge = (p) => ({
   high:   'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
 }[p] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')
 
+
+const telegramId = ref(props.auth?.user?.telegram_chat_id ?? null)
+
+const showInput = ref(false)
+const chatId = ref('')
+const saving = ref(false)
+
+const saveChatId = async () => {
+  if (!chatId.value.trim()) return alert('Введите Chat ID')
+  try {
+    saving.value = true
+    await axios.get('/sanctum/csrf-cookie')
+    const { data } = await axios.post('/api/user/save-chat-id', {
+      chat_id: chatId.value,
+    }, { withCredentials: true })
+
+    // обновляем локальное состояние
+    telegramId.value = data.chat_id
+
+    alert(data.message)
+    showInput.value = false
+  } catch (e) {
+    alert(e.response?.data?.message || 'Ошибка при сохранении')
+  } finally {
+    saving.value = false
+  }
+}
+
+
 // onMounted
 onMounted(async () => {
   await Promise.all([fetchCompanies(), fetchSummary()])
@@ -167,6 +196,72 @@ onMounted(async () => {
         </div>
       </div>
     </template>
+
+<div class="flex justify-end mt-6">
+  <div class="flex items-center gap-3">
+    <!-- Если Telegram уже привязан -->
+    <template v-if="telegramId && !showInput">
+      <div class="flex items-center gap-2 text-xs text-green-600">
+        <span>✅ Telegram привязан</span>
+        <span class="text-slate-500">ID: {{ telegramId }}</span>
+      </div>
+      <button
+        @click="showInput = true"
+        class="rounded bg-slate-900 text-white px-3 py-1 text-xs hover:bg-slate-700">
+        Обновить
+      </button>
+    </template>
+
+    <!-- Если Telegram не привязан -->
+    <template v-else-if="!telegramId && !showInput">
+      <a
+        href="https://t.me/GetMyIdBotWork_bot"
+        target="_blank"
+        class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
+        Привязать Telegram
+      </a>
+      <button
+        @click="showInput = true"
+        class="rounded bg-slate-900 text-white px-3 py-1 text-xs hover:bg-slate-700">
+        Вставить ID
+      </button>
+    </template>
+
+    <!-- Когда открыт инпут -->
+    <div v-if="showInput" class="flex flex-col items-end gap-2">
+      <a
+        href="https://t.me/GetMyIdBotWork_bot"
+        target="_blank"
+        class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
+        Получить Chat ID
+      </a>
+      <div class="flex items-center gap-2">
+        <input
+          v-model="chatId"
+          type="text"
+          placeholder="Ваш Chat ID"
+          class="border rounded px-2 py-1 text-xs"
+        />
+        <button
+          @click="saveChatId"
+          :disabled="saving"
+          class="rounded bg-emerald-600 text-white px-3 py-1 text-xs hover:bg-emerald-700 disabled:opacity-50">
+          {{ saving ? '...' : 'Сохранить' }}
+        </button>
+      </div>
+      <button
+        @click="showInput = false"
+        class="text-xs text-slate-500 hover:underline">
+        Скрыть
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
 
     <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
       <!-- Быстрые действия -->
@@ -388,12 +483,12 @@ onMounted(async () => {
 
   <div v-else>
     <div v-for="(projects, companyName) in managingByCompany" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2" >Компания: {{ companyName }}</h4>
+      <h4 class="font-semibold mb-2 text-slate-500" >Компания: {{ companyName }}</h4>
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div v-for="p in projects" :key="p.id"
              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
              @click="$inertia.visit(`/projects/${p.id}`)">
-          <div class="font-semibold truncate" style="color: aliceblue;">{{ p.name }}</div>
+          <div class="font-semibold truncate text-slate-500">{{ p.name }}</div>
           <div class="mt-2 text-xs text-slate-500">Открытых задач: {{ p.open_tasks_count }}</div>
         </div>
       </div>
@@ -453,7 +548,7 @@ onMounted(async () => {
                class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
                @click="$inertia.visit(`/tasks/${t.id}`)">
             <div class="flex items-center justify-between gap-2">
-              <div class="font-semibold truncate" style="color: aliceblue;">{{ t.title }}</div>
+              <div class="font-semibold truncate text-slate-500" >{{ t.title }}</div>
               <span class="text-[10px] px-2 py-0.5 rounded-full" :class="prioBadge(t.priority)">{{ t.priority ?? '—' }}</span>
             </div>
             <div class="mt-3 h-2 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
