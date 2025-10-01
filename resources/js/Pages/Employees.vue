@@ -172,6 +172,45 @@ const attachExisting = async () => {
   }
 }
 
+const showAttachCompanyModal = ref(false)
+const selectedUser = ref(null)
+const attachCompanyForm = ref({
+  company_id: '',
+  role: 'employee'
+})
+
+
+const attachUserToCompany = async () => {
+  if (!selectedUser.value?.id || !attachCompanyForm.value.company_id) {
+    alert('Выберите компанию')
+    return
+  }
+
+  try {
+    await axios.post('/api/employees/attach', {
+      user_id: selectedUser.value.id,
+      company_id: attachCompanyForm.value.company_id,
+      role: attachCompanyForm.value.role,
+    })
+    alert('Пользователь присоединён')
+    showAttachCompanyModal.value = false
+    await fetchEmployees() // обновить список
+  } catch (err) {
+    console.error(err)
+    alert(err?.response?.data?.message || 'Ошибка')
+  }
+}
+
+
+const openAttachCompany = async (user) => {
+  selectedUser.value = user
+  attachCompanyForm.value = { company_id: '', role: 'employee' }
+  showAttachCompanyModal.value = true
+  await loadOwnerCompanies()
+}
+
+
+
 onMounted(async () => {
   await Promise.all([fetchCompanies(), fetchEmployees()])
 })
@@ -263,6 +302,17 @@ onMounted(async () => {
                   {{ (u.role === 'manager') ? 'Менеджер' : 'Сотрудник' }}
                 </span>
               </td>
+
+              <td class="px-4 py-3 text-right">
+  <button
+    @click="openAttachCompany(u)"
+    class="text-xs rounded bg-indigo-600 text-white px-3 py-1 hover:bg-indigo-700">
+    Присоединить к компании
+  </button>
+</td>
+
+
+              
             </tr>
             <tr v-if="!filtered.length">
               <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
@@ -418,6 +468,34 @@ onMounted(async () => {
   </div>
 </div>
 
+<div v-if="showAttachCompanyModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-96">
+    <h3 class="text-lg font-semibold mb-4">
+      Присоединить: {{ selectedUser?.name }}
+    </h3>
+
+    <label class="block text-sm mb-2">Компания</label>
+    <select v-model="attachCompanyForm.company_id" class="w-full border rounded p-2 mb-3">
+      <option value="">-- Выберите компанию --</option>
+      <option v-for="c in ownerCompanies" :key="c.id" :value="c.id">{{ c.name }}</option>
+    </select>
+
+    <label class="block text-sm mb-2">Роль</label>
+    <select v-model="attachCompanyForm.role" class="w-full border rounded p-2 mb-3">
+      <option value="manager">Менеджер</option>
+      <option value="employee">Сотрудник</option>
+    </select>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button @click="showAttachCompanyModal = false" class="px-3 py-1 text-sm rounded bg-gray-200">Отмена</button>
+      <button
+        @click="attachUserToCompany"
+        class="px-3 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">
+        Сохранить
+      </button>
+    </div>
+  </div>
+</div>
 
 
 
