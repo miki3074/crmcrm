@@ -22,6 +22,7 @@ use App\Http\Controllers\API\TaskChecklistController;
 use App\Http\Controllers\API\SubprojectController;
 use App\Http\Controllers\API\TelegramController;
 
+use App\Http\Controllers\API\PasswordResetController;
 
 
 /*
@@ -177,3 +178,5 @@ Route::post('/telegram/webhook', [TelegramController::class, 'handle']);
 Route::middleware('auth:sanctum')->post('/user/telegram-token', [\App\Http\Controllers\API\UserController::class, 'generateTelegramToken']);
 
 Route::middleware('auth:sanctum')->post('/user/save-chat-id', [UserController::class, 'saveChatId']);
+
+Route::post('/password/telegram', [PasswordResetController::class, 'sendResetLinkViaTelegram']);
