@@ -26,12 +26,14 @@ public function store(Request $request, Task $task)
     $this->authorize('createSubtask', $task);
 
     $validated = $request->validate([
-        'title'          => 'required|string|max:255',
-        'executor_id'    => 'required|exists:users,id',
-        'responsible_id' => 'required|exists:users,id',
-        'start_date'     => 'required|date',
-        'due_date'       => 'required|date|after_or_equal:start_date',
-    ]);
+    'title'          => 'required|string|max:255',
+    'executor_id'    => 'required|array',
+    'executor_id.*'  => 'exists:users,id',
+    'responsible_id' => 'required|array',
+    'responsible_id.*' => 'exists:users,id',
+    'start_date'     => 'required|date',
+    'due_date'       => 'required|date|after_or_equal:start_date',
+]);
 
     $subtask = $task->subtasks()->create([
         'title'      => $validated['title'],
@@ -41,8 +43,8 @@ public function store(Request $request, Task $task)
     ]);
 
     // привязываем
-    $subtask->executors()->attach($validated['executor_id']);
-    $subtask->responsibles()->attach($validated['responsible_id']);
+$subtask->executors()->sync($validated['executor_id']);
+$subtask->responsibles()->sync($validated['responsible_id']);
 
      $recipients = array_unique([
         $validated['executor_id'],

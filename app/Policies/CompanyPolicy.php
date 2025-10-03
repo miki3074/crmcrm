@@ -46,11 +46,26 @@ public function view(User $user, Company $company): bool
     return true;
 }
 
-    if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+   // Исполнитель подзадачи
+if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
         $query->whereIn('project_id', $company->projects()->pluck('id'));
-    })->where('executor_id', $user->id)->exists()) {
-        return true;
-    }
+    })
+    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+    ->exists()
+) {
+    return true;
+}
+
+// Ответственный подзадачи
+if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+        $query->whereIn('project_id', $company->projects()->pluck('id'));
+    })
+    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+    ->exists()
+) {
+    return true;
+}
+
     return false;
 }
 

@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { usePage, Head } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import axios from 'axios'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import TaskChat from '@/Components/TaskChat.vue'
 import TaskChecklists from '@/Components/TaskChecklists.vue'
 
@@ -32,6 +32,14 @@ const subtaskForm = ref({
   due_date: '',
 })
 
+// modal: edit task
+const showEditModal = ref(false)
+const editForm = ref({
+  title: '',
+  start_date: '',
+  due_date: '',
+})
+
 // permissions
 const canCreateSubtask = computed(() => {
   if (!task.value || !user) return false
@@ -41,8 +49,6 @@ const canCreateSubtask = computed(() => {
   )
 })
 
-
-// helpers
 const priorityBadge = (p) =>
   p === 'high'
     ? 'bg-rose-100 text-rose-700 ring-1 ring-rose-200'
@@ -52,20 +58,35 @@ const priorityBadge = (p) =>
 
 const priorityLabel = (p) => (p === 'high' ? 'Высокая' : p === 'medium' ? 'Средняя' : 'Обычная')
 
-// api
+// === API ===
 const fetchTask = async () => {
   loading.value = true
   try {
-    const { data } = await axios.get(`/api/tasks/${taskId}`)
+    const { data } = await axios.get(`/api/tasks/${taskId}`, { withCredentials: true })
     task.value = data
+    editForm.value = {
+      title: data.title || '',
+      start_date: data.start_date || '',
+      due_date: data.due_date || '',
+    }
   } finally {
     loading.value = false
   }
 }
 
+const updateTask = async () => {
+  try {
+    const { data } = await axios.put(`/api/tasks/${taskId}`, editForm.value, { withCredentials: true })
+    task.value = data.task
+    showEditModal.value = false
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при обновлении задачи')
+  }
+}
+
 const updateProgress = async (value) => {
   try {
-    const { data } = await axios.patch(`/api/tasks/${taskId}/progress`, { progress: value })
+    const { data } = await axios.patch(`/api/tasks/${taskId}/progress`, { progress: value }, { withCredentials: true })
     task.value.progress = data.progress
   } catch (e) {
     alert('Недостаточно прав для обновления прогресса.')
@@ -78,7 +99,10 @@ const uploadFiles = async () => {
   for (let i = 0; i < selectedFiles.value.length; i++) formData.append('files[]', selectedFiles.value[i])
 
   try {
-    await axios.post(`/api/tasks/${taskId}/files`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    await axios.post(`/api/tasks/${taskId}/files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      withCredentials: true,
+    })
     selectedFiles.value = null
     await fetchTask()
   } catch (e) {
@@ -87,7 +111,7 @@ const uploadFiles = async () => {
 }
 
 const openSubtaskModal = async () => {
-  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`)
+  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`, { withCredentials: true })
   companyEmployees.value = data
   showSubtaskModal.value = true
 }
@@ -96,12 +120,12 @@ const createSubtask = async () => {
   submitLoading.value = true
   errorText.value = ''
   try {
-    await axios.post(`/api/tasks/${taskId}/subtasks`, { ...subtaskForm.value, task_id: taskId })
+    await axios.post(`/api/tasks/${taskId}/subtasks`, { ...subtaskForm.value, task_id: taskId }, { withCredentials: true })
     showSubtaskModal.value = false
     subtaskForm.value = {
       title: '',
       executor_id: '',
-       responsible_id: '',
+      responsible_id: '',
       start_date: new Date().toISOString().slice(0, 10),
       due_date: '',
     }
@@ -123,15 +147,13 @@ const canFinish = computed(() =>
 
 const finishTask = async () => {
   try {
-    const { data } = await axios.patch(`/api/tasks/${taskId}/complete`)
+    const { data } = await axios.patch(`/api/tasks/${taskId}/complete`, {}, { withCredentials: true })
     task.value = data.task
   } catch (e) {
-    // покажем серверные причины (прогресс не 100%, есть незавершённые подзадачи, нет прав)
     const msg = e?.response?.data?.message || 'Не удалось завершить задачу'
     alert(msg)
   }
 }
-
 
 const canManageTask = computed(() => {
   const userId = props.auth?.user?.id
@@ -141,8 +163,6 @@ const canManageTask = computed(() => {
     (task.value.responsibles || []).some(r => r.id === userId)
   )
 })
-
-
 
 const canUploadFiles = computed(() => {
   if (!task.value || !user) return false
@@ -154,9 +174,33 @@ const canUploadFiles = computed(() => {
 })
 
 
+const showWatcherModal = ref(false)
+const selectedWatcher = ref(null)
+
+const openWatcherModal = async () => {
+  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`, { withCredentials: true })
+  companyEmployees.value = data
+  showWatcherModal.value = true
+}
+
+const addWatcher = async () => {
+  if (!selectedWatcher.value) return
+  try {
+    const { data } = await axios.post(`/api/tasks/${taskId}/watchers`, {
+      user_id: selectedWatcher.value
+    }, { withCredentials: true })
+
+    task.value.watchers = data.watchers
+    showWatcherModal.value = false
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при добавлении наблюдателя')
+  }
+}
 
 onMounted(fetchTask)
 </script>
+
+
 
 <template>
   <Head :title="task?.title ? `Задача — ${task.title}` : 'Задача'" />
@@ -200,6 +244,17 @@ onMounted(fetchTask)
   </b>
 </span>
 
+
+
+<span v-if="task && task.watchers" class="px-2 py-1 rounded-full bg-white/20">
+  Наблюдатели:
+  <b>{{ task.watchers.map(w => w.name).join(', ') || '—' }}</b>
+</span>
+
+
+
+
+
               <span v-if="task" class="px-2 py-1 rounded-full ring-1 bg-white text-gray-900" :class="priorityBadge(task.priority)">
                 Приоритет: <b>{{ priorityLabel(task.priority) }}</b>
               </span>
@@ -213,6 +268,17 @@ onMounted(fetchTask)
             </a>
           </div>
 
+          <button
+  @click="showEditModal = true"
+  class=" rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700"
+>
+  ✏️ Изменить
+</button>
+
+<button @click="openWatcherModal"
+  class="rounded bg-blue-600 text-white px-3 py-1 hover:bg-blue-700">
+  ➕ Добавить наблюдателя
+</button>
 
 <div v-if="canManageTask" class="mt-3" >
     <button
@@ -479,5 +545,50 @@ onMounted(fetchTask)
         </form>
       </div>
     </div>
+
+
+<div v-if="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-md p-6">
+    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Редактировать задачу</h2>
+
+    <form @submit.prevent="updateTask">
+      <div class="mb-3">
+        <label class="block text-sm text-gray-700 dark:text-gray-300">Название</label>
+        <input v-model="editForm.title" type="text" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white"/>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm">Дата начала</label>
+        <input v-model="editForm.start_date" type="date" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white"/>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm">Дата окончания</label>
+        <input v-model="editForm.due_date" type="date" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white"/>
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button type="button" @click="showEditModal = false" class="px-4 py-2 border rounded">Отмена</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div v-if="showWatcherModal" class="fixed inset-0 flex items-center justify-center bg-black/50">
+  <div class="bg-white p-4 rounded w-96">
+    <h3 class="font-semibold mb-3">Выберите наблюдателя</h3>
+    <select v-model="selectedWatcher" class="w-full border p-2 rounded">
+      <option v-for="u in companyEmployees" :key="u.id" :value="u.id">
+        {{ u.name }}
+      </option>
+    </select>
+    <div class="flex justify-end gap-2 mt-4">
+      <button @click="showWatcherModal=false" class="px-3 py-1 border rounded">Отмена</button>
+      <button @click="addWatcher" class="px-3 py-1 bg-blue-600 text-white rounded">Добавить</button>
+    </div>
+  </div>
+</div>
+
   </AuthenticatedLayout>
 </template>

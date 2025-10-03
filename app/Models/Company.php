@@ -26,10 +26,10 @@ class Company extends Model
 //     return $this->hasMany(\App\Models\User::class);
 // }
 
- public function employees()
-    {
-        return $this->hasMany(User::class, 'company_id', 'id');
-    }
+//  public function employees()
+//     {
+//         return $this->hasMany(User::class, 'company_id', 'id');
+//     }
 
 public function users()
 {

@@ -76,7 +76,8 @@ public function view(User $user, Subtask $subtask): bool
     public function updateProgress(User $user, Subtask $subtask): bool
     {
         if (method_exists($user, 'hasRole') && $user->hasRole('admin')) return true;
-        return $user->id === $subtask->executor_id || $user->id === $subtask->creator_id;
+        return $subtask->executors->contains('id', $user->id)
+        || $user->id === $subtask->creator_id;
     }
 
     public function complete(User $user, \App\Models\Subtask $subtask): bool

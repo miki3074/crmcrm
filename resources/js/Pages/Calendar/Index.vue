@@ -78,14 +78,17 @@ const fetchEvents = async (start, end) => {
 }
 
 const loadCompanies = async () => {
-  const { data } = await axios.get('/api/companies')
+  const { data } = await axios.get('/api/my-calendar-companies')
   companies.value = data
 }
+
+
 const loadCompanyEmployees = async () => {
   if (!form.value.company_id) { companyEmployees.value = []; return }
   const { data } = await axios.get(`/api/companies/${form.value.company_id}/employees`)
   companyEmployees.value = data
 }
+
 
 // Create / Edit
 const openCreateModal = (startISO, endISO) => {

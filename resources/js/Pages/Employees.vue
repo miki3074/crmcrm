@@ -127,13 +127,22 @@ const loadUsers = async () => {
 }
 
 // Загрузить компании текущего владельца (или используемые ранее)
+// const loadOwnerCompanies = async () => {
+//   const { data } = await axios.get('/api/companies') // у тебя уже есть такой метод; он возвращает только компании владельца
+//   ownerCompanies.value = data
+//   if (data.length && !attachForm.value.company_id) {
+//     attachForm.value.company_id = String(data[0].id)
+//   }
+// }
+
 const loadOwnerCompanies = async () => {
-  const { data } = await axios.get('/api/companies') // у тебя уже есть такой метод; он возвращает только компании владельца
+  const { data } = await axios.get('/api/owner-companies')
   ownerCompanies.value = data
   if (data.length && !attachForm.value.company_id) {
     attachForm.value.company_id = String(data[0].id)
   }
 }
+
 
 const openAttach = async () => {
   showAttachModal.value = true
@@ -208,6 +217,39 @@ const openAttachCompany = async (user) => {
   showAttachCompanyModal.value = true
   await loadOwnerCompanies()
 }
+
+
+const showUpdateModal = ref(false)
+const selectedEmployee = ref(null)
+const updateForm = ref({
+  role: 'employee'
+})
+
+const openUpdateModal = (user) => {
+  selectedEmployee.value = user
+  updateForm.value = {
+    role: user.role || 'employee'
+  }
+  showUpdateModal.value = true
+}
+
+const updateEmployeeRole = async () => {
+  if (!selectedEmployee.value?.id) return
+
+  try {
+    await axios.put(`/api/employees/${selectedEmployee.value.id}/update-role`, {
+      role: updateForm.value.role
+    })
+    alert('Роль обновлена')
+    showUpdateModal.value = false
+    await fetchEmployees()
+  } catch (err) {
+    console.error(err)
+    alert(err?.response?.data?.message || 'Ошибка обновления')
+  }
+}
+
+
 
 
 
@@ -303,13 +345,20 @@ onMounted(async () => {
                 </span>
               </td>
 
-              <td class="px-4 py-3 text-right">
+             <td class="px-4 py-3 text-right flex gap-2 justify-end">
   <button
     @click="openAttachCompany(u)"
     class="text-xs rounded bg-indigo-600 text-white px-3 py-1 hover:bg-indigo-700">
     Присоединить к компании
   </button>
+
+  <button
+    @click="openUpdateModal(u)"
+    class="text-xs rounded bg-yellow-500 text-white px-3 py-1 hover:bg-yellow-600">
+    Обновить
+  </button>
 </td>
+
 
 
               
@@ -497,6 +546,30 @@ onMounted(async () => {
   </div>
 </div>
 
+
+
+<div v-if="showUpdateModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-96">
+    <h3 class="text-lg font-semibold mb-4">
+      Обновить роль: {{ selectedEmployee?.name }}
+    </h3>
+
+    <label class="block text-sm mb-2">Роль</label>
+    <select v-model="updateForm.role" class="w-full border rounded p-2 mb-3">
+      <option value="manager">Менеджер</option>
+      <option value="employee">Сотрудник</option>
+    </select>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button @click="showUpdateModal = false" class="px-3 py-1 text-sm rounded bg-gray-200">Отмена</button>
+      <button
+        @click="updateEmployeeRole"
+        class="px-3 py-1 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">
+        Сохранить
+      </button>
+    </div>
+  </div>
+</div>
 
 
     

@@ -160,5 +160,41 @@ public function usersForAttach()
     }
 
 
+    public function ownerCompanies()
+{
+    $ownerId = auth()->id();
+
+    // только компании, где текущий пользователь владелец
+    $companies = Company::where('user_id', $ownerId)
+        ->select(['id','name'])
+        ->get();
+
+    return response()->json($companies);
+}
+
+
+public function updateRole(Request $request, $id)
+{
+    $request->validate([
+        'role' => 'required|in:manager,employee',
+    ]);
+
+    $user = \DB::table('company_user')
+        ->where('user_id', $id)
+        ->whereIn('company_id', Company::where('user_id', auth()->id())->pluck('id'))
+        ->first();
+
+    if (!$user) {
+        return response()->json(['message' => 'Forbidden'], 403);
+    }
+
+    \DB::table('company_user')
+        ->where('user_id', $id)
+        ->update(['role' => $request->role, 'updated_at' => now()]);
+
+    return response()->json(['message' => 'Role updated']);
+}
+
+
 
 }

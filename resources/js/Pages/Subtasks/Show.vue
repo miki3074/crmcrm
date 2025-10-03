@@ -16,8 +16,10 @@ const fetchSubtask = async () => {
 
 const canUpdateProgress = computed(() => {
   if (!subtask.value || !user) return false
-  return user.id === subtask.value.executor_id || user.id === subtask.value.creator_id
+  const isExecutor = (subtask.value.executors || []).some(e => e.id === user.id)
+  return isExecutor || user.id === subtask.value.creator_id
 })
+
 
 const canComplete = computed(() => {
   if (!subtask.value) return false

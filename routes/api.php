@@ -25,6 +25,8 @@ use App\Http\Controllers\API\TelegramController;
 use App\Http\Controllers\API\PasswordResetController;
 
 
+use App\Models\Company;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -180,3 +182,36 @@ Route::middleware('auth:sanctum')->post('/user/telegram-token', [\App\Http\Contr
 Route::middleware('auth:sanctum')->post('/user/save-chat-id', [UserController::class, 'saveChatId']);
 
 Route::post('/password/telegram', [PasswordResetController::class, 'sendResetLinkViaTelegram']);
+
+Route::get('/owner-companies', [\App\Http\Controllers\API\EmployeeController::class, 'ownerCompanies']);
+
+
+Route::put('/employees/{id}/update-role', [\App\Http\Controllers\API\EmployeeController::class, 'updateRole']);
+
+
+Route::get('/companies/{company}/employees', function (Company $company) {
+    return $company->users()->select('users.id', 'users.name', 'users.email')->get();
+});
+
+
+
+Route::middleware('auth:sanctum')->put('/tasks/{task}', [TaskController::class, 'update']);
+
+
+Route::middleware('auth:sanctum')->post('/tasks/{task}/watchers', [TaskController::class, 'addWatcher']);
+
+
+Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
+    $user = $request->user();
+
+    $companies = Company::query()
+        ->where('user_id', $user->id) // Владелец
+        ->orWhereHas('users', function ($q) use ($user) {
+            $q->where('users.id', $user->id)
+              ->where('company_user.role', 'manager'); // Менеджер
+        })
+        ->get(['id','name']);
+
+    return $companies;
+});
+

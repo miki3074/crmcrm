@@ -100,6 +100,7 @@ public function show($id)
         'project.managers:id,name',
         'project.company:id,name',
         'files:id,task_id,file_path',
+         'watchers:id,name',
         // добавили completed
         'subtasks:id,task_id,title,creator_id,start_date,due_date,completed',
         'subtasks.executors:id,name',
@@ -113,7 +114,7 @@ public function show($id)
 
 public function updateProgress(Request $request, Task $task)
 {
-    $this->authorize('update', $task); // если есть политика
+    $this->authorize('updateProgress', $task); // если есть политика
 
     $validated = $request->validate([
         'progress' => 'required|integer|min:0|max:100',
@@ -202,6 +203,42 @@ public function complete(Task $task)
 
         ]);
     }
+
+   public function update(Request $request, Task $task)
+{
+    $this->authorize('update', $task);
+
+    $data = $request->validate([
+        'title' => 'required|string|max:255',
+        'start_date' => 'nullable|date',
+        'due_date' => 'nullable|date|after_or_equal:start_date',
+    ]);
+
+    $task->update($data);
+
+    return response()->json([
+        'message' => 'Задача обновлена',
+        'task' => $task,
+    ]);
+}
+
+public function addWatcher(Request $request, Task $task)
+{
+    $this->authorize('update', $task);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $task->watchers()->syncWithoutDetaching([$validated['user_id']]);
+
+    return response()->json([
+        'message' => 'Наблюдатель добавлен',
+        'watchers' => $task->watchers()->get(['id', 'name']),
+    ]);
+}
+
+
 
 
 }

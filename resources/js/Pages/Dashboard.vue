@@ -117,27 +117,22 @@ const managingByCompany = computed(() => {
   }, {})
 })
 
-const tasksByCompanyAndProject = computed(() => {
-  return summary.value.my_tasks.reduce((acc, t) => {
+const allTasksByCompanyAndProject = computed(() => {
+  return (summary.value.all_tasks || []).reduce((acc, t) => {
     const companyName = t.project?.company?.name || 'Без компании'
     const projectName = t.project?.name || 'Без проекта'
 
     if (!acc[companyName]) acc[companyName] = {}
     if (!acc[companyName][projectName]) acc[companyName][projectName] = []
 
-    acc[companyName][projectName].push(t)
+    if (!acc[companyName][projectName].some(task => task.id === t.id)) {
+      acc[companyName][projectName].push(t)
+    }
+
     return acc
   }, {})
 })
 
-const responsibleSubprojectsByCompany = computed(() => {
-  return (summary.value.responsible_subprojects || []).reduce((acc, sp) => {
-    const companyName = sp.project?.company?.name || 'Без компании'
-    if (!acc[companyName]) acc[companyName] = []
-    acc[companyName].push(sp)
-    return acc
-  }, {})
-})
 
 // приоритет для задач
 const prioBadge = (p) => ({
@@ -145,6 +140,36 @@ const prioBadge = (p) => ({
   medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
   high:   'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
 }[p] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300')
+
+
+
+
+const allSubtasksByCompany = computed(() => {
+  return (summary.value.all_subtasks || []).reduce((acc, st) => {
+    const companyName = st.task?.project?.company?.name || 'Без компании'
+    const projectName = st.task?.project?.name || 'Без проекта'
+
+    if (!acc[companyName]) acc[companyName] = {}
+    if (!acc[companyName][projectName]) acc[companyName][projectName] = []
+
+    // исключаем дубликаты
+    if (!acc[companyName][projectName].some(s => s.id === st.id)) {
+      acc[companyName][projectName].push(st)
+    }
+
+    return acc
+  }, {})
+})
+
+
+
+
+
+
+
+
+
+
 
 
 const telegramId = ref(props.auth?.user?.telegram_chat_id ?? null)
@@ -489,79 +514,131 @@ onMounted(async () => {
              class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
              @click="$inertia.visit(`/projects/${p.id}`)">
           <div class="font-semibold truncate text-slate-500">{{ p.name }}</div>
-          <div class="mt-2 text-xs text-slate-500">Открытых задач: {{ p.open_tasks_count }}</div>
+          
         </div>
       </div>
     </div>
   </div>
 </div>
 
+
+
+
+<!-- ================= Мои задачи ================= -->
 <div class="mt-12 space-y-4">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-slate-500" >Я отвечаю за подпроекты</h3>
+    <h3 class="text-lg font-semibold text-slate-500">Мои задачи</h3>
   </div>
 
   <div v-if="loadingSummary">
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="i in 3" :key="'sp'+i" class="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
-    </div>
-  </div>
-
- <div v-else>
-  <div v-for="(subprojects, companyName) in responsibleSubprojectsByCompany" :key="companyName" class="mb-6">
-    <h4 class="font-semibold mb-2 text-slate-500" >Компания: {{ companyName }}</h4>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="sp in subprojects" :key="sp.id"
-           class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-           @click="$inertia.visit(`/subprojects/${sp.id}`)">
-        <div class="font-semibold truncate text-slate-500" >{{ sp.title }}</div>
-        <div class="mt-1 text-xs text-slate-500">Проект: {{ sp.project?.name }}</div>
-        <div class="mt-2 text-xs text-slate-600">Открытых задач: {{ sp.open_tasks_count }}</div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
-
-
-<!-- ================= Я исполнитель ================= -->
-<div class="mt-12 space-y-4">
-  <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-slate-500" >Я исполнитель</h3>
-  </div>
-
-  <div v-if="loadingSummary">
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="i in 6" :key="'mt'+i" class="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
+      <div v-for="i in 6" :key="'tsk'+i" class="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
     </div>
   </div>
 
   <div v-else>
-    <div v-for="(projects, companyName) in tasksByCompanyAndProject" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2 text-slate-500" >Компания: {{ companyName }}</h4>
+    <div v-for="(projects, companyName) in allTasksByCompanyAndProject" :key="companyName" class="mb-6">
+      <h4 class="font-semibold mb-2 text-slate-500">Компания: {{ companyName }}</h4>
 
       <div v-for="(tasks, projectName) in projects" :key="projectName" class="mb-4">
-        <h5 class="text-sm font-medium mb-1 text-slate-500" >Проект: {{ projectName }}</h5>
+        <h5 class="text-sm text-slate-400 mb-2">Проект: {{ projectName }}</h5>
 
         <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div v-for="t in tasks" :key="t.id"
                class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
                @click="$inertia.visit(`/tasks/${t.id}`)">
             <div class="flex items-center justify-between gap-2">
-              <div class="font-semibold truncate text-slate-500" >{{ t.title }}</div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full" :class="prioBadge(t.priority)">{{ t.priority ?? '—' }}</span>
+              <div class="font-semibold truncate text-slate-500">{{ t.title }}</div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full" :class="prioBadge(t.priority)">
+                {{ t.priority ?? '—' }}
+              </span>
             </div>
-            <div class="mt-3 h-2 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div class="text-xs text-slate-400 truncate mt-1">
+              {{ t.start_date }} → {{ t.due_date || 'без срока' }}
+            </div>
+            <div class="mt-2 h-2 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div class="h-full bg-slate-900 dark:bg-white" :style="{width: ((t.progress ?? 0) + '%')}"/>
             </div>
-            <div class="mt-1 text-[11px] text-slate-500">Срок: {{ t.due_date ?? '—' }}</div>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
+
+
+<!-- ================= Мои подзадачи ================= -->
+<div class="mt-12 space-y-4">
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-semibold text-slate-500">Мои подзадачи</h3>
+  </div>
+
+  <!-- Скелетоны -->
+  <div v-if="loadingSummary">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="i in 3" :key="'st'+i" class="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
+    </div>
+  </div>
+
+  <!-- Список -->
+  <div v-else>
+    <div v-for="(projects, companyName) in allSubtasksByCompany" :key="companyName" class="mb-6">
+      <h4 class="font-semibold mb-2 text-slate-500">Компания: {{ companyName }}</h4>
+
+      <div v-for="(subtasks, projectName) in projects" :key="projectName" class="mb-4">
+        <h5 class="text-sm text-slate-400 mb-2">Проект: {{ projectName }}</h5>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div v-for="st in subtasks" :key="st.id"
+               class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
+               @click="$inertia.visit(`/tasks/${st.task_id}`)">
+            <div class="font-semibold truncate text-slate-500">{{ st.title }}</div>
+            <div class="mt-2 text-xs text-slate-400">
+              {{ st.start_date }} → {{ st.due_date || 'без срока' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================= Я наблюдатель ================= -->
+<div class="mt-12 space-y-4">
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-semibold text-slate-500">Я наблюдатель</h3>
+  </div>
+
+  <div v-if="loadingSummary">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="i in 6" :key="'wt'+i" class="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
+    </div>
+  </div>
+
+  <div v-else>
+    <div v-for="t in summary.watching_tasks" :key="t.id"
+         class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
+         @click="$inertia.visit(`/tasks/${t.id}`)">
+      <div class="flex items-center justify-between gap-2">
+        <div class="font-semibold truncate text-slate-500">{{ t.title }}</div>
+        <span class="text-[10px] px-2 py-0.5 rounded-full" :class="prioBadge(t.priority)">
+          {{ t.priority ?? '—' }}
+        </span>
+      </div>
+      <div class="text-xs text-slate-400 truncate mt-1">
+        {{ t.project?.company?.name ?? '—' }} / {{ t.project?.name ?? '—' }}
+      </div>
+      <div class="mt-3 h-2 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div class="h-full bg-slate-900 dark:bg-white" :style="{width: ((t.progress ?? 0) + '%')}"/>
+      </div>
+      <div class="mt-1 text-[11px] text-slate-500">
+        Срок: {{ t.due_date ?? '—' }}
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
 
 <!-- ================= Сроки сегодня ================= -->

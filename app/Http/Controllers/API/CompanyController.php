@@ -229,68 +229,55 @@ public function show(Company $company)
     $this->authorize('view', $company);
     $userId = auth()->id();
 
+    // Загружаем проекты с нужными связями
     $company->load([
-        'projects' => function ($q) use ($userId) {
-    $q->with([
-        'managers:id,name',
-        'tasks' => fn($t) => $t->whereHas('executors', fn($e) => $e->where('users.id', $userId)),
-        'tasks.executors:id,name',
-        'tasks.responsibles:id,name',
-    ]);
-}
-
-    ]);
-
-    $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-    // 1. Если пользователь — основатель компании → показываем ВСЕ проекты
-    if ($company->user_id === $userId) {
-        return true;
-    }
-
-    // 2. Если он менеджер проекта
-    if ($project->managers->contains('id', $userId)) {
-        return true;
-    }
-
-    // 3. Есть задачи, где он исполнитель или ответственный
-    if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) {
-    return true;
-}
-   if ($project->tasks->contains(fn($task) => $task->responsibles->contains('id', $userId))) {
-    return true;
-}
-
-
-    // 4. Есть подзадачи, где он исполнитель
-    foreach ($project->tasks as $task) {
-        if ($task->subtasks->isNotEmpty()) {
-            return true;
+        'projects' => function ($q) {
+            $q->with([
+                'managers:id,name',
+                'tasks.executors:id,name',
+                'tasks.responsibles:id,name',
+                'tasks.subtasks.executors:id,name',
+                'tasks.subtasks.responsibles:id,name',
+            ]);
         }
-    }
+    ]);
 
-    return false;
-})->values();
+    // Фильтруем проекты по доступу пользователя
+    $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
+        if ($company->user_id === $userId) return true;
+        if ($project->managers->contains('id', $userId)) return true;
+        if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
+        if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
 
+        // подзадачи
+        if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId)))) return true;
+        if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId)))) return true;
+
+        return false;
+    })->values();
+
+    // Ответ JSON
     return response()->json([
-    'id' => $company->id,
-    'name' => $company->name,
-    'logo' => $company->logo,
-    'user_id' => $company->user_id,
-    'projects' => $company->projects->map(function ($project) {
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'start_date' => $project->start_date,
-            'duration_days' => $project->duration_days,
-            'managers' => $project->managers->map(fn($m) => [
-                'id' => $m->id,
-                'name' => $m->name,
-            ]),
-        ];
-    }),
-]);
-
+        'id' => $company->id,
+        'name' => $company->name,
+        'logo' => $company->logo,
+        'user_id' => $company->user_id,
+        'projects' => $company->projects->map(function ($project) {
+            return [
+                'id' => $project->id,
+                'name' => $project->name,
+                'start_date' => $project->start_date,
+                'duration_days' => $project->duration_days,
+                'managers' => $project->managers->map(fn($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                ]),
+            ];
+        }),
+    ]);
 }
+
+
 
 
     
@@ -325,27 +312,61 @@ public function show(Company $company)
         return response()->json($grouped);
     }
 
-  public function employees(\App\Models\Company $company)
+//   public function employees(\App\Models\Company $company)
+// {
+//     $user = auth()->user();
+
+//     // Разрешим видеть сотрудников владельцу компании и его сотрудникам
+//     abort_unless(
+//         $user->id === $company->user_id || $user->created_by === $company->user_id,
+//         403
+//     );
+
+//     // владелец + все пользователи, созданные владельцем
+//     $owner = \App\Models\User::select('id','name','email')
+//         ->where('id', $company->user_id);
+
+//     $staff = \App\Models\User::select('id','name','email')
+//         ->where('created_by', $company->user_id);
+
+//     $employees = $owner->union($staff)->get();
+
+//     return response()->json($employees);
+// }
+
+public function employees(\App\Models\Company $company)
 {
-    $user = auth()->user();
+    $authUser = auth()->user();
 
-    // Разрешим видеть сотрудников владельцу компании и его сотрудникам
-    abort_unless(
-        $user->id === $company->user_id || $user->created_by === $company->user_id,
-        403
-    );
+    $isOwner   = $company->user_id === $authUser->id;
+    $isManager = $company->users()
+        ->where('users.id', $authUser->id)
+        ->where('company_user.role', 'manager')
+        ->exists();
 
-    // владелец + все пользователи, созданные владельцем
-    $owner = \App\Models\User::select('id','name','email')
-        ->where('id', $company->user_id);
+    abort_unless($isOwner || $isManager, 403);
 
-    $staff = \App\Models\User::select('id','name','email')
-        ->where('created_by', $company->user_id);
+    $staff = $company->users()
+        ->select('users.id','users.name','users.email','company_user.role')
+        ->get();
 
-    $employees = $owner->union($staff)->get();
+    $owner = \App\Models\User::select('id','name','email')->find($company->user_id);
+    if ($owner) {
+        $owner->role = 'owner';
+        if (!$staff->contains('id', $owner->id)) {
+            $staff->prepend($owner); // добавляем в начало списка
+        }
+    }
 
-    return response()->json($employees);
+    return response()->json($staff);
 }
+
+
+
+
+
+
+
 
 public function summary(Request $request)
 {
@@ -354,69 +375,110 @@ public function summary(Request $request)
 
     // Проекты, где пользователь — руководитель
     $managingProjects = Project::with(['company:id,name'])
-    ->withCount('tasks')
-    ->whereHas('managers', function ($q) use ($user) {
+        ->withCount('tasks')
+        ->whereHas('managers', function ($q) use ($user) {
+            $q->where('users.id', $user->id);
+        })
+        ->latest('id')->take(8)
+        ->get(['id','name','company_id']);
+
+
+        // Задачи, где я наблюдатель
+$watchingTasks = Task::with([
+        'project:id,name,company_id',
+        'project.company:id,name'
+    ])
+    ->whereHas('watchers', function ($q) use ($user) {
         $q->where('users.id', $user->id);
     })
-    ->latest('id')->take(8)
-    ->get(['id','name','company_id']);
+    ->orderByRaw('due_date IS NULL, due_date ASC')
+    ->take(12)
+    ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
-    // Мои задачи (я исполнитель)
+
+    // Задачи, где я исполнитель
     $myTasks = Task::with([
             'project:id,name,company_id',
             'project.company:id,name'
         ])
-         ->whereHas('executors', function ($q) use ($user) {
-        $q->where('users.id', $user->id);
-    })
+        ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
         ->take(12)
         ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
-    // Мои подзадачи (я исполнитель)
+    // Задачи, где я ответственный
+    $responsibleTasks = Task::with([
+            'project:id,name,company_id',
+            'project.company:id,name'
+        ])
+        ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+        ->orderByRaw('due_date IS NULL, due_date ASC')
+        ->take(12)
+        ->get(['id','title','priority','progress','start_date','due_date','project_id']);
+
+    // 👇 объединяем задачи (исполнитель + ответственный)
+    $allTasks = $myTasks->concat($responsibleTasks)
+        ->unique('id')
+        ->values();
+
+    // Подзадачи, где я исполнитель
     $mySubtasks = Subtask::with([
             'task:id,title,project_id',
             'task.project:id,name,company_id',
             'task.project.company:id,name'
         ])
-         ->whereHas('executors', function ($q) use ($user) {
-        $q->where('users.id', $user->id);
-    })
+        ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
         ->take(12)
         ->get(['id','title','start_date','due_date','task_id']);
 
+    // Подзадачи, где я ответственный
+    $responsibleSubtasks = Subtask::with([
+            'task:id,title,project_id',
+            'task.project:id,name,company_id',
+            'task.project.company:id,name'
+        ])
+        ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+        ->orderByRaw('due_date IS NULL, due_date ASC')
+        ->take(12)
+        ->get(['id','title','start_date','due_date','task_id']);
+
+    // 👇 объединяем подзадачи
+    $allSubtasks = $mySubtasks->concat($responsibleSubtasks)
+        ->unique('id')
+        ->values();
+
     // Подпроекты, где я ответственный
-   $responsibleSubprojects = Subproject::with([
-        'project:id,name,company_id',
-        'project.company:id,name'
-    ])
-    ->withCount(['tasks as open_tasks_count' => function ($q) {
-        $q->where('completed', false);
-    }])
-    ->where('responsible_id', $user->id)   // пока работает, если колонка осталась
-    ->latest('id')->take(8)
-    ->get(['id','title','project_id','responsible_id']);
+    $responsibleSubprojects = Subproject::with([
+            'project:id,name,company_id',
+            'project.company:id,name'
+        ])
+        ->withCount(['tasks as open_tasks_count' => fn($q) => $q->where('completed', false)])
+        ->where('responsible_id', $user->id)
+        ->latest('id')->take(8)
+        ->get(['id','title','project_id','responsible_id']);
 
-
-    // Срезы по срокам
-    $dueToday = $myTasks->filter(fn($t) =>
+    // Срезы по срокам (берём только из задач)
+    $dueToday = $allTasks->filter(fn($t) =>
         !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
     )->values();
 
-    $overdue = $myTasks->filter(fn($t) =>
+    $overdue = $allTasks->filter(fn($t) =>
         !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
     )->values();
 
     return response()->json([
-        'managing_projects'      => $managingProjects,
-        'my_tasks'               => $myTasks,
-        'my_subtasks'            => $mySubtasks,
-        'responsible_subprojects'=> $responsibleSubprojects,
-        'due_today'              => $dueToday,
-        'overdue'                => $overdue,
+        'managing_projects'       => $managingProjects,
+        'all_tasks'               => $allTasks,        // ✅ объединённый список задач
+        'all_subtasks'            => $allSubtasks,     // ✅ объединённый список подзадач
+        'responsible_subprojects' => $responsibleSubprojects,
+        'due_today'               => $dueToday,
+        'overdue'                 => $overdue,
+        'watching_tasks'          => $watchingTasks,
     ]);
 }
+
+
 
 
 

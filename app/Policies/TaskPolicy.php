@@ -65,15 +65,39 @@ class TaskPolicy
     }
 
     public function update(User $user, Task $task): bool
-    {
-        if ($user->hasRole('admin')) return true;
-        if (optional($task->project->company)->user_id === $user->id) return true;
-        if ($task->project->managers->contains('id', $user->id)) return true;
-        if ($task->executors->contains('id', $user->id)) return true;
-        if ($task->responsibles->contains('id', $user->id)) return true;
+{
+    // Админ всегда может
+    // if ($user->hasRole('admin')) return true;
 
-        return $this->participates($user, $task);
-    }
+    // Создатель задачи
+    if ($user->id === $task->creator_id) return true;
+
+    // Владелец компании
+    if (optional($task->project->company)->user_id === $user->id) return true;
+
+    // Руководитель проекта
+    if ($task->project->managers->contains('id', $user->id)) return true;
+
+    return false;
+}
+
+public function updateProgress(User $user, Task $task): bool
+{
+   
+
+    // Владелец компании
+    if (optional($task->project->company)->user_id === $user->id) return true;
+
+    // Руководитель проекта
+    if ($task->project->managers->contains('id', $user->id)) return true;
+
+    // Исполнители тоже могут менять прогресс
+    if ($task->executors->contains('id', $user->id)) return true;
+
+    return false;
+}
+
+
 
     public function addFiles(User $user, Task $task): bool
     {
