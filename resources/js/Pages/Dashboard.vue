@@ -240,7 +240,7 @@ onMounted(async () => {
     <!-- Если Telegram не привязан -->
     <template v-else-if="!telegramId && !showInput">
       <a
-        href="https://t.me/GetMyIdBotWork_bot"
+        href="https://t.me/UserInfeBot"
         target="_blank"
         class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
         Привязать Telegram
@@ -255,7 +255,7 @@ onMounted(async () => {
     <!-- Когда открыт инпут -->
     <div v-if="showInput" class="flex flex-col items-end gap-2">
       <a
-        href="https://t.me/GetMyIdBotWork_bot"
+        href="https://t.me/UserInfeBot"
         target="_blank"
         class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
         Получить Chat ID

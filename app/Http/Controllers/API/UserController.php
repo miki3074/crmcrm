@@ -70,22 +70,37 @@ public function generateTelegramToken(Request $request)
     }
 
 
- public function saveChatId(Request $request)
+public function saveChatId(Request $request)
 {
     $request->validate([
         'chat_id' => 'required|string|max:50',
     ]);
 
     $user = $request->user();
+
+    // 🔍 Проверяем, не занят ли chat_id другим пользователем
+    $exists = \App\Models\User::where('telegram_chat_id', $request->chat_id)
+        ->where('id', '!=', $user->id)
+        ->exists();
+
+    if ($exists) {
+        return response()->json([
+            'success' => false,
+            'message' => '❌ Этот Telegram уже привязан к другому аккаунту.',
+        ], 409); // 409 — Conflict
+    }
+
+    // ✅ Всё ок — сохраняем
     $user->telegram_chat_id = $request->chat_id;
     $user->save();
 
     return response()->json([
         'success' => true,
-        'message' => 'Telegram ID сохранён',
+        'message' => '✅ Telegram успешно сохранён.',
         'chat_id' => $user->telegram_chat_id,
     ]);
 }
+
    
 
 
