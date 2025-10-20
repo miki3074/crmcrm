@@ -80,6 +80,10 @@ Route::post('/tasks/{task}/files', [TaskController::class, 'addFiles']);
 Route::get('/tasks/{task}', [TaskController::class, 'show']);
 });
 
+Route::get('/tasks/files/{file}', [TaskController::class, 'downloadFile'])
+    ->middleware('auth:sanctum');
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/subtasks', [SubtaskController::class, 'index']);

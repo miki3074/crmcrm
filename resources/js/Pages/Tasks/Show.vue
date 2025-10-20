@@ -367,15 +367,17 @@ onMounted(fetchTask)
               </div>
               <div v-else class="flex flex-wrap gap-2">
                 <a
-                  v-for="f in task.files"
-                  :key="f.id"
-                  :href="`/storage/${f.file_path}`"
-                  target="_blank"
-                  class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
-                >
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/></svg>
-                  {{ f.file_path.split('/').pop() }}
-                </a>
+  v-for="f in task.files"
+  :key="f.id"
+  :href="`/api/tasks/files/${f.id}`"
+  class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
+>
+  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
+  </svg>
+  {{ f.file_path.split('/').pop() }}
+</a>
+
               </div>
             </div>
           </div>

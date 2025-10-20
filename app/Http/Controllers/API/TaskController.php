@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\TaskFile;
 
+use Illuminate\Support\Facades\Storage;
+
 class TaskController extends Controller
 {
     
@@ -162,6 +164,26 @@ public function addFiles(Request $request, Task $task)
 
     return response()->json(['message' => 'Файлы успешно добавлены']);
 }
+
+
+public function downloadFile($fileId)
+{
+    $file = \App\Models\TaskFile::findOrFail($fileId);
+
+    // Проверка доступа к задаче
+    $this->authorize('view', $file->task);
+
+    $path = $file->file_path;
+
+    if (!Storage::disk('public')->exists($path)) {
+        return response()->json(['message' => 'Файл не найден.'], Response::HTTP_NOT_FOUND);
+    }
+
+    $originalName = basename($path); // или сохрани оригинальное имя при загрузке
+
+    return Storage::disk('public')->download($path, $originalName);
+}
+
 
 public function complete(Task $task)
     {
