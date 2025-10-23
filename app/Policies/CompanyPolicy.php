@@ -89,10 +89,12 @@ if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Company $company): bool
-    {
-        //
-    }
+   public function delete(User $user, Company $company): bool
+{
+    // только владелец компании
+    return $user->id === $company->user_id;
+}
+
 
     /**
      * Determine whether the user can restore the model.

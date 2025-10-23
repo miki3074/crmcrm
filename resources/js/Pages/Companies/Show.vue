@@ -123,6 +123,18 @@ const managersWithOwnerFirst = computed(() => {
 
 
 
+const deleteCompany = async (companyId) => {
+  if (!confirm('Вы уверены, что хотите удалить эту компанию со всеми проектами и задачами?')) return
+
+  try {
+    await axios.delete(`/api/companies/${companyId}`, { withCredentials: true })
+    alert('Компания успешно удалена.')
+    await fetchCompanies() // перезагружаем список компаний
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении компании')
+  }
+}
+
 
 onMounted(fetchCompany)
 </script>
@@ -160,7 +172,11 @@ onMounted(fetchCompany)
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2h5z"/></svg>
               Создать проект
             </button>
+
+           
           </div>
+
+           
         </div>
       </div>
     </div>

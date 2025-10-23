@@ -19,11 +19,10 @@ public function index()
 
     $ownerId = auth()->id();
 
-    // Берём только компании текущего владельца
+
     $companies = Company::where('user_id', $ownerId)->pluck('id');
 
-    // Пользователи через pivot company_user,
-    // но только для этих компаний
+    
     $users = \DB::table('company_user')
         ->join('users', 'company_user.user_id', '=', 'users.id')
         ->join('companies', 'company_user.company_id', '=', 'companies.id')
@@ -54,10 +53,6 @@ public function index()
 
     return response()->json($users->values());
 }
-
-
-
-
 
 
 

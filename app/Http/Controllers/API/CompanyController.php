@@ -480,6 +480,46 @@ $watchingTasks = Task::with([
 
 
 
+public function destroy(\App\Models\Company $company)
+{
+    // ✅ Разрешение: только владелец компании
+    $this->authorize('delete', $company);
+
+    // удаляем все связанные проекты, задачи, подзадачи и файлы
+    foreach ($company->projects as $project) {
+        foreach ($project->tasks as $task) {
+            // удаляем файлы задачи
+            foreach ($task->files as $file) {
+                if (\Storage::disk('public')->exists($file->file_path)) {
+                    \Storage::disk('public')->delete($file->file_path);
+                }
+                $file->delete();
+            }
+
+            // удаляем подзадачи
+            foreach ($task->subtasks as $subtask) {
+                $subtask->delete();
+            }
+
+            $task->delete();
+        }
+
+        // удаляем подпроекты, если есть
+        if (method_exists($project, 'subprojects')) {
+            foreach ($project->subprojects as $sp) {
+                $sp->delete();
+            }
+        }
+
+        $project->delete();
+    }
+
+    // удаляем саму компанию
+    $company->delete();
+
+    return response()->json(['message' => 'Компания и все связанные данные удалены.']);
+}
+
 
 
 }

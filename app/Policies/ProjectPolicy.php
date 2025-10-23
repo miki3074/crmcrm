@@ -78,6 +78,10 @@ class ProjectPolicy
             || $user->id === $project->company->user_id;
     }
 
+     public function updateman(User $user, Project $project): bool
+    {
+        return $user->id === $project->company->user_id;
+    }
     /**
      * Обновление бюджета
      */
@@ -100,6 +104,13 @@ class ProjectPolicy
     {
         return $user->id === $project->company->user_id;
     }
+
+    public function deletepr(User $user, Project $project): bool
+{
+    // Только владелец компании или администратор
+    return $user->id === $project->company->user_id || ($user->hasRole('admin') ?? false);
+}
+
 
     public function restore(User $user, Project $project): bool
     {

@@ -205,6 +205,25 @@ Route::middleware('auth:sanctum')->put('/tasks/{task}', [TaskController::class, 
 Route::middleware('auth:sanctum')->post('/tasks/{task}/watchers', [TaskController::class, 'addWatcher']);
 
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/projects/{project}/add-manager', [ProjectController::class, 'addManager']);
+    Route::post('/projects/{project}/replace-manager', [ProjectController::class, 'replaceManager']);
+});
+
+Route::delete('/companies/{company}', [CompanyController::class, 'destroy']);
+Route::delete('/projects/{project}', [ProjectController::class, 'destroy']);
+Route::delete('/tasks/{task}', [TaskController::class, 'destroy']);
+
+// управление участниками задачи
+Route::patch('/tasks/{task}/executor', [TaskController::class, 'updateExecutor']);
+
+Route::patch('/tasks/{task}/responsible', [TaskController::class, 'updateResponsible']);
+
+Route::patch('/tasks/{task}/watcher', [TaskController::class, 'updateWatcher']);
+
+
+
+
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
 

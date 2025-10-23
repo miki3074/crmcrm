@@ -10,34 +10,7 @@ use App\Models\Company;
 
 class ProjectController extends Controller
 {
-//        public function store(Request $request)
-// {
-//     $request->validate([
-//         'name' => 'required|string|max:255',
-//         'manager_id' => 'required|exists:users,id',
-//         'start_date' => 'required|date',
-//         'duration_days' => 'required|integer|min:1',
-//         'company_id' => 'required|exists:companies,id',
-//     ]);
 
-//     $company = \App\Models\Company::findOrFail($request->company_id);
-
-//     // Проверяем, что текущий пользователь — владелец компании
-//     if ($company->user_id !== auth()->id()) {
-//         return response()->json(['message' => 'Только владелец компании может создавать проекты'], 403);
-//     }
-
-//     $project = Project::create([
-//         'name' => $request->name,
-//         'manager_id' => $request->manager_id,
-//         'start_date' => $request->start_date,
-//         'duration_days' => $request->duration_days,
-//         'company_id' => $request->company_id,
-//         'initiator_id' => auth()->id(),
-//     ]);
-
-//     return response()->json($project, 201);
-// }
 
 public function store(Request $request)
 {
@@ -135,18 +108,6 @@ public function show($id)
 
 
 
-//             public function employees(Project $project)
-// {
-//     $company = $project->company;
-
-//     // Все сотрудники компании (созданные этим пользователем)
-//     $employees = \App\Models\User::where('created_by', $company->user_id)
-//         ->orWhere('id', $company->user_id) // Добавляем владельца компании
-//         ->get(['id', 'name']);
-
-//     return response()->json($employees);
-// }
-
 public function employees(Project $project)
 {
     $company = $project->company;
@@ -211,6 +172,111 @@ public function updateName(Request $request, Project $project)
         'project' => $project
     ]);
 }
+
+
+// Добавить нового руководителя в проект
+public function addManager(Request $request, Project $project)
+{
+    $this->authorize('updateman', $project);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    // Проверим, не добавлен ли уже этот руководитель
+    if ($project->managers()->where('user_id', $validated['user_id'])->exists()) {
+        return response()->json(['message' => 'Этот пользователь уже является руководителем проекта'], 422);
+    }
+
+    $project->managers()->attach($validated['user_id']);
+
+    $user = \App\Models\User::find($validated['user_id']);
+    $company = $project->company;
+
+    if ($user && $user->telegram_chat_id) {
+        \App\Services\TelegramService::sendMessage(
+            $user->telegram_chat_id,
+            "👋 Вы добавлены в качестве руководителя проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
+        );
+    }
+
+    return response()->json([
+        'message' => 'Руководитель успешно добавлен',
+        'managers' => $project->managers()->get(['id', 'name']),
+    ]);
+}
+
+// Заменить (изменить) руководителя
+public function replaceManager(Request $request, Project $project)
+{
+    $this->authorize('updateman', $project);
+
+    $validated = $request->validate([
+        'old_manager_id' => 'required|exists:users,id',
+        'new_manager_id' => 'required|exists:users,id|different:old_manager_id',
+    ]);
+
+    // Проверим, что старый руководитель действительно прикреплён
+    if (!$project->managers()->where('user_id', $validated['old_manager_id'])->exists()) {
+        return response()->json(['message' => 'Этот пользователь не является руководителем проекта'], 404);
+    }
+
+    // Удаляем старого и добавляем нового
+    $project->managers()->detach($validated['old_manager_id']);
+    $project->managers()->attach($validated['new_manager_id']);
+
+    // Уведомляем нового руководителя
+    $user = \App\Models\User::find($validated['new_manager_id']);
+    $company = $project->company;
+
+    if ($user && $user->telegram_chat_id) {
+        \App\Services\TelegramService::sendMessage(
+            $user->telegram_chat_id,
+            "👔 Вы назначены руководителем проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
+        );
+    }
+
+    return response()->json([
+        'message' => 'Руководитель успешно изменён',
+        'managers' => $project->managers()->get(['id', 'name']),
+    ]);
+}
+
+
+public function destroy(Project $project)
+{
+    $this->authorize('deletepr', $project);
+
+    // Удаляем все связанные данные
+    foreach ($project->tasks as $task) {
+        // удаляем файлы задач
+        foreach ($task->files as $file) {
+            if (\Storage::disk('public')->exists($file->file_path)) {
+                \Storage::disk('public')->delete($file->file_path);
+            }
+            $file->delete();
+        }
+
+        // удаляем подзадачи
+        foreach ($task->subtasks as $subtask) {
+            $subtask->delete();
+        }
+
+        $task->delete();
+    }
+
+    // удаляем подпроекты (если есть)
+    if (method_exists($project, 'subprojects')) {
+        foreach ($project->subprojects as $sp) {
+            $sp->delete();
+        }
+    }
+
+    $project->delete();
+
+    return response()->json(['message' => 'Проект и все связанные данные удалены.']);
+}
+
 
 
 }

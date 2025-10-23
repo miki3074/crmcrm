@@ -200,6 +200,19 @@ const saveChatId = async () => {
 }
 
 
+const deleteCompany = async (companyId) => {
+  if (!confirm('Вы уверены, что хотите удалить эту компанию со всеми проектами и задачами?')) return
+
+  try {
+    await axios.delete(`/api/companies/${companyId}`, { withCredentials: true })
+    alert('Компания успешно удалена.')
+    await fetchCompanies() // перезагружаем список компаний
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении компании')
+  }
+}
+
+
 // onMounted
 onMounted(async () => {
   await Promise.all([fetchCompanies(), fetchSummary()])
@@ -252,7 +265,6 @@ onMounted(async () => {
       </button>
     </template>
 
-    <!-- Когда открыт инпут -->
     <div v-if="showInput" class="flex flex-col items-end gap-2">
       <a
         href="https://t.me/UserInfeBot"
@@ -283,13 +295,8 @@ onMounted(async () => {
   </div>
 </div>
 
-
-
-
-
-
     <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      <!-- Быстрые действия -->
+     
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
@@ -306,7 +313,7 @@ onMounted(async () => {
         </button>
 
 
- <button
+        <button
           class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
           @click="$inertia.visit('/file-storage')">
           <div class="flex items-center gap-3">
@@ -354,7 +361,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- Поиск -->
+     
       <div class="flex items-center gap-3">
         <div class="relative flex-1">
           <input
@@ -421,8 +428,21 @@ onMounted(async () => {
           <div class="min-w-0">
             <div class="font-semibold truncate text-slate-500">{{ company.name }}</div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
+            <button
+    v-if="company.user_id === userId"
+    @click.stop="deleteCompany(company.id)"
+    class=" top-0 right-0 text-rose-500 hover:text-rose-700 text-sm"
+    title="Удалить компанию"
+  >
+    удалить
+  </button>
           </div>
+
+      
         </div>
+
+          
+
       </div>
     </div>
   </div>

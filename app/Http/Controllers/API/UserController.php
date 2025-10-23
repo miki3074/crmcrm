@@ -11,7 +11,6 @@ use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
-// app/Http/Controllers/API/UserController.php
 
 public function managers(Request $request)
 {
@@ -38,7 +37,6 @@ public function managers(Request $request)
         ->select('id', 'name')
         ->get();
 
-    // объединяем
     $result = $managers->merge($createdManagers)->unique('id')->values();
 
     // 3) добавляем владельца
@@ -90,7 +88,7 @@ public function saveChatId(Request $request)
         ], 409); // 409 — Conflict
     }
 
-    // ✅ Всё ок — сохраняем
+    // ✅  сохраняем
     $user->telegram_chat_id = $request->chat_id;
     $user->save();
 
@@ -100,8 +98,5 @@ public function saveChatId(Request $request)
         'chat_id' => $user->telegram_chat_id,
     ]);
 }
-
-   
-
 
 }

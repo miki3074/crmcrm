@@ -9,3 +9,44 @@
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
+
+
+.badge {
+  @apply px-2 py-1 rounded-full bg-white/20 text-sm;
+}
+
+.btn-primary {
+  @apply rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium;
+}
+
+.btn-secondary {
+  @apply rounded-xl bg-white text-gray-900 hover:bg-gray-100 px-4 py-2 text-sm font-medium;
+}
+
+.btn-danger {
+  @apply rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 text-sm font-medium;
+}
+
+.btn-blue {
+  @apply bg-blue-500 hover:bg-blue-600 text-white rounded-md px-3 py-1 text-sm;
+}
+
+.btn-indigo {
+  @apply bg-indigo-500 hover:bg-indigo-600 text-white rounded-md px-3 py-1 text-sm;
+}
+
+.btn-green {
+  @apply bg-emerald-500 hover:bg-emerald-600 text-white rounded-md px-3 py-1 text-sm;
+}
+
+.btn-rose {
+  @apply bg-rose-500 hover:bg-rose-600 text-white rounded-md px-3 py-1 text-sm;
+}
+
+.btn-rose-dark {
+  @apply bg-rose-600 hover:bg-rose-700 text-white rounded-md px-3 py-1 text-sm;
+}
+
+.btn-rose-darker {
+  @apply bg-rose-700 hover:bg-rose-800 text-white rounded-md px-3 py-1 text-sm;
+}

@@ -173,6 +173,40 @@ const canUploadFiles = computed(() => {
   )
 })
 
+const canDeleteTask = computed(() => {
+  if (!task.value || !user) return false
+  return (
+    user.id === task.value.project?.company?.user_id || // владелец компании
+    (task.value.project?.managers || []).some(m => m.id === user.id)  // менеджер проекта
+  
+  )
+})
+
+
+const canUpdate = computed(() => {
+  if (!task.value || !user) return false
+  return (
+    user.id === task.value.project?.company?.user_id || // владелец компании
+    (task.value.project?.managers || []).some(m => m.id === user.id)  // менеджер проекта
+  
+  )
+})
+
+
+
+const deleteTask = async () => {
+  if (!confirm('Удалить задачу и все связанные подзадачи и файлы?')) return
+
+  try {
+    await axios.delete(`/api/tasks/${taskId}`, { withCredentials: true })
+    alert('Задача успешно удалена.')
+    window.history.back() // вернуться на предыдущую страницу
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении задачи')
+  }
+}
+
+
 
 const showWatcherModal = ref(false)
 const selectedWatcher = ref(null)
@@ -197,6 +231,63 @@ const addWatcher = async () => {
   }
 }
 
+
+// управление участниками
+const showExecutorModal = ref(false)
+const showResponsibleModal = ref(false)
+
+
+const selectedUser = ref(null)
+
+
+const canManageMembers = computed(() => {
+  if (!task.value || !user) return false
+  return (
+    user.id === task.value.project?.company?.user_id ||
+    (task.value.project?.managers || []).some(m => m.id === user.id)
+  )
+})
+
+// загрузка сотрудников компании
+const fetchEmployees = async () => {
+  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`)
+  companyEmployees.value = data
+}
+
+// открыть модалки
+const openChangeExecutor = async () => {
+  await fetchEmployees()
+  selectedUser.value = null
+  showExecutorModal.value = true
+}
+
+const openChangeResponsible = async () => {
+  await fetchEmployees()
+  selectedUser.value = null
+  showResponsibleModal.value = true
+}
+
+
+
+const changeExecutor = async () => {
+  if (!selectedUser.value) return alert('Выберите сотрудника')
+  await axios.patch(`/api/tasks/${taskId}/executor`, { user_id: selectedUser.value })
+  await fetchTask()
+  showExecutorModal.value = false
+}
+
+const changeResponsible = async () => {
+  if (!selectedUser.value) return alert('Выберите сотрудника')
+  await axios.patch(`/api/tasks/${taskId}/responsible`, { user_id: selectedUser.value })
+  await fetchTask()
+  showResponsibleModal.value = false
+}
+
+
+
+
+
+
 onMounted(fetchTask)
 </script>
 
@@ -210,7 +301,7 @@ onMounted(fetchTask)
       <div class="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600 opacity-90"></div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
         <div class="flex items-start gap-4">
-          <div class="flex-1">
+          <div >
             <h1 class="text-2xl sm:text-3xl font-semibold">
               {{ task?.title ?? 'Загрузка…' }}
             </h1>
@@ -261,46 +352,105 @@ onMounted(fetchTask)
             </div>
           </div>
 
-          <div class="hidden sm:flex items-center gap-3">
+          <!-- <div class="hidden sm:flex items-center gap-3">
             <a v-if="task?.project?.id" :href="`/projects/${task.project.id}`"
                class="rounded-xl bg-white text-gray-900 hover:bg-white/90 px-4 py-2 font-medium">
               К проекту
             </a>
-          </div>
+          </div> -->
 
-          <button
-  @click="showEditModal = true"
-  class=" rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700"
->
-  ✏️ Изменить
-</button>
+          
 
-<button @click="openWatcherModal"
-  class="rounded bg-blue-600 text-white px-3 py-1 hover:bg-blue-700">
-  ➕ Добавить наблюдателя
-</button>
 
-<div v-if="canManageTask" class="mt-3" >
+<!-- Кнопки действий -->
+<div class="flex flex-col sm:flex-row flex-wrap gap-3 mt-6 sm:mt-0 sm:ml-auto w-full sm:w-auto">
+
+  <!-- Первая строка: основные действия -->
+  <div class="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
+    <button
+      v-if="canUpdate"
+      @click="showEditModal = true"
+      class="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-medium shadow-sm transition"
+    >
+      ✏️ Изменить
+    </button>
+
+    <button
+      v-if="canDeleteTask"
+      @click="deleteTask"
+      class="flex items-center gap-1 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm transition"
+    >
+      🗑 Удалить задачу
+    </button>
+
+    <a
+      v-if="task?.project?.id"
+      :href="`/projects/${task.project.id}`"
+      class="flex items-center gap-1 rounded-xl bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 font-medium shadow-sm transition"
+    >
+      🔙 К проекту
+    </a>
+  </div>
+
+  <!-- Вторая строка: управление участниками -->
+  <div
+    v-if="canManageMembers"
+    class="flex flex-wrap  gap-2 w-full sm:w-auto border-t border-white/20 sm:border-t-0 sm:border-l sm:pl-3 sm:ml-3 pt-3 sm:pt-0 mt-3 sm:mt-0"
+  >
+    <button
+      @click="openChangeExecutor"
+      class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition"
+    >
+      👷 Изменить исполнителя
+    </button>
+
+    <button
+      @click="openChangeResponsible"
+      class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-md transition"
+    >
+      👨‍💼 Изменить ответственного
+    </button>
+
+    <button
+      v-if="canUpdate"
+      @click="openWatcherModal"
+      class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
+    >
+      👁 Добавить наблюдателя
+    </button>
+  </div>
+
+  <!-- Третья строка: завершение -->
+  <div
+    v-if="canManageTask"
+    class="flex justify-end gap-2 w-full sm:w-auto border-t border-white/20 sm:border-t-0 sm:border-l sm:pl-3 sm:ml-3 pt-3 sm:pt-0 mt-3 sm:mt-0"
+  >
     <button
       v-if="canFinish"
       @click="finishTask"
-      class="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700"
-      title="Завершить задачу"
+      class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition"
     >
-      Завершить задачу
+      ✅ Завершить задачу
     </button>
 
-    <!-- Подсказки, почему кнопки нет -->
-    <div v-else-if="(task?.progress === 100) && !task?.completed" class="text-xs text-amber-600 mt-2">
+    <div v-else-if="(task?.progress === 100) && !task?.completed" class="text-xs text-amber-200">
       <span v-if="hasOpenSubtasks">
         Есть незавершённые подзадачи — завершите их, чтобы закрыть задачу.
       </span>
     </div>
 
-    <div v-if="task?.completed" class="text-sm mt-2 text-emerald-700">
+    <div v-if="task?.completed" class="text-sm text-emerald-200">
       Завершена {{ task?.completed_at || '' }}
     </div>
   </div>
+</div>
+
+
+
+
+
+
+
 
 
         </div>
@@ -348,10 +498,10 @@ onMounted(fetchTask)
 
           <!-- Файлы -->
           <div class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
-           <div class="flex items-center gap-2" v-if="canUploadFiles">
+           <div  v-if="canUploadFiles">
   <input type="file" multiple @change="handleFileChange" accept=".pdf,.doc,.docx,.xls,.xlsx"
          class="text-sm text-gray-600 dark:text-gray-300" />
-  <button @click="uploadFiles" class="rounded-xl bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700">
+  <button @click="uploadFiles" class="rounded-xl bg-indigo-600 text-white px-4 py-2 hover:bg-indigo-700 mt-4">
     Загрузить
   </button>
 </div>
@@ -591,6 +741,44 @@ onMounted(fetchTask)
     </div>
   </div>
 </div>
+
+
+<!-- Модалка: Изменить исполнителя -->
+<div v-if="showExecutorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Изменить исполнителя</h3>
+
+    <select v-model="selectedUser" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
+      <option disabled value="">Выберите сотрудника</option>
+      <option v-for="emp in companyEmployees" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    </select>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button @click="showExecutorModal = false" class="px-3 py-1.5 text-sm rounded-md bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Отмена</button>
+      <button @click="changeExecutor" class="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка: Изменить ответственного -->
+<div v-if="showResponsibleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Изменить ответственного</h3>
+
+    <select v-model="selectedUser" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
+      <option disabled value="">Выберите сотрудника</option>
+      <option v-for="emp in companyEmployees" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    </select>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button @click="showResponsibleModal = false" class="px-3 py-1.5 text-sm rounded-md bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Отмена</button>
+      <button @click="changeResponsible" class="px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+
+
 
   </AuthenticatedLayout>
 </template>

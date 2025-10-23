@@ -61,6 +61,13 @@ const canEditDescription = computed(() =>
   user?.id === project.value?.company?.user_id ||
   project.value?.managers?.some(m => m.id === user?.id)
 )
+
+
+const canManageManagers = computed(() =>
+  user?.id === project.value?.company?.user_id // ✅ только владелец компании
+)
+
+
 // helpers
 const daysLeft = (startDate, duration) => {
   if (!startDate || !duration) return '—'
@@ -214,6 +221,73 @@ const saveName = async () => {
   }
 }
 
+// === МОДАЛКА: Добавить руководителя ===
+const showAddManagerModal = ref(false)
+const addManagerForm = ref({ user_id: null })
+const addManagerError = ref('')
+const addingManager = ref(false)
+
+const openAddManager = async () => {
+  await fetchEmployees()
+  showAddManagerModal.value = true
+}
+
+const addManager = async () => {
+  addManagerError.value = ''
+  addingManager.value = true
+  try {
+    await axios.post(`/api/projects/${projectId}/add-manager`, addManagerForm.value)
+    showAddManagerModal.value = false
+    addManagerForm.value = { user_id: null }
+    await fetchProject()
+  } catch (e) {
+    addManagerError.value = e?.response?.data?.message || 'Не удалось добавить руководителя'
+  } finally {
+    addingManager.value = false
+  }
+}
+
+
+// === МОДАЛКА: Изменить руководителя ===
+const showReplaceManagerModal = ref(false)
+const replaceManagerForm = ref({ old_manager_id: null, new_manager_id: null })
+const replaceManagerError = ref('')
+const replacingManager = ref(false)
+
+const openReplaceManager = async () => {
+  await fetchEmployees()
+  showReplaceManagerModal.value = true
+}
+
+const replaceManager = async () => {
+  replaceManagerError.value = ''
+  replacingManager.value = true
+  try {
+    await axios.post(`/api/projects/${projectId}/replace-manager`, replaceManagerForm.value)
+    showReplaceManagerModal.value = false
+    replaceManagerForm.value = { old_manager_id: null, new_manager_id: null }
+    await fetchProject()
+  } catch (e) {
+    replaceManagerError.value = e?.response?.data?.message || 'Не удалось изменить руководителя'
+  } finally {
+    replacingManager.value = false
+  }
+}
+
+
+const deleteProject = async () => {
+  if (!confirm('Удалить проект и все связанные задачи и подзадачи?')) return;
+
+  try {
+    await axios.delete(`/api/projects/${projectId}`, { withCredentials: true });
+    alert('Проект успешно удалён.');
+    window.location.href = '/'; // возвращаемся на главную страницу
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении проекта');
+  }
+};
+
+
 
 onMounted(fetchProject)
 </script>
@@ -222,84 +296,112 @@ onMounted(fetchProject)
   <Head :title="project?.name ? `Проект — ${project.name}` : 'Проект'" />
   <AuthenticatedLayout>
     <!-- HERO -->
-    <div class="relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 opacity-90"></div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
-        <div class="flex items-start gap-4">
-          <div class="flex-1">
-            <h1 class="text-2xl sm:text-3xl font-semibold">
-              {{ project?.name ?? 'Загрузка…' }}
-            </h1>
-            <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Компания: <b>{{ project?.company?.name ?? '—' }}</b>
-              </span>
-              <span
-  v-for="m in project?.managers || []"
-  :key="m.id"
-  class="px-2 py-1 rounded-full bg-white/20 inline-block"
->
-  Руководитель: <b>{{ m.name }}</b>
-</span>
+   <div class="relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 opacity-90"></div>
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+      <!-- Левая часть -->
+      <div class="flex-1">
+        <h1 class="text-2xl sm:text-3xl font-semibold">
+          {{ project?.name ?? 'Загрузка…' }}
+        </h1>
+        <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span class="px-2 py-1 rounded-full bg-white/20">
+            Компания: <b>{{ project?.company?.name ?? '—' }}</b>
+          </span>
+          <span
+            v-for="m in project?.managers || []"
+            :key="m.id"
+            class="px-2 py-1 rounded-full bg-white/20"
+          >
+            Руководитель: <b>{{ m.name }}</b>
+          </span>
+          <span v-if="!project?.managers?.length" class="px-2 py-1 rounded-full bg-white/20">
+            Руководители: <b>—</b>
+          </span>
 
-<span v-if="!project?.managers?.length" class="px-2 py-1 rounded-full bg-white/20">
-  Руководители: <b>—</b>
-</span>
+          <span class="px-2 py-1 rounded-full bg-white/20">
+            Старт: <b>{{ project?.start_date ?? '—' }}</b>
+          </span>
+          <span class="px-2 py-1 rounded-full bg-white/20">
+            Длительность: <b>{{ project?.duration_days ?? '—' }}</b> дн.
+          </span>
+          <span
+            class="px-2 py-1 rounded-full bg-white text-gray-900"
+            v-if="project"
+            :class="daysBadge(daysLeft(project.start_date, project.duration_days))"
+          >
+            Осталось: <b>{{ daysLeft(project.start_date, project.duration_days) }}</b> дн.
+          </span>
+          <span class="px-2 py-1 rounded-full bg-white/20" v-if="project?.budget">
+            Бюджет: <b>{{ Number(project.budget).toLocaleString('ru-RU') }} ₽</b>
+          </span>
+        </div>
+      </div>
 
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Старт: <b>{{ project?.start_date ?? '—' }}</b>
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Длительность: <b>{{ project?.duration_days ?? '—' }}</b> дн.
-              </span>
-              <span
-                class="px-2 py-1 rounded-full bg-white text-gray-900"
-                v-if="project"
-                :class="daysBadge(daysLeft(project.start_date, project.duration_days))"
-              >
-                Осталось: <b>{{ daysLeft(project.start_date, project.duration_days) }}</b> дн.
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20" v-if="project?.budget">
-                Бюджет: <b>{{ Number(project.budget).toLocaleString('ru-RU') }} ₽</b>
-              </span>
-            </div>
-          </div>
+      <!-- Правая часть — блок кнопок -->
+      <div class="flex flex-col sm:items-end gap-3">
+        <!-- Основные действия -->
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            v-if="canCreateTask"
+            @click="openCreateTask"
+            class="rounded-xl bg-emerald-400 hover:bg-emerald-500 text-gray-900 px-4 py-2 font-medium shadow-sm"
+          >
+            + Задача
+          </button>
+          <button
+            v-if="canEditName"
+            @click="showNameModal = true"
+            class="rounded-xl bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 font-medium shadow-sm"
+          >
+            ✏️ Изменить название
+          </button>
+          <button
+            v-if="isCompanyOwner"
+            @click="deleteProject"
+            class="rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm"
+          >
+            🗑 Удалить проект
+          </button>
+        </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              v-if="canEditBudget"
-              @click="showBudgetModal = true"
-              class="rounded-xl bg-amber-400/90 hover:bg-amber-400 text-gray-900 px-4 py-2 font-medium"
-            >
-              Бюджет
-            </button>
-            <button
-              v-if="canEditDescription"
-              @click="showDescriptionModal = true"
-              class="rounded-xl bg-white text-gray-900 hover:bg-white/90 px-4 py-2 font-medium"
-            >
-              Описание
-            </button>
-            <button
-              v-if="canCreateTask"
-              @click="openCreateTask"
-              class="rounded-xl bg-emerald-400/95 hover:bg-emerald-400 text-gray-900 px-4 py-2 font-medium"
-            >
-              + Задача
-            </button>
-
-             <button
-    v-if="canEditName"
-    @click="showNameModal = true"
-    class="rounded-xl bg-blue-400/95 hover:bg-blue-500 text-white px-4 py-2 font-medium"
-  >
-    Изменить
-  </button>
-
-          </div>
+        <!-- Дополнительные настройки -->
+        <div class="flex flex-wrap justify-end gap-2 text-sm">
+          <button
+            v-if="canEditBudget"
+            @click="showBudgetModal = true"
+            class="rounded-xl bg-amber-400/90 hover:bg-amber-500 text-gray-900 px-3 py-1.5"
+          >
+            💰 Бюджет
+          </button>
+          <button
+            v-if="canEditDescription"
+            @click="showDescriptionModal = true"
+            class="rounded-xl bg-white/90 hover:bg-white text-gray-900 px-3 py-1.5"
+          >
+            📝 Описание
+          </button>
+          <button
+            v-if="canManageManagers"
+            @click="openAddManager"
+            class="rounded-xl bg-emerald-500/90 hover:bg-emerald-600 text-white px-3 py-1.5"
+          >
+            ➕ Добавить руководителя
+          </button>
+          <button
+            v-if="canManageManagers && (project?.managers?.length || 0) > 0"
+            @click="openReplaceManager"
+            class="rounded-xl bg-amber-500/90 hover:bg-amber-600 text-white px-3 py-1.5"
+          >
+            🔄 Изменить руководителя
+          </button>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
 
     <!-- BODY -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 pb-10" style="    margin-top: 3%;">
@@ -697,6 +799,82 @@ onMounted(fetchProject)
     </div>
   </div>
 </div>
+
+
+<!-- === МОДАЛКА: Добавить руководителя === -->
+<dialog v-if="showAddManagerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Добавить руководителя</h3>
+
+    <label class="block text-sm mb-2 text-gray-700 dark:text-gray-300">Выберите сотрудника:</label>
+    <select
+      v-model="addManagerForm.user_id"
+      class="w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white"
+    >
+      <option disabled value="">-- Выберите --</option>
+      <option v-for="e in employees" :key="e.id" :value="e.id">
+        {{ e.name }} — {{ e.email }}
+      </option>
+    </select>
+
+    <p v-if="addManagerError" class="text-red-500 text-sm mt-2">{{ addManagerError }}</p>
+
+    <div class="flex justify-end gap-2 mt-5">
+      <button @click="showAddManagerModal = false" class="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-700 dark:text-white">Отмена</button>
+      <button
+        @click="addManager"
+        :disabled="addingManager"
+        class="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+      >
+        {{ addingManager ? 'Добавляем...' : 'Добавить' }}
+      </button>
+    </div>
+  </div>
+</dialog>
+
+
+<!-- === МОДАЛКА: Изменить руководителя === -->
+<dialog v-if="showReplaceManagerModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Изменить руководителя</h3>
+
+    <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Текущий руководитель:</label>
+    <select
+      v-model="replaceManagerForm.old_manager_id"
+      class="w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white mb-3"
+    >
+      <option disabled value="">-- Выберите --</option>
+      <option v-for="m in project.managers" :key="m.id" :value="m.id">
+        {{ m.name }}
+      </option>
+    </select>
+
+    <label class="block text-sm mb-1 text-gray-700 dark:text-gray-300">Новый руководитель:</label>
+    <select
+      v-model="replaceManagerForm.new_manager_id"
+      class="w-full border rounded-md px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white"
+    >
+      <option disabled value="">-- Выберите --</option>
+      <option v-for="e in employees" :key="e.id" :value="e.id">
+        {{ e.name }} — {{ e.email }}
+      </option>
+    </select>
+
+    <p v-if="replaceManagerError" class="text-red-500 text-sm mt-2">{{ replaceManagerError }}</p>
+
+    <div class="flex justify-end gap-2 mt-5">
+      <button @click="showReplaceManagerModal = false" class="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-700 dark:text-white">Отмена</button>
+      <button
+        @click="replaceManager"
+        :disabled="replacingManager"
+        class="px-4 py-2 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+      >
+        {{ replacingManager ? 'Сохраняем...' : 'Изменить' }}
+      </button>
+    </div>
+  </div>
+</dialog>
+
 
 
 

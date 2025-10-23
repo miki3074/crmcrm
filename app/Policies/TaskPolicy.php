@@ -7,12 +7,12 @@ use App\Models\User;
 
 class TaskPolicy
 {
-    public function viewAny(User $user): bool
-    {
-        // Админ видит все задачи
-        if ($user->hasRole('admin')) return true;
-        return true; // либо можно ограничить по своему
-    }
+    // public function viewAny(User $user): bool
+    // {
+    //     // Админ видит все задачи
+    //     if ($user->hasRole('admin')) return true;
+    //     return true; // либо можно ограничить по своему
+    // }
 
     /**
      * Проверка участия в задаче (создатель, исполнитель, ответственный,
@@ -31,7 +31,7 @@ class TaskPolicy
 
     public function view(User $user, Task $task): bool
     {
-        if ($user->hasRole('admin')) return true;
+        // if ($user->hasRole('admin')) return true;
         if (optional($task->project->company)->user_id === $user->id) return true;
 
         return $this->participates($user, $task);
@@ -94,6 +94,8 @@ public function updateProgress(User $user, Task $task): bool
     // Исполнители тоже могут менять прогресс
     if ($task->executors->contains('id', $user->id)) return true;
 
+    if ($task->responsibles->contains('id', $user->id)) return true;
+
     return false;
 }
 
@@ -109,10 +111,29 @@ public function updateProgress(User $user, Task $task): bool
 
     public function delete(User $user, Task $task): bool
     {
-        return $user->hasRole('admin') ||
+        return
                $task->responsibles->contains('id', $user->id) ||
                $task->project->managers->contains('id', $user->id) ||
                $user->id === ($task->project->company->user_id ?? 0) ||
                $user->id === $task->creator_id;
     }
+
+    public function deletetask(User $user, \App\Models\Task $task): bool
+{
+
+    return
+       
+        $user->id === $task->project->company->user_id ||
+        $task->project->managers->contains('id', $user->id);
+}
+
+public function manageMembers(User $user, \App\Models\Task $task): bool
+{
+    // Разрешено владельцу компании и менеджеру проекта
+    return
+        $user->id === $task->project->company->user_id ||
+        $task->project->managers->contains('id', $user->id);
+}
+
+
 }

@@ -261,6 +261,72 @@ public function addWatcher(Request $request, Task $task)
 }
 
 
+public function destroy(\App\Models\Task $task)
+{
+    $this->authorize('delete', $task);
+
+    // Удаляем файлы задачи
+    foreach ($task->files as $file) {
+        if (\Storage::disk('public')->exists($file->file_path)) {
+            \Storage::disk('public')->delete($file->file_path);
+        }
+        $file->delete();
+    }
+
+    // Удаляем подзадачи
+    foreach ($task->subtasks as $subtask) {
+        $subtask->delete();
+    }
+
+    $task->delete();
+
+    return response()->json(['message' => 'Задача и все связанные данные удалены.']);
+}
+
+
+
+public function updateExecutor(Request $request, \App\Models\Task $task)
+{
+    $this->authorize('manageMembers', $task);
+
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    // Синхронизируем исполнителей (можно нескольких)
+    $task->executors()->sync([$request->user_id]);
+
+   return response()->json([
+    'message' => 'Исполнитель изменён',
+    'executors' => $task->executors()->select('users.id', 'users.name')->get(),
+]);
+
+}
+
+
+
+
+
+public function updateResponsible(Request $request, \App\Models\Task $task)
+{
+    $this->authorize('manageMembers', $task);
+
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $task->responsibles()->sync([$request->user_id]);
+
+   return response()->json([
+    'message' => 'Ответственный изменён',
+    'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
+]);
+
+}
+
+
+
+
 
 
 }
