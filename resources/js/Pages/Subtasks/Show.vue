@@ -40,6 +40,33 @@ const completeSubtask = async () => {
   subtask.value.completed_at = data.completed_at
 }
 
+const deleteSubtask = async (id) => {
+  if (!confirm('Удалить подзадачу?')) return
+  try {
+    await axios.delete(`/api/subtasks/${id}`, { withCredentials: true })
+    alert('Подзадача успешно удалена')
+    // возвращаемся на страницу задачи
+    window.history.back()
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении подзадачи')
+  }
+}
+
+
+const canDeleteSubtask = (subtask) => {
+  const userId = user?.id
+  if (!userId) return false
+
+  return (
+    userId === subtask.creator_id ||
+    userId === subtask.task?.project?.company?.user_id ||
+    (subtask.task?.project?.managers || []).some(m => m.id === userId)
+  )
+}
+
+
+
+
 onMounted(fetchSubtask)
 </script>
 
@@ -72,6 +99,15 @@ onMounted(fetchSubtask)
           >
             Завершить
           </button>
+
+          <button
+  v-if="canDeleteSubtask(subtask)"
+  @click="deleteSubtask(subtask.id)"
+  class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-sm rounded-md"
+>
+  🗑 Удалить
+</button>
+
 
           <span v-else-if="subtask.completed"
                 class="px-3 py-1.5 rounded-md bg-emerald-100 text-emerald-700 text-sm dark:bg-emerald-900/30 dark:text-emerald-300">

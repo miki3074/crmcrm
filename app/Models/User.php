@@ -100,4 +100,10 @@ public function managedProjects()
 }
 
 
+public function watchingProjects()
+{
+    return $this->belongsToMany(Project::class, 'project_watchers')->withTimestamps();
+}
+
+
 }

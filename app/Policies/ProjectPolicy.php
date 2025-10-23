@@ -48,6 +48,11 @@ class ProjectPolicy
             return true;
         }
 
+        // 👁 Наблюдатель проекта
+    if ($project->watchers->contains('id', $user->id)) {
+        return true;
+    }
+
         return false;
     }
 
@@ -110,6 +115,14 @@ class ProjectPolicy
     // Только владелец компании или администратор
     return $user->id === $project->company->user_id || ($user->hasRole('admin') ?? false);
 }
+
+public function updatewat(User $user, Project $project): bool
+{
+    return
+        $user->id === $project->company->user_id || // владелец компании
+        $project->managers->contains('id', $user->id); // менеджер проекта
+}
+
 
 
     public function restore(User $user, Project $project): bool

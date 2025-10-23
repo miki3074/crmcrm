@@ -288,6 +288,31 @@ const deleteProject = async () => {
 };
 
 
+const showWatcherModal = ref(false)
+const selectedWatcher = ref(null)
+
+
+const openAddWatcher = async () => {
+  const { data } = await axios.get(`/api/projects/${projectId}/employees`)
+  // ❌ исключаем владельца компании
+  employees.value = data.filter(u => u.id !== project.value.company.user_id)
+  showWatcherModal.value = true
+}
+
+
+const addWatcher = async () => {
+  if (!selectedWatcher.value) return
+  await axios.post(`/api/projects/${projectId}/watchers`, {
+    user_id: selectedWatcher.value
+  })
+  showWatcherModal.value = false
+  await fetchProject()
+}
+
+
+
+
+
 
 onMounted(fetchProject)
 </script>
@@ -309,6 +334,10 @@ onMounted(fetchProject)
           <span class="px-2 py-1 rounded-full bg-white/20">
             Компания: <b>{{ project?.company?.name ?? '—' }}</b>
           </span>
+
+
+
+
           <span
             v-for="m in project?.managers || []"
             :key="m.id"
@@ -319,6 +348,21 @@ onMounted(fetchProject)
           <span v-if="!project?.managers?.length" class="px-2 py-1 rounded-full bg-white/20">
             Руководители: <b>—</b>
           </span>
+
+          <span
+  v-for="w in project?.watchers || []"
+  :key="w.id"
+  class="px-2 py-1 rounded-full bg-white/20"
+>
+  Наблюдатель: <b>{{ w.name }}</b>
+</span>
+
+<span
+  v-if="!project?.watchers?.length"
+  class="px-2 py-1 rounded-full bg-white/20"
+>
+  Наблюдатели: <b>—</b>
+</span>
 
           <span class="px-2 py-1 rounded-full bg-white/20">
             Старт: <b>{{ project?.start_date ?? '—' }}</b>
@@ -396,6 +440,14 @@ onMounted(fetchProject)
           >
             🔄 Изменить руководителя
           </button>
+          <button
+  v-if="canManageManagers"
+  @click="openAddWatcher"
+  class="rounded-xl bg-emerald-500/90 hover:bg-emerald-600 text-white px-4 py-2 font-medium"
+>
+  👁 Добавить наблюдателя
+</button>
+
         </div>
       </div>
     </div>
@@ -443,71 +495,90 @@ onMounted(fetchProject)
 
             <!-- Список задач -->
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                v-for="t in project.tasks"
-                :key="t.id"
-                class="group rounded-xl border p-4 bg-white dark:bg-gray-800 hover:shadow-md transition cursor-pointer"
-                @click="$inertia.visit(`/tasks/${t.id}`)"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">{{ t.title }}</h3>
-                  <span class="px-2 py-1 text-xs rounded-full ring-1" :class="priorityBadge(t.priority)">
-                    {{ t.priority === 'high' ? 'Высокая' : t.priority === 'medium' ? 'Средняя' : 'Обычная' }}
-                  </span>
-                </div>
+  <div
+    v-for="t in project.tasks"
+    :key="t.id"
+    @click="$inertia.visit(`/tasks/${t.id}`)"
+    class="group rounded-xl border p-4 bg-white dark:bg-gray-800 hover:shadow-md transition cursor-pointer"
+    :class="[
+      t.progress === 100
+        ? 'border-emerald-500 ring-1 ring-emerald-300 bg-emerald-50 dark:bg-emerald-900/20' // ✅ завершено
+        : t.progress >= 50
+          ? 'border-amber-400 ring-1 ring-amber-300 bg-amber-50 dark:bg-amber-900/20'      // ⚠️ средний прогресс
+          : 'border-gray-400 ring-1 ring-gray-300 bg-gray-50 dark:bg-rose-900/20'          // 🔴 низкий прогресс
+    ]"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">
+        {{ t.title }}
+      </h3>
+      <span
+        class="px-2 py-1 text-xs rounded-full ring-1"
+        :class="priorityBadge(t.priority)"
+      >
+        {{ t.priority === 'high' ? 'Высокая' : t.priority === 'medium' ? 'Средняя' : 'Обычная' }}
+      </span>
+    </div>
 
-                <div class="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-                  <div class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path d="M7 11h5V6H7v5zm0 7h5v-5H7v5zm7 0h5v-5h-5v5zM14 6v5h5V6h-5z"/></svg>
-                    <span>С {{ t.start_date }} по {{ t.due_date }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 12c2.2 0 4-1.79 4-4s-1.8-4-4-4-4 1.79-4 4 1.8 4 4 4zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
-  </svg>
-  <span>
-    От: <b>{{ t.creator?.name ?? '—' }}</b> → 
-    Кому: 
-    <b v-if="t.executors?.length">
-      {{ t.executors.map(e => e.name).join(', ') }}
-    </b>
-    <b v-else>—</b>
-  </span>
+    <div class="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 11h5V6H7v5zm0 7h5v-5H7v5zm7 0h5v-5h-5v5zM14 6v5h5V6h-5z"/>
+        </svg>
+        <span>С {{ t.start_date }} по {{ t.due_date }}</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 12c2.2 0 4-1.79 4-4s-1.8-4-4-4-4 1.79-4 4 1.8 4 4 4zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
+        </svg>
+        <span>
+          От: <b>{{ t.creator?.name ?? '—' }}</b> → 
+          Кому: 
+          <b v-if="t.executors?.length">
+            {{ t.executors.map(e => e.name).join(', ') }}
+          </b>
+          <b v-else>—</b>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2l4 7H8l4-7zm0 20l-4-7h8l-4 7zM2 12l7-4v8l-7-4zm20 0l-7 4V8l7 4z"/>
+        </svg>
+        <span>
+          Ответственные:
+          <b v-if="t.responsibles?.length">
+            {{ t.responsibles.map(r => r.name).join(', ') }}
+          </b>
+          <b v-else>—</b>
+        </span> <br/>
+        
+      </div>
+      <span>выполнено: {{ t.progress }}%</span>
+    </div>
+
+    <div v-if="t.files?.length" class="mt-3 pt-3 border-t">
+      <div class="text-xs font-medium text-gray-500 mb-1">Файлы:</div>
+      <div class="flex flex-wrap gap-2">
+        <a
+          v-for="f in t.files"
+          :key="f.id"
+          :href="`/storage/${f.file_path}`"
+          target="_blank"
+          class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
+          @click.stop
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
+          </svg>
+          {{ f.file_path.split('/').pop() }}
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="flex items-center gap-2">
-  <svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l4 7H8l4-7zm0 20l-4-7h8l-4 7zM2 12l7-4v8l-7-4zm20 0l-7 4V8l7 4z"/>
-  </svg>
-  <span>
-    Ответственные: 
-    <b v-if="t.responsibles?.length">
-      {{ t.responsibles.map(r => r.name).join(', ') }}
-    </b>
-    <b v-else>—</b>
-  </span>
-</div>
-
-                </div>
-
-                <div v-if="t.files?.length" class="mt-3 pt-3 border-t">
-                  <div class="text-xs font-medium text-gray-500 mb-1">Файлы:</div>
-                  <div class="flex flex-wrap gap-2">
-                    <a
-                      v-for="f in t.files"
-                      :key="f.id"
-                      :href="`/storage/${f.file_path}`"
-                      target="_blank"
-                      class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
-                      @click.stop
-                    >
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/></svg>
-                      {{ f.file_path.split('/').pop() }}
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -874,6 +945,24 @@ onMounted(fetchProject)
     </div>
   </div>
 </dialog>
+
+<!-- Добавить наблюдателя -->
+<div v-if="showWatcherModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md">
+    <h2 class="text-lg font-semibold mb-3">Добавить наблюдателя</h2>
+    <select v-model="selectedWatcher" class="w-full border rounded p-2 mb-4">
+      <option disabled value="">Выберите сотрудника</option>
+      <option v-for="u in employees" :key="u.id" :value="u.id">
+        {{ u.name }}
+      </option>
+    </select>
+    <div class="flex justify-end gap-2">
+      <button @click="showWatcherModal = false" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">Отмена</button>
+      <button @click="addWatcher" class="px-3 py-1 rounded bg-emerald-600 text-white">Добавить</button>
+    </div>
+  </div>
+</div>
+
 
 
 

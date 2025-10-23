@@ -87,7 +87,7 @@ public function responsibles()
 }
 
 
-public function watchers()
+public function watcherstask()
 {
     return $this->belongsToMany(User::class, 'task_user_watchers')
         ->withTimestamps()

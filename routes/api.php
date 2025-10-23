@@ -221,6 +221,13 @@ Route::patch('/tasks/{task}/responsible', [TaskController::class, 'updateRespons
 
 Route::patch('/tasks/{task}/watcher', [TaskController::class, 'updateWatcher']);
 
+Route::delete('/subtasks/{subtask}', [SubtaskController::class, 'destroy']);
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/projects/{project}/watchers', [ProjectController::class, 'addWatcher']);
+    Route::delete('/projects/{project}/watchers', [ProjectController::class, 'removeWatcher']);
+});
 
 
 

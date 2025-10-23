@@ -34,6 +34,17 @@ class TaskPolicy
         // if ($user->hasRole('admin')) return true;
         if (optional($task->project->company)->user_id === $user->id) return true;
 
+        // 👁 Наблюдатель проекта
+    if ($task->project->watchers->contains('id', $user->id)) {
+        return true;
+    }
+
+    // 👁 Наблюдатель задачи
+if ($task->watcherstask->contains('id', $user->id)) {
+    return true;
+}
+
+
         return $this->participates($user, $task);
     }
 

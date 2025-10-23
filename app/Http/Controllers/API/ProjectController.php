@@ -62,18 +62,22 @@ public function store(Request $request)
 public function show($id)
 {
     $project = Project::with([
+       
         'managers:id,name',
         'company:id,name,user_id',
+        'watchers:id,name',
         'initiator:id,name',
         'subprojects.responsibles:id,name',
         'tasks' => function ($q) {
-            $q->with([
-                'creator:id,name',
-                'executors:id,name',     // many-to-many исполнители
-                'responsibles:id,name',  // many-to-many ответственные
-                'files:id,task_id,file_path',
-            ]);
-        }
+    $q->select('id', 'project_id', 'title', 'creator_id', 'start_date', 'due_date', 'priority', 'progress', 'completed') // ✅
+      ->with([
+          'creator:id,name',
+          'executors:id,name',
+          'responsibles:id,name',
+          'files:id,task_id,file_path',
+          
+      ]);
+}
     ])->findOrFail($id);
 
     $user = auth()->user();
@@ -276,6 +280,67 @@ public function destroy(Project $project)
 
     return response()->json(['message' => 'Проект и все связанные данные удалены.']);
 }
+
+
+// Добавить наблюдателя проекта
+public function addWatcher(Request $request, Project $project)
+{
+    $this->authorize('updatewat', $project); // только владелец компании или менеджер
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $userId = $validated['user_id'];
+
+    // 🚫 Нельзя добавить владельца компании как наблюдателя
+    if ($userId == $project->company->user_id) {
+        return response()->json(['message' => 'Владелец компании не может быть наблюдателем проекта'], 422);
+    }
+
+    // Проверим, не добавлен ли уже
+    if ($project->watchers()->where('user_id', $userId)->exists()) {
+        return response()->json(['message' => 'Этот пользователь уже является наблюдателем'], 422);
+    }
+
+    $project->watchers()->attach($userId);
+
+    $user = User::find($userId);
+    $company = $project->company;
+
+    if ($user && $user->telegram_chat_id) {
+        \App\Services\TelegramService::sendMessage(
+            $user->telegram_chat_id,
+            "👁 Вы добавлены как наблюдатель проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
+        );
+    }
+
+    return response()->json([
+        'message' => 'Наблюдатель успешно добавлен',
+        'watchers' => $project->watchers()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+
+
+
+// Удалить наблюдателя
+public function removeWatcher(Request $request, Project $project)
+{
+    $this->authorize('updatewat', $project);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $project->watchers()->detach($validated['user_id']);
+
+    return response()->json([
+        'message' => 'Наблюдатель удалён',
+        'watchers' => $project->watchers()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
 
 
 

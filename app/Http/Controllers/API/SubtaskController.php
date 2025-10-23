@@ -25,15 +25,24 @@ public function store(Request $request, Task $task)
 {
     $this->authorize('createSubtask', $task);
 
-    $validated = $request->validate([
-    'title'          => 'required|string|max:255',
-    'executor_id'    => 'required|array',
-    'executor_id.*'  => 'exists:users,id',
-    'responsible_id' => 'required|array',
-    'responsible_id.*' => 'exists:users,id',
-    'start_date'     => 'required|date',
-    'due_date'       => 'required|date|after_or_equal:start_date',
-]);
+    // Преобразуем одиночные ID в массивы
+    $data = $request->all();
+    if (!is_array($data['executor_id'] ?? null)) {
+        $data['executor_id'] = [$data['executor_id']];
+    }
+    if (!is_array($data['responsible_id'] ?? null)) {
+        $data['responsible_id'] = [$data['responsible_id']];
+    }
+
+    $validated = validator($data, [
+        'title'           => 'required|string|max:255',
+        'executor_id'     => 'required|array|min:1',
+        'executor_id.*'   => 'exists:users,id',
+        'responsible_id'  => 'required|array|min:1',
+        'responsible_id.*'=> 'exists:users,id',
+        'start_date'      => 'required|date',
+        'due_date'        => 'required|date|after_or_equal:start_date',
+    ])->validate();
 
     $subtask = $task->subtasks()->create([
         'title'      => $validated['title'],
@@ -42,14 +51,15 @@ public function store(Request $request, Task $task)
         'creator_id' => auth()->id(),
     ]);
 
-    // привязываем
-$subtask->executors()->sync($validated['executor_id']);
-$subtask->responsibles()->sync($validated['responsible_id']);
+    // Привязываем пользователей
+    $subtask->executors()->sync($validated['executor_id']);
+    $subtask->responsibles()->sync($validated['responsible_id']);
 
-     $recipients = array_unique([
+    // Уведомления
+    $recipients = array_unique(array_merge(
         $validated['executor_id'],
-        $validated['responsible_id'],
-    ]);
+        $validated['responsible_id']
+    ));
 
     foreach ($recipients as $userId) {
         $user = \App\Models\User::find($userId);
@@ -68,6 +78,7 @@ $subtask->responsibles()->sync($validated['responsible_id']);
         201
     );
 }
+
 
 
 
@@ -131,4 +142,17 @@ $subtask->responsibles()->sync($validated['responsible_id']);
             'completed_at' => $subtask->completed_at,
         ]);
     }
+
+
+public function destroy(Subtask $subtask)
+{
+    $this->authorize('delete', $subtask);
+
+    // удаляем подзадачу
+    $subtask->delete();
+
+    return response()->json(['message' => 'Подзадача успешно удалена']);
+}
+
+
 }

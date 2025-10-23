@@ -111,6 +111,36 @@ $responsibleCompanies = $responsibleGrouped->map(function ($tasks, $companyId) {
 })->values();
 
 
+// 6. Компании, где пользователь наблюдатель проекта
+$watcherProjects = Project::with(['company', 'managers', 'watchers'])
+    ->whereHas('watchers', function ($q) use ($userId) {
+        $q->where('project_watchers.user_id', $userId);
+    })
+    ->get()
+    ->groupBy('company_id');
+
+$watcherCompanies = collect();
+
+foreach ($watcherProjects as $companyId => $projects) {
+    $company = $projects->first()->company;
+
+    $company->projects = $projects->map(function ($project) {
+        return [
+            'id' => $project->id,
+            'name' => $project->name,
+            'managers' => $project->managers->map(fn($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+            ]),
+            'is_watcher' => true, // 👁 можно отметить, что он наблюдатель
+        ];
+    });
+
+    $watcherCompanies->push($company);
+}
+
+
+
 // 5. Компании, где он исполнитель подзадач
 
 
@@ -195,7 +225,8 @@ $subtaskCompanies = $subtaskCompanies
             ->concat($executorCompanies)
             ->concat($responsibleCompanies)
             ->concat($subtaskCompanies)
-             ->concat($memberCompanies) 
+            ->concat($memberCompanies) 
+            ->concat($watcherCompanies)
             ->unique('id')
             ->values()
     );
@@ -224,6 +255,60 @@ $subtaskCompanies = $subtaskCompanies
     }
 
   
+// public function show(Company $company)
+// {
+//     $this->authorize('view', $company);
+//     $userId = auth()->id();
+
+//     // Загружаем проекты с нужными связями
+//     $company->load([
+//         'projects' => function ($q) {
+//             $q->with([
+//                 'managers:id,name',
+//                 'tasks.executors:id,name',
+//                 'tasks.responsibles:id,name',
+//                 'tasks.subtasks.executors:id,name',
+//                 'tasks.subtasks.responsibles:id,name',
+//             ]);
+//         }
+//     ]);
+
+//     // Фильтруем проекты по доступу пользователя
+//     $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
+//         if ($company->user_id === $userId) return true;
+//         if ($project->managers->contains('id', $userId)) return true;
+//         if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
+//         if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
+
+//         // подзадачи
+//         if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId)))) return true;
+//         if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId)))) return true;
+
+//         return false;
+//     })->values();
+
+//     // Ответ JSON
+//     return response()->json([
+//         'id' => $company->id,
+//         'name' => $company->name,
+//         'logo' => $company->logo,
+//         'user_id' => $company->user_id,
+//         'projects' => $company->projects->map(function ($project) {
+//             return [
+//                 'id' => $project->id,
+//                 'name' => $project->name,
+//                 'start_date' => $project->start_date,
+//                 'duration_days' => $project->duration_days,
+//                 'managers' => $project->managers->map(fn($m) => [
+//                     'id' => $m->id,
+//                     'name' => $m->name,
+//                 ]),
+//             ];
+//         }),
+//     ]);
+// }
+
+
 public function show(Company $company)
 {
     $this->authorize('view', $company);
@@ -234,6 +319,7 @@ public function show(Company $company)
         'projects' => function ($q) {
             $q->with([
                 'managers:id,name',
+                'watchers:id,name', // 👁 добавляем
                 'tasks.executors:id,name',
                 'tasks.responsibles:id,name',
                 'tasks.subtasks.executors:id,name',
@@ -246,6 +332,8 @@ public function show(Company $company)
     $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
         if ($company->user_id === $userId) return true;
         if ($project->managers->contains('id', $userId)) return true;
+        if ($project->watchers->contains('id', $userId)) return true; // 👈 добавляем проверку наблюдателя
+
         if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
         if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
 
@@ -262,7 +350,7 @@ public function show(Company $company)
         'name' => $company->name,
         'logo' => $company->logo,
         'user_id' => $company->user_id,
-        'projects' => $company->projects->map(function ($project) {
+        'projects' => $company->projects->map(function ($project) use ($userId) {
             return [
                 'id' => $project->id,
                 'name' => $project->name,
@@ -272,11 +360,11 @@ public function show(Company $company)
                     'id' => $m->id,
                     'name' => $m->name,
                 ]),
+                'is_watcher' => $project->watchers->contains('id', $userId), // 👁 для фронта
             ];
         }),
     ]);
 }
-
 
 
 
@@ -458,6 +546,21 @@ $watchingTasks = Task::with([
         ->latest('id')->take(8)
         ->get(['id','title','project_id','responsible_id']);
 
+
+// 📦 Проекты, где я наблюдатель
+$watchingProjects = Project::with([
+        'company:id,name',
+        'managers:id,name',
+    ])
+    ->whereHas('watchers', function ($q) use ($user) {
+        $q->where('users.id', $user->id);
+    })
+    ->latest('id')
+    ->take(8)
+    ->get(['id','name','company_id','initiator_id']);
+
+
+
     // Срезы по срокам (берём только из задач)
     $dueToday = $allTasks->filter(fn($t) =>
         !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
@@ -467,14 +570,16 @@ $watchingTasks = Task::with([
         !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
     )->values();
 
+
     return response()->json([
         'managing_projects'       => $managingProjects,
-        'all_tasks'               => $allTasks,        // ✅ объединённый список задач
-        'all_subtasks'            => $allSubtasks,     // ✅ объединённый список подзадач
+        'all_tasks'               => $allTasks,        
+        'all_subtasks'            => $allSubtasks,     
         'responsible_subprojects' => $responsibleSubprojects,
         'due_today'               => $dueToday,
         'overdue'                 => $overdue,
         'watching_tasks'          => $watchingTasks,
+        'watching_projects'       => $watchingProjects,
     ]);
 }
 

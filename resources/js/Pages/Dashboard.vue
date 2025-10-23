@@ -655,6 +655,53 @@ onMounted(async () => {
         Срок: {{ t.due_date ?? '—' }}
       </div>
     </div>
+
+    
+
+  </div>
+</div>
+
+<!-- ================= Я наблюдатель проектов ================= -->
+<div class="mt-12 space-y-4">
+  <div class="flex items-center justify-between">
+    <h3 class="text-lg font-semibold text-slate-500">Я наблюдатель проектов</h3>
+  </div>
+
+  <div v-if="loadingSummary">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-for="i in 6" :key="'wp'+i" class="h-28 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
+    </div>
+  </div>
+
+  <div v-else>
+    <div v-if="summary.watching_projects?.length" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        v-for="p in summary.watching_projects"
+        :key="p.id"
+        class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
+        @click="$inertia.visit(`/projects/${p.id}`)"
+      >
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-slate-600 dark:text-slate-300 truncate">
+            {{ p.name }}
+          </div>
+        </div>
+        <div class="text-xs text-slate-400 truncate mt-1">
+          Компания: {{ p.company?.name ?? '—' }}
+        </div>
+
+        <div v-if="p.managers?.length" class="text-xs text-slate-400 mt-2">
+          Руководители:
+          <b class="text-slate-600 dark:text-slate-200">
+            {{ p.managers.map(m => m.name).join(', ') }}
+          </b>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="text-sm text-slate-400 italic">
+      
+    </div>
   </div>
 </div>
 

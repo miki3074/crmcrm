@@ -102,14 +102,15 @@ public function show($id)
         'project.managers:id,name',
         'project.company:id,name',
         'files:id,task_id,file_path',
-         'watchers:id,name',
+         'watcherstask:id,name',
         // добавили completed
-        'subtasks:id,task_id,title,creator_id,start_date,due_date,completed',
+        'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
         'subtasks.executors:id,name',
         'subtasks.creator:id,name',
     ])->findOrFail($id);
 
     $this->authorize('view', $task);
+    
     return response()->json($task);
 }
 
@@ -252,11 +253,11 @@ public function addWatcher(Request $request, Task $task)
         'user_id' => 'required|exists:users,id',
     ]);
 
-    $task->watchers()->syncWithoutDetaching([$validated['user_id']]);
+    $task->watcherstask()->syncWithoutDetaching([$validated['user_id']]);
 
     return response()->json([
         'message' => 'Наблюдатель добавлен',
-        'watchers' => $task->watchers()->get(['id', 'name']),
+        'watcherstask' => $task->watcherstask()->get(['id', 'name']),
     ]);
 }
 

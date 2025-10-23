@@ -41,10 +41,25 @@ public function subprojects()
     return $this->hasMany(Subproject::class);
 }
 
+// public function watchers()
+// {
+//     return $this->belongsToMany(User::class, 'project_watchers');
+// }
+
+
 
 public function managers()
     {
         return $this->belongsToMany(User::class, 'project_user');
     }
+
+ public function watchers()
+{
+    return $this->belongsToMany(User::class, 'project_watchers', 'project_id', 'user_id')
+        ->withTimestamps()
+        ->select('users.id', 'users.name');
+}
+
+
 
 }

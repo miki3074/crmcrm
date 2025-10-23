@@ -99,7 +99,22 @@ public function view(User $user, Subtask $subtask): bool
      */
     public function delete(User $user, Subtask $subtask): bool
     {
-        //
+        // Владелец компании
+        if (optional($subtask->task->project->company)->user_id === $user->id) {
+            return true;
+        }
+
+        // Менеджер проекта
+        if ($subtask->task->project->managers->contains('id', $user->id)) {
+            return true;
+        }
+
+        // Автор подзадачи
+        if ($subtask->creator_id === $user->id) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

@@ -26,6 +26,8 @@ public function view(User $user, Company $company): bool
         return true;
     }
 
+    
+
     // Менеджер хотя бы одного проекта в этой компании
     if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {
     return true;
@@ -65,6 +67,10 @@ if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
 ) {
     return true;
 }
+
+if ($company->projects()->whereHas('watchers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+        return true;
+    }
 
     return false;
 }

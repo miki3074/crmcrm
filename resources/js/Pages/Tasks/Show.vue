@@ -116,19 +116,46 @@ const openSubtaskModal = async () => {
   showSubtaskModal.value = true
 }
 
+// const createSubtask = async () => {
+//   submitLoading.value = true
+//   errorText.value = ''
+//   try {
+//     await axios.post(`/api/tasks/${taskId}/subtasks`, { ...subtaskForm.value, task_id: taskId }, { withCredentials: true })
+//     showSubtaskModal.value = false
+//     subtaskForm.value = {
+//       title: '',
+//       executor_id: '',
+//       responsible_id: '',
+//       start_date: new Date().toISOString().slice(0, 10),
+//       due_date: '',
+//     }
+//     await fetchTask()
+//   } catch (e) {
+//     errorText.value = e?.response?.data?.message || 'Ошибка при создании подзадачи'
+//   } finally {
+//     submitLoading.value = false
+//   }
+// }
+
 const createSubtask = async () => {
   submitLoading.value = true
   errorText.value = ''
+
   try {
-    await axios.post(`/api/tasks/${taskId}/subtasks`, { ...subtaskForm.value, task_id: taskId }, { withCredentials: true })
-    showSubtaskModal.value = false
-    subtaskForm.value = {
-      title: '',
-      executor_id: '',
-      responsible_id: '',
-      start_date: new Date().toISOString().slice(0, 10),
-      due_date: '',
+    const payload = {
+      title: subtaskForm.value.title,
+      executor_id: Array.isArray(subtaskForm.value.executor_id)
+        ? subtaskForm.value.executor_id
+        : [subtaskForm.value.executor_id],
+      responsible_id: Array.isArray(subtaskForm.value.responsible_id)
+        ? subtaskForm.value.responsible_id
+        : [subtaskForm.value.responsible_id],
+      start_date: subtaskForm.value.start_date,
+      due_date: subtaskForm.value.due_date,
     }
+
+    await axios.post(`/api/tasks/${taskId}/subtasks`, payload)
+    showSubtaskModal.value = false
     await fetchTask()
   } catch (e) {
     errorText.value = e?.response?.data?.message || 'Ошибка при создании подзадачи'
@@ -136,6 +163,9 @@ const createSubtask = async () => {
     submitLoading.value = false
   }
 }
+
+
+
 
 const hasOpenSubtasks = computed(() =>
   (task.value?.subtasks || []).some(st => !st.completed)
@@ -297,6 +327,7 @@ onMounted(fetchTask)
   <Head :title="task?.title ? `Задача — ${task.title}` : 'Задача'" />
   <AuthenticatedLayout>
     <!-- HERO -->
+     
     <div class="relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600 opacity-90"></div>
       <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
@@ -305,6 +336,16 @@ onMounted(fetchTask)
             <h1 class="text-2xl sm:text-3xl font-semibold">
               {{ task?.title ?? 'Загрузка…' }}
             </h1>
+
+
+<span
+  v-if="task?.watcherstask?.some(w => w.id === $page.props.auth.user.id)"
+  class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+>
+  👁 Вы наблюдатель этой задачи
+</span>
+
+
             <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <span class="px-2 py-1 rounded-full bg-white/20">
                 Проект: <b>{{ task?.project?.name ?? '—' }}</b>
@@ -337,9 +378,9 @@ onMounted(fetchTask)
 
 
 
-<span v-if="task && task.watchers" class="px-2 py-1 rounded-full bg-white/20">
+<span v-if="task && task.watcherstask" class="px-2 py-1 rounded-full bg-white/20">
   Наблюдатели:
-  <b>{{ task.watchers.map(w => w.name).join(', ') || '—' }}</b>
+  <b>{{ task.watcherstask.map(w => w.name).join(', ') || '—' }}</b>
 </span>
 
 
@@ -561,29 +602,46 @@ onMounted(fetchTask)
 
             <!-- Список -->
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                v-for="s in task.subtasks"
-                :key="s.id"
-                class="group rounded-xl border p-4 bg-white dark:bg-gray-800 hover:shadow-md transition cursor-pointer"
-                @click="$inertia.visit(`/subtasks/${s.id}`)"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">{{ s.title }}</h3>
-                </div>
-                <div class="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-                  <div>
-  Исполнитель:
-  <b>{{ s.executors?.map(e => e.name).join(', ') || '—' }}</b>
-</div>
-    <div>
-  Ответсвенный:
-    <b>{{ s.responsibles?.map(r => r.name).join(', ') || '—' }}</b>
+  <div
+    v-for="s in task.subtasks"
+    :key="s.id"
+    @click="$inertia.visit(`/subtasks/${s.id}`)"
+    class="group rounded-xl border p-4 bg-white dark:bg-gray-800 hover:shadow-md transition cursor-pointer"
+    :class="[
+      s.progress === 100
+        ? 'border-emerald-500 ring-1 ring-emerald-300 bg-emerald-50 dark:bg-emerald-900/20' // 💚 выполнено
+        : s.progress >= 50
+          ? 'border-amber-400 ring-1 ring-amber-300 bg-amber-50 dark:bg-amber-900/20'      // ⚠️ в процессе
+          : 'border-gray-400 ring-1 ring-gray-300 bg-gray-50 dark:bg-rose-900/20'          // 🔴 почти не начато
+    ]"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white leading-snug">
+        {{ s.title }}
+      </h3>
+      <span
+        class="text-sm px-2 py-1 rounded-full"
+        :class="{
+          'bg-emerald-100 text-emerald-700': s.progress === 100,
+          'bg-amber-100 text-amber-700': s.progress >= 50 && s.progress < 100,
+          'bg-rose-100 text-rose-700': s.progress < 50
+        }"
+      >
+        {{ s.progress ?? 0 }}%
+      </span>
+    </div>
+
+    <div class="mt-2 text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
+      <div>
+        Исполнитель:
+        <b>{{ s.executors?.map(e => e.name).join(', ') || '—' }}</b>
+      </div>
+      <div>Сроки: {{ s.start_date }} — {{ s.due_date }}</div>
+    </div>
+  </div>
 </div>
 
-                  <div>Сроки: {{ s.start_date }} — {{ s.due_date }}</div>
-                </div>
-              </div>
-            </div>
+
           </div>
         </div>
 
