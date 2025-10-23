@@ -10,7 +10,7 @@ defineProps({
 </script>
 
 <template>
-  <Head title="Добро пожаловать" />
+  <Head title="Планшет" />
 
   <!-- Page wrapper -->
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100">

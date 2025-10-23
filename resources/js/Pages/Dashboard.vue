@@ -221,7 +221,7 @@ onMounted(async () => {
 
 
 <template>
-  <Head title="Панель" />
+  <Head title="Планшет" />
   <AuthenticatedLayout>
     <template #header>
       <div class="flex items-center justify-between">
