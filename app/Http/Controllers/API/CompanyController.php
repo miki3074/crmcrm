@@ -476,7 +476,7 @@ $watchingTasks = Task::with([
         'project:id,name,company_id',
         'project.company:id,name'
     ])
-    ->whereHas('watchers', function ($q) use ($user) {
+    ->whereHas('watcherstask', function ($q) use ($user) {
         $q->where('users.id', $user->id);
     })
     ->orderByRaw('due_date IS NULL, due_date ASC')
