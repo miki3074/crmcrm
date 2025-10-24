@@ -15,6 +15,23 @@ class TaskController extends Controller
     
 public function store(Request $request)
 {
+
+  $messages = [
+        'title.required' => 'Введите название задачи.',
+        'priority.required' => 'Выберите приоритет.',
+        'start_date.required' => 'Укажите дату начала.',
+        'due_date.required' => 'Укажите дату окончания.',
+        'due_date.after_or_equal' => 'Дата окончания не может быть раньше даты начала.',
+        'executor_ids.required' => 'Выберите хотя бы одного исполнителя.',
+        'executor_ids.min' => 'Выберите хотя бы одного исполнителя.',
+        'executor_ids.*.exists' => 'Один из выбранных исполнителей не найден.',
+        'responsible_ids.required' => 'Выберите хотя бы одного ответственного.',
+        'responsible_ids.min' => 'Выберите хотя бы одного ответственного.',
+        'responsible_ids.*.exists' => 'Один из выбранных ответственных не найден.',
+        'files.*.mimes' => 'Можно загружать только файлы PDF, Word или Excel.',
+        'files.*.max' => 'Размер каждого файла не должен превышать 5 МБ.',
+    ];
+
     $validated = $request->validate([
         'title' => 'required|string|max:255',
         'priority' => 'required|in:low,medium,high',
@@ -28,7 +45,7 @@ public function store(Request $request)
         'subproject_id' => 'nullable|exists:subprojects,id',
         'company_id' => 'nullable|exists:companies,id',
         'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
-    ]);
+    ], $messages);
 
     // Определяем проект
     if (!empty($validated['subproject_id'])) {
@@ -158,13 +175,23 @@ public function addFiles(Request $request, Task $task)
 
     if ($request->hasFile('files')) {
         foreach ($request->file('files') as $file) {
-            $path = $file->store('task_files', 'public');
-            $task->files()->create(['file_path' => $path]);
+            // Получаем оригинальное имя файла
+            $originalName = $file->getClientOriginalName();
+
+            // Сохраняем с этим именем (в public/task_files/)
+            $path = $file->storeAs('task_files', $originalName, 'public');
+
+            // Записываем и путь, и имя в БД
+            $task->files()->create([
+                'file_path' => $path,
+                'file_name' => $originalName,
+            ]);
         }
     }
 
     return response()->json(['message' => 'Файлы успешно добавлены']);
 }
+
 
 
 public function downloadFile($fileId)

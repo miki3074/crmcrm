@@ -31,6 +31,8 @@ const companyEmployees = ref([])
 const selectedEvent = ref(null)
 const editing = ref(false)
 
+const errors = ref({})
+
 // форма события
 const form = ref({
   id: null,
@@ -107,19 +109,30 @@ const openCreateModal = (startISO, endISO) => {
 }
 
 const submitEvent = async () => {
+  errors.value = {} // очистим ошибки перед новым запросом
+
   const payload = { ...form.value }
   if (payload.start_at?.length === 16) payload.start_at += ':00'
   if (payload.end_at?.length === 16) payload.end_at += ':00'
 
-  if (editing.value && payload.id) {
-    await axios.patch(`/api/calendar/events/${payload.id}`, payload)
-  } else {
-    await axios.post('/api/calendar/events', payload)
-  }
+  try {
+    if (editing.value && payload.id) {
+      await axios.patch(`/api/calendar/events/${payload.id}`, payload)
+    } else {
+      await axios.post('/api/calendar/events', payload)
+    }
 
-  showCreateModal.value = false
-  const view = calendar.view
-  await fetchEvents(view.currentStart.toISOString(), view.currentEnd.toISOString())
+    showCreateModal.value = false
+    const view = calendar.view
+    await fetchEvents(view.currentStart.toISOString(), view.currentEnd.toISOString())
+  } catch (err) {
+    if (err.response?.status === 422) {
+      // Laravel validation errors
+      errors.value = err.response.data.errors || {}
+    } else {
+      alert('Ошибка при сохранении события.')
+    }
+  }
 }
 
 const onEventClick = (info) => {
@@ -259,6 +272,10 @@ onMounted(async () => {
           <div>
             <label class="block text-sm mb-1">Название</label>
             <input v-model="form.title" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white" />
+          <p v-if="errors.title" class="text-red-500 text-xs mt-1">
+    {{ errors.title[0] }}
+  </p>
+          
           </div>
           <div>
             <label class="block text-sm mb-1">Тип</label>

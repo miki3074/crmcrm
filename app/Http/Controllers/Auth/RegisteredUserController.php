@@ -29,26 +29,37 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+   public function store(Request $request): RedirectResponse
+{
+    $messages = [
+        'name.required' => 'Введите имя.',
+        'email.required' => 'Введите email.',
+        'email.email' => 'Введите корректный email.',
+        'email.unique' => 'Этот email уже зарегистрирован.',
+        'password.required' => 'Введите пароль.',
+        'password.confirmed' => 'Пароли не совпадают.',
+        'password.min' => 'Пароль должен содержать не менее :min символов.',
+    ];
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+        'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    ], $messages);
 
-         $user->assignRole('admin');
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        event(new Registered($user));
+    $user->assignRole('admin');
 
-        Auth::login($user);
+    event(new Registered($user));
 
-        return redirect(RouteServiceProvider::HOME);
-    }
+    Auth::login($user);
+
+    return redirect(RouteServiceProvider::HOME);
+}
+
 }

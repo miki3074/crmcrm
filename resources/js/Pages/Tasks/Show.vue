@@ -566,7 +566,7 @@ onMounted(fetchTask)
   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
   </svg>
-  {{ f.file_path.split('/').pop() }}
+  {{ f.file_name || f.file_path.split('/').pop() }}
 </a>
 
               </div>
@@ -764,7 +764,7 @@ onMounted(fetchTask)
     <form @submit.prevent="updateTask">
       <div class="mb-3">
         <label class="block text-sm text-gray-700 dark:text-gray-300">Название</label>
-        <input v-model="editForm.title" type="text" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white"/>
+        <input required v-model="editForm.title" type="text" class="w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white"/>
       </div>
 
       <div class="mb-3">

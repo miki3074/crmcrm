@@ -17,39 +17,48 @@ class TaskChecklistController extends Controller
     }
 
     public function store(Request $request, Task $task)
-    {
-        $this->authorize('update', $task);
+{
+    $this->authorize('update', $task);
 
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'assigned_to' => 'nullable|exists:users,id',
-            'important' => 'boolean',
-            'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg|max:5120',
-        ]);
+    $messages = [
+        'title.required' => 'Введите название пункта чек-листа.',
+        'title.max' => 'Название не должно превышать :max символов.',
+        'assigned_to.exists' => 'Выбранный ответственный не найден.',
+        'files.*.mimes' => 'Можно прикреплять только файлы PDF, Word, Excel или изображения.',
+        'files.*.max' => 'Размер каждого файла не должен превышать 5 МБ.',
+    ];
 
-        $checklist = $task->checklists()->create($validated);
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'assigned_to' => 'nullable|exists:users,id',
+        'important' => 'boolean',
+        'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg|max:5120',
+    ], $messages);
 
-        if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
-                $path = $file->store('checklist_files', 'public');
-                $checklist->files()->create(['file_path' => $path]);
-            }
+    $checklist = $task->checklists()->create($validated);
+
+    if ($request->hasFile('files')) {
+        foreach ($request->file('files') as $file) {
+            $path = $file->store('checklist_files', 'public');
+            $checklist->files()->create(['file_path' => $path]);
         }
+    }
 
-        if (!empty($validated['assigned_to'])) {
+    if (!empty($validated['assigned_to'])) {
         $user = \App\Models\User::find($validated['assigned_to']);
         if ($user && $user->telegram_chat_id) {
             \App\Services\TelegramService::sendMessage(
                 $user->telegram_chat_id,
-                "📝 Вам назначен новый пункт чеклиста: <b>{$checklist->title}</b>\n".
+                "📝 Вам назначен новый пункт чек-листа: <b>{$checklist->title}</b>\n".
                 "Задача: {$task->title}\n".
                 ($validated['important'] ? "⚠️ Важно!" : "")
             );
         }
     }
 
-        return response()->json($checklist->load('assignee', 'files'), 201);
-    }
+    return response()->json($checklist->load('assignee', 'files'), 201);
+}
+
 
     public function toggle(TaskChecklist $checklist)
     {

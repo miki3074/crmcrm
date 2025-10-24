@@ -83,6 +83,9 @@ Route::get('/tasks/{task}', [TaskController::class, 'show']);
 Route::get('/tasks/files/{file}', [TaskController::class, 'downloadFile'])
     ->middleware('auth:sanctum');
 
+Route::get('/files/{id}/download', [ProjectController::class, 'download'])
+    ->middleware('auth:sanctum');
+
 
 
 Route::middleware('auth:sanctum')->group(function () {

@@ -7,6 +7,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 const { props } = usePage()
 const projectId = props.id
 
+
+
 // state
 const loading = ref(true)
 const project = ref(null)
@@ -128,34 +130,61 @@ const handleFileUpload = (e) => { taskForm.value.files = e.target.files }
 const createTask = async () => {
   errorText.value = ''
   submitLoading.value = true
-  const formData = new FormData()
-  formData.append('title', taskForm.value.title)
-  
-taskForm.value.executor_ids.forEach(id => formData.append('executor_ids[]', id))
-taskForm.value.responsible_ids.forEach(id => formData.append('responsible_ids[]', id))
 
-  formData.append('priority', taskForm.value.priority) // low|medium|high
+  const formData = new FormData()
+  formData.append('title', taskForm.value.title || '')
+  formData.append('priority', taskForm.value.priority)
   formData.append('start_date', taskForm.value.start_date)
   formData.append('due_date', taskForm.value.due_date)
   formData.append('project_id', projectId)
   formData.append('company_id', project.value.company.id)
+
+  // массивы
+  taskForm.value.executor_ids.forEach(id => formData.append('executor_ids[]', id))
+  taskForm.value.responsible_ids.forEach(id => formData.append('responsible_ids[]', id))
+
+  // файлы
   if (taskForm.value.files) {
     for (let i = 0; i < taskForm.value.files.length; i++) {
       formData.append('files[]', taskForm.value.files[i])
     }
   }
+
   try {
     await axios.get('/sanctum/csrf-cookie')
-    await axios.post('/api/tasks', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+    await axios.post('/api/tasks', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    // ✅ очищаем и закрываем
     showTaskModal.value = false
-    taskForm.value = { title: '', executor_id: '', responsible_id: '', priority: 'low', start_date: new Date().toISOString().slice(0, 10), due_date: '', files: null }
+    taskForm.value = {
+      title: '',
+      executor_ids: [],
+      responsible_ids: [],
+      priority: 'low',
+      start_date: new Date().toISOString().slice(0, 10),
+      due_date: '',
+      files: null,
+    }
     await fetchProject()
   } catch (e) {
-    errorText.value = e?.response?.data?.message || 'Не удалось создать задачу'
+    if (e.response?.status === 422) {
+      // Laravel ошибки валидации
+      const data = e.response.data
+      errorText.value =
+        data.message ||
+        Object.values(data.errors || {})[0]?.[0] || // берём первое сообщение из errors{}
+        'Ошибка при создании задачи.'
+    } else {
+      errorText.value = 'Не удалось создать задачу.'
+    }
   } finally {
     submitLoading.value = false
   }
 }
+
 
 const saveBudget = async () => {
   await axios.patch(`/api/projects/${projectId}/budget`, { budget: budgetForm.value.budget })
@@ -301,13 +330,34 @@ const openAddWatcher = async () => {
 
 
 const addWatcher = async () => {
-  if (!selectedWatcher.value) return
-  await axios.post(`/api/projects/${projectId}/watchers`, {
-    user_id: selectedWatcher.value
-  })
-  showWatcherModal.value = false
-  await fetchProject()
+  errorText.value = '' // очищаем прошлую ошибку
+
+  if (!selectedWatcher.value) {
+    errorText.value = 'Выберите сотрудника.'
+    return
+  }
+
+  try {
+    await axios.post(`/api/projects/${projectId}/watchers`, {
+      user_id: selectedWatcher.value,
+    })
+
+    showWatcherModal.value = false
+    await fetchProject()
+  } catch (e) {
+    // ⚠️ Обработка ошибок
+    if (e.response?.status === 422) {
+      // Laravel 422 — валидация или логическая ошибка
+      errorText.value =
+        e.response?.data?.message ||
+        Object.values(e.response?.data?.errors || {})[0]?.[0] ||
+        'Ошибка при добавлении наблюдателя'
+    } else {
+      errorText.value = 'Не удалось добавить наблюдателя'
+    }
+  }
 }
+
 
 
 
@@ -559,23 +609,22 @@ onMounted(fetchProject)
     </div>
 
     <div v-if="t.files?.length" class="mt-3 pt-3 border-t">
-      <div class="text-xs font-medium text-gray-500 mb-1">Файлы:</div>
-      <div class="flex flex-wrap gap-2">
-        <a
-          v-for="f in t.files"
-          :key="f.id"
-          :href="`/storage/${f.file_path}`"
-          target="_blank"
-          class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
-          @click.stop
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
-          </svg>
-          {{ f.file_path.split('/').pop() }}
-        </a>
-      </div>
-    </div>
+  <div class="text-xs font-medium text-gray-500 mb-1">Файлы:</div>
+  <div class="flex flex-wrap gap-2">
+    <a
+      v-for="f in t.files"
+      :key="f.id"
+      :href="`/api/files/${f.id}/download`"
+      class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
+      @click.stop
+    >
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
+      </svg>
+      {{ f.file_name || f.file_path.split('/').pop() }}
+    </a>
+  </div>
+</div>
   </div>
 </div>
 
@@ -950,6 +999,9 @@ onMounted(fetchProject)
 <div v-if="showWatcherModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <div class="bg-white dark:bg-gray-800 p-6 rounded-xl w-full max-w-md">
     <h2 class="text-lg font-semibold mb-3">Добавить наблюдателя</h2>
+   <p v-if="errorText" class="mt-1 text-sm text-rose-600">
+      {{ errorText }}
+    </p>
     <select v-model="selectedWatcher" class="w-full border rounded p-2 mb-4">
       <option disabled value="">Выберите сотрудника</option>
       <option v-for="u in employees" :key="u.id" :value="u.id">

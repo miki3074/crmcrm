@@ -8,12 +8,30 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Company;
 
+use App\Models\TaskFile;
+use Illuminate\Support\Facades\Storage;
+
 class ProjectController extends Controller
 {
 
 
 public function store(Request $request)
 {
+
+    $messages = [
+        'name.required' => 'Введите название проекта.',
+        'manager_ids.required' => 'Выберите хотя бы одного менеджера.',
+        'manager_ids.array' => 'Поле менеджеров должно быть списком.',
+        'manager_ids.min' => 'Выберите хотя бы одного менеджера.',
+        'manager_ids.*.exists' => 'Один из выбранных менеджеров не найден.',
+        'start_date.required' => 'Укажите дату начала проекта.',
+        'start_date.date' => 'Дата начала должна быть корректной.',
+        'duration_days.required' => 'Укажите длительность проекта.',
+        'duration_days.integer' => 'Длительность должна быть числом.',
+        'duration_days.min' => 'Минимальная длительность — 1 день.',
+        'company_id.required' => 'Компания обязательна для выбора.',
+        'company_id.exists' => 'Указанная компания не найдена.',
+    ];
     $request->validate([
         'name' => 'required|string|max:255',
         'manager_ids' => 'required|array|min:1',
@@ -21,7 +39,7 @@ public function store(Request $request)
         'start_date' => 'required|date',
         'duration_days' => 'required|integer|min:1',
         'company_id' => 'required|exists:companies,id',
-    ]);
+    ], $messages);
 
     $company = \App\Models\Company::findOrFail($request->company_id);
 
@@ -165,9 +183,14 @@ public function updateName(Request $request, Project $project)
 {
     $this->authorize('update', $project);
 
+     $messages = [
+        'name.required' => 'Введите название.',
+        
+    ];
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
-    ]);
+    ], $messages);
 
     $project->update(['name' => $validated['name']]);
 
@@ -215,10 +238,19 @@ public function replaceManager(Request $request, Project $project)
 {
     $this->authorize('updateman', $project);
 
+      $messages = [
+        'old_manager_id.required' => 'Укажите текущего руководителя.',
+        'old_manager_id.exists' => 'Текущий руководитель не найден.',
+
+        'new_manager_id.required' => 'Укажите нового руководителя.',
+        'new_manager_id.exists' => 'Новый руководитель не найден.',
+        'new_manager_id.different' => 'Новый руководитель должен отличаться от старого.',
+    ];
+
     $validated = $request->validate([
         'old_manager_id' => 'required|exists:users,id',
         'new_manager_id' => 'required|exists:users,id|different:old_manager_id',
-    ]);
+    ], $messages);
 
     // Проверим, что старый руководитель действительно прикреплён
     if (!$project->managers()->where('user_id', $validated['old_manager_id'])->exists()) {
@@ -340,6 +372,24 @@ public function removeWatcher(Request $request, Project $project)
         'watchers' => $project->watchers()->select('users.id', 'users.name')->get(),
     ]);
 }
+
+
+public function download($id)
+    {
+        $file = TaskFile::with('task.project.company')->findOrFail($id);
+
+        // Проверка прав
+        $this->authorize('view', $file->task);
+
+        $path = $file->file_path;
+
+        if (!Storage::disk('public')->exists($path)) {
+            return response()->json(['message' => 'Файл не найден.'], Response::HTTP_NOT_FOUND);
+        }
+
+        // Отправляем с оригинальным именем, если есть
+        return Storage::disk('public')->download($path, $file->original_name ?? basename($path));
+    }
 
 
 

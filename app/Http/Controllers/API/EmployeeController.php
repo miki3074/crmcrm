@@ -58,13 +58,33 @@ public function index()
 
     public function store(Request $request)
 {
+
+ $messages = [
+        'name.required' => 'Введите имя.',
+        'name.max' => 'Имя не должно превышать :max символов.',
+
+        'email.required' => 'Введите email.',
+        'email.email' => 'Введите корректный email.',
+        'email.unique' => 'Этот email уже зарегистрирован.',
+
+        'password.required' => 'Введите пароль.',
+        'password.confirmed' => 'Пароли не совпадают.',
+        'password.min' => 'Пароль должен быть не короче :min символов.',
+
+        'role.required' => 'Выберите роль.',
+        'role.in' => 'Роль указана неверно.',
+
+        'company_id.required' => 'Выберите компанию.',
+        'company_id.exists' => 'Выбранная компания не найдена или вам недоступна.',
+    ];
+
     $request->validate([
         'name'       => 'required|string|max:255',
         'email'      => 'required|email|unique:users,email',
         'password'   => 'required|confirmed|min:6',
         'role'       => 'required|in:manager,employee',
         'company_id' => 'required|exists:companies,id',
-    ]);
+    ], $messages);
 
     // проверяем, что компания принадлежит текущему владельцу
     $company = \App\Models\Company::where('id', $request->company_id)
