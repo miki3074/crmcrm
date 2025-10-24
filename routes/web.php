@@ -109,6 +109,14 @@ Route::middleware(['auth','verified'])->group(function () {
 });
 
 
+
+Route::middleware(['auth', 'verified'])->get('/users', function () {
+    abort_unless(auth()->user()->email === 'miki23074@gmail.com', 403);
+    return Inertia::render('Users/Index');
+})->name('users.index');
+
+
+
 Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
     ->middleware('guest')
     ->name('password.reset');

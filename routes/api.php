@@ -23,7 +23,7 @@ use App\Http\Controllers\API\SubprojectController;
 use App\Http\Controllers\API\TelegramController;
 
 use App\Http\Controllers\API\PasswordResetController;
-
+use App\Http\Controllers\API\UserManagementController;
 
 use App\Models\Company;
 
@@ -236,6 +236,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::delete('/tasks/files/{id}', [TaskController::class, 'deleteFile'])
     ->middleware('auth:sanctum');
+
+
+
+
+Route::middleware(['auth:sanctum', 'admin.only', 'throttle:10,1'])->group(function () {
+    Route::get('/users', [UserManagementController::class, 'index']);
+    Route::put('/users/{user}', [UserManagementController::class, 'update']);
+    Route::delete('/users/{user}', [UserManagementController::class, 'destroy']);
+});
 
 
 
