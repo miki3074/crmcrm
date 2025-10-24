@@ -224,15 +224,35 @@ const canUpdate = computed(() => {
 
 
 
-const deleteTask = async () => {
-  if (!confirm('Удалить задачу и все связанные подзадачи и файлы?')) return
+// const deleteTask = async () => {
+//   if (!confirm('Удалить задачу и все связанные подзадачи и файлы?')) return
 
+//   try {
+//     await axios.delete(`/api/tasks/${taskId}`, { withCredentials: true })
+//     alert('Задача успешно удалена.')
+//     window.history.back() // вернуться на предыдущую страницу
+//   } catch (e) {
+//     alert(e?.response?.data?.message || 'Ошибка при удалении задачи')
+//   }
+// }
+
+
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+
+const confirmDeleteTask = async () => {
+  deleteError.value = ''
+  deleting.value = true
   try {
     await axios.delete(`/api/tasks/${taskId}`, { withCredentials: true })
+    showDeleteModal.value = false
     alert('Задача успешно удалена.')
     window.history.back() // вернуться на предыдущую страницу
   } catch (e) {
-    alert(e?.response?.data?.message || 'Ошибка при удалении задачи')
+    deleteError.value = e?.response?.data?.message || 'Ошибка при удалении задачи'
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -416,13 +436,53 @@ onMounted(fetchTask)
       ✏️ Изменить
     </button>
 
-    <button
-      v-if="canDeleteTask"
-      @click="deleteTask"
-      class="flex items-center gap-1 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm transition"
-    >
-      🗑 Удалить задачу
-    </button>
+   <button
+  v-if="canDeleteTask"
+  @click="showDeleteModal = true"
+  class="flex items-center gap-1 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm transition"
+>
+  🗑 Удалить задачу
+</button>
+
+
+<!-- Модалка подтверждения удаления -->
+<div
+  v-if="showDeleteModal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+>
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      Удалить задачу?
+    </h3>
+    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+      Это действие <span class="font-semibold text-rose-600">необратимо</span>.<br>
+      Задача и все связанные подзадачи и файлы будут безвозвратно удалены.
+    </p>
+
+    <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
+
+    <div class="flex justify-end gap-2">
+      <button
+      style="color: gray;"
+        @click="showDeleteModal = false"
+        class="px-4 py-2 rounded-lg border dark:border-gray-600"
+      >
+        Отмена
+      </button>
+
+      <button
+        @click="confirmDeleteTask"
+        class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
+        :disabled="deleting"
+      >
+        <span v-if="!deleting">Удалить</span>
+        <span v-else>Удаляю…</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
 
     <a
       v-if="task?.project?.id"

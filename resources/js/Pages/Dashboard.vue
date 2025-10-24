@@ -212,6 +212,45 @@ const deleteCompany = async (companyId) => {
   }
 }
 
+const showConfirmModal = ref(false)
+const deletePassword = ref('')
+const deleteCompanyId = ref(null)
+const deleteError = ref('')
+
+// открываем модалку
+const confirmDelete = (id) => {
+  deleteCompanyId.value = id
+  deletePassword.value = ''
+  deleteError.value = ''
+  showConfirmModal.value = true
+}
+
+// подтверждение удаления
+const deleteCompanyConfirm = async () => {
+  if (!deletePassword.value.trim()) {
+    deleteError.value = 'Введите пароль.'
+    return
+  }
+
+  try {
+    await axios.delete(`/api/companies/${deleteCompanyId.value}`, {
+      data: { password: deletePassword.value }, // передаём пароль в тело запроса
+      withCredentials: true,
+    })
+
+    alert('Компания успешно удалена.')
+    showConfirmModal.value = false
+    await fetchCompanies()
+  } catch (e) {
+    if (e.response?.status === 403) {
+      deleteError.value = e.response?.data?.message || 'Неверный пароль.'
+    } else {
+      deleteError.value = e.response?.data?.message || 'Ошибка при удалении.'
+    }
+  }
+}
+
+
 
 // onMounted
 onMounted(async () => {
@@ -428,24 +467,48 @@ onMounted(async () => {
           <div class="min-w-0">
             <div class="font-semibold truncate text-slate-500">{{ company.name }}</div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
-            <button
-    v-if="company.user_id === userId"
-    @click.stop="deleteCompany(company.id)"
-    class=" top-0 right-0 text-rose-500 hover:text-rose-700 text-sm"
-    title="Удалить компанию"
-  >
-    удалить
-  </button>
+          <button
+      v-if="company.user_id === userId"
+      @click.stop="confirmDelete(company.id)"
+      class="text-rose-500 hover:text-rose-700 text-sm"
+    >
+      удалить
+    </button>
           </div>
-
-      
         </div>
-
-          
-
       </div>
     </div>
   </div>
+
+<!-- Модальное окно подтверждения -->
+    <div v-if="showConfirmModal" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-96">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Подтверждение удаления</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          Введите пароль для подтверждения удаления компании. Это действие необратимо.
+        </p>
+
+        <input
+  v-model="deletePassword"
+  type="password"
+  placeholder="Ваш пароль"
+  class="w-full border rounded-lg px-3 py-2 mb-3 dark:bg-gray-700 dark:text-white"
+  autocomplete="new-password"
+/>
+
+
+        <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
+
+        <div class="flex justify-end gap-2">
+          <button @click="showConfirmModal = false" class="px-4 py-2 border rounded-lg">Отмена</button>
+          <button @click="deleteCompanyConfirm" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700">
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+
+
 
   <!-- Другие компании -->
   <div v-if="otherCompanies.length" class="mt-8">

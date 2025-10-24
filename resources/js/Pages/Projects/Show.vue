@@ -304,17 +304,38 @@ const replaceManager = async () => {
 }
 
 
-const deleteProject = async () => {
-  if (!confirm('Удалить проект и все связанные задачи и подзадачи?')) return;
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
 
+const confirmDeleteProject = async () => {
+  deleteError.value = ''
+  deleting.value = true
   try {
-    await axios.delete(`/api/projects/${projectId}`, { withCredentials: true });
-    alert('Проект успешно удалён.');
-    window.location.href = '/'; // возвращаемся на главную страницу
+    await axios.delete(`/api/projects/${projectId}`, { withCredentials: true })
+    showDeleteModal.value = false
+
+    // красивее, чем alert
+    alert('Проект успешно удалён.')
+    window.location.href = '/' // переход на главную
   } catch (e) {
-    alert(e?.response?.data?.message || 'Ошибка при удалении проекта');
+    deleteError.value = e?.response?.data?.message || 'Ошибка при удалении проекта'
+  } finally {
+    deleting.value = false
   }
-};
+}
+
+// const deleteProject = async () => {
+//   if (!confirm('Удалить проект и все связанные задачи и подзадачи?')) return;
+
+//   try {
+//     await axios.delete(`/api/projects/${projectId}`, { withCredentials: true });
+//     alert('Проект успешно удалён.');
+//     window.location.href = '/'; // возвращаемся на главную страницу
+//   } catch (e) {
+//     alert(e?.response?.data?.message || 'Ошибка при удалении проекта');
+//   }
+// };
 
 
 const showWatcherModal = ref(false)
@@ -451,13 +472,55 @@ onMounted(fetchProject)
           >
             ✏️ Изменить название
           </button>
+
           <button
-            v-if="isCompanyOwner"
-            @click="deleteProject"
-            class="rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm"
-          >
-            🗑 Удалить проект
-          </button>
+  v-if="isCompanyOwner"
+  @click="showDeleteModal = true"
+  class="rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm"
+>
+  🗑 Удалить проект
+</button>
+
+<!-- модалка -->
+<div
+  v-if="showDeleteModal"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+>
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+      Подтверждение удаления
+    </h3>
+    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+      Вы уверены, что хотите удалить этот проект и все связанные задачи и подзадачи?
+      Это действие <span class="font-semibold text-rose-600">необратимо</span>.
+    </p>
+
+    <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
+
+    <div class="flex justify-end gap-2">
+      <button
+      style="color: gray;"
+        @click="showDeleteModal = false"
+        class="px-4 py-2 rounded-lg border dark:border-gray-600"
+      >
+        Отмена
+      </button>
+      <button
+        @click="confirmDeleteProject"
+        class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
+        :disabled="deleting"
+      >
+        <span v-if="!deleting">Удалить</span>
+        <span v-else>Удаляю…</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- енд модалка -->
+
+
+
         </div>
 
         <!-- Дополнительные настройки -->
