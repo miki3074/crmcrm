@@ -234,6 +234,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
+Route::delete('/tasks/files/{id}', [TaskController::class, 'deleteFile'])
+    ->middleware('auth:sanctum');
+
+
+
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
 

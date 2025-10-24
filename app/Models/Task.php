@@ -16,6 +16,8 @@ class Task extends Model
         'creator_id','progress','completed','completed_at',
     ];
 
+    
+
     public function executor() {
         return $this->belongsTo(User::class, 'executor_id');
     }

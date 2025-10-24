@@ -93,11 +93,21 @@ public function store(Request $request)
 
     // Файлы
     if ($request->hasFile('files')) {
-        foreach ($request->file('files') as $file) {
-            $path = $file->store('task_files', 'public');
-            $task->files()->create(['file_path' => $path]);
-        }
+    foreach ($request->file('files') as $file) {
+        // получаем оригинальное имя файла
+        $originalName = $file->getClientOriginalName();
+
+        // сохраняем с этим именем
+        $path = $file->storeAs('task_files', $originalName, 'public');
+
+        // сохраняем в БД путь и оригинальное имя
+        $task->files()->create([
+            'file_path' => $path,
+            'file_name' => $originalName,
+            
+        ]);
     }
+}
 
     return response()->json(
         $task->load(['executors', 'responsibles']),
