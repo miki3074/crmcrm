@@ -33,6 +33,12 @@ public function view(User $user, Company $company): bool
     return true;
 }
 
+if ($company->projects()
+        ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+        ->exists()) {
+        return true;
+    }
+
 
     // Исполнитель хотя бы одной задачи
     if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))

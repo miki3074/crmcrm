@@ -10,6 +10,8 @@ use App\Models\TaskFile;
 
 use Illuminate\Support\Facades\Storage;
 
+use Illuminate\Validation\ValidationException;
+
 class TaskController extends Controller
 {
     
@@ -323,43 +325,177 @@ public function destroy(\App\Models\Task $task)
 
 
 
+// 🔹 Изменить исполнителя (точечная замена)
 public function updateExecutor(Request $request, \App\Models\Task $task)
 {
     $this->authorize('manageMembers', $task);
 
-    $request->validate([
-        'user_id' => 'required|exists:users,id',
+    $data = $request->validate([
+        'user_id' => 'required|exists:users,id', // новый исполнитель
+        'replace_user_id' => 'nullable|exists:users,id', // кого заменяем
     ]);
 
-    // Синхронизируем исполнителей (можно нескольких)
-    $task->executors()->sync([$request->user_id]);
+    // Проверяем: не добавляем дубликата
+    if ($task->executors()->where('user_id', $data['user_id'])->exists()) {
+        return response()->json([
+            'message' => 'Этот пользователь уже является исполнителем.',
+        ], 422);
+    }
 
-   return response()->json([
-    'message' => 'Исполнитель изменён',
-    'executors' => $task->executors()->select('users.id', 'users.name')->get(),
-]);
+    // Если есть replace_user_id — удаляем только его
+    if (!empty($data['replace_user_id'])) {
+        $task->executors()->detach($data['replace_user_id']);
+    }
 
+    // Добавляем нового, не трогая остальных
+    $task->executors()->syncWithoutDetaching([$data['user_id']]);
+
+    return response()->json([
+        'message' => 'Исполнитель успешно изменён.',
+        'executors' => $task->executors()->select('users.id', 'users.name')->get(),
+    ]);
 }
 
 
 
 
 
+
+// 🔹 Изменить ответственного (точечная замена)
 public function updateResponsible(Request $request, \App\Models\Task $task)
 {
     $this->authorize('manageMembers', $task);
 
-    $request->validate([
+    $data = $request->validate([
+        'user_id' => 'required|exists:users,id', // новый ответственный
+        'replace_user_id' => 'nullable|exists:users,id', // кого заменяем
+    ]);
+
+    // Проверяем: не добавляем дубликата
+    if ($task->responsibles()->where('user_id', $data['user_id'])->exists()) {
+        return response()->json([
+            'message' => 'Этот пользователь уже является ответственным.',
+        ], 422);
+    }
+
+    // Если есть replace_user_id — удаляем только его
+    if (!empty($data['replace_user_id'])) {
+        $task->responsibles()->detach($data['replace_user_id']);
+    }
+
+    // Добавляем нового, не трогая остальных
+    $task->responsibles()->syncWithoutDetaching([$data['user_id']]);
+
+    return response()->json([
+        'message' => 'Ответственный успешно изменён.',
+        'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+
+
+public function addExecutors(Request $request, Task $task)
+{
+    $this->authorize('manageMembers', $task);
+
+    $validated = $request->validate([
+        'user_ids' => 'required|array|min:1',
+        'user_ids.*' => 'exists:users,id',
+    ]);
+
+    // ✅ добавляем, не заменяя существующих
+    $task->executors()->syncWithoutDetaching($validated['user_ids']);
+
+    return response()->json([
+        'message' => 'Исполнители добавлены',
+        'executors' => $task->executors()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+// ✅ Добавить одного или нескольких ответственных
+public function addResponsibles(Request $request, Task $task)
+{
+    $this->authorize('manageMembers', $task);
+
+    $validated = $request->validate([
+        'user_ids' => 'required|array|min:1',
+        'user_ids.*' => 'exists:users,id',
+    ]);
+
+    // ✅ добавляем, не заменяя существующих
+    $task->responsibles()->syncWithoutDetaching($validated['user_ids']);
+
+    return response()->json([
+        'message' => 'Ответственные добавлены',
+        'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+public function removeExecutor(Task $task, Request $request)
+{
+    $this->authorize('manageMembers', $task);
+
+    $validated = $request->validate([
         'user_id' => 'required|exists:users,id',
     ]);
 
-    $task->responsibles()->sync([$request->user_id]);
+    // Проверяем, что после удаления останется хотя бы один исполнитель
+    $currentExecutorsCount = $task->executors()->count();
+    if ($currentExecutorsCount <= 1) {
+        throw ValidationException::withMessages([
+            'executor' => 'Нельзя удалить всех исполнителей. В задаче должен быть хотя бы один.',
+        ]);
+    }
 
-   return response()->json([
-    'message' => 'Ответственный изменён',
-    'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
-]);
+    $task->executors()->detach($validated['user_id']);
 
+    return response()->json([
+        'message' => 'Исполнитель удалён',
+        'executors' => $task->executors()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+
+// ✅ Удалить ответственного
+public function removeResponsible(Task $task, Request $request)
+{
+    $this->authorize('manageMembers', $task);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $currentResponsiblesCount = $task->responsibles()->count();
+    if ($currentResponsiblesCount <= 1) {
+        throw ValidationException::withMessages([
+            'responsible' => 'Нельзя удалить всех ответственных. В задаче должен быть хотя бы один.',
+        ]);
+    }
+
+    $task->responsibles()->detach($validated['user_id']);
+
+    return response()->json([
+        'message' => 'Ответственный удалён',
+        'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+
+// ✅ Удалить наблюдателя
+public function removeWatcher(Task $task, Request $request)
+{
+    $this->authorize('update', $task);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    $task->watcherstask()->detach($validated['user_id']);
+
+    return response()->json([
+        'message' => 'Наблюдатель удалён',
+        'watcherstask' => $task->watcherstask()->select('users.id', 'users.name')->get(),
+    ]);
 }
 
 

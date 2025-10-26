@@ -41,18 +41,25 @@ const roles = props.auth?.roles || []
 const user = props.auth?.user
 const isAdmin = computed(() => roles.includes('admin'))
 const isCompanyOwner = computed(() => project.value?.company?.user_id === user?.id)
+
 const isProjectManager = computed(() =>
   project.value?.managers?.some(m => m.id === user?.id)
 )
 
+const isProjectExecutor = computed(() =>
+  project.value?.executors?.some(e => e.id === user?.id)
+)
+
 const canCreateTask = computed(() =>
   user?.id === project.value?.company?.user_id ||
-  project.value?.managers?.some(m => m.id === user?.id)
+  project.value?.managers?.some(m => m.id === user?.id)||
+  isProjectExecutor.value
 )
 
 const canEditName = computed(() =>
   user?.id === project.value?.company?.user_id ||
-  project.value?.managers?.some(m => m.id === user?.id)
+  project.value?.managers?.some(m => m.id === user?.id) ||
+  isProjectExecutor.value // 🆕
 )
 
 const canEditBudget = computed(() =>
@@ -61,12 +68,14 @@ const canEditBudget = computed(() =>
 
 const canEditDescription = computed(() =>
   user?.id === project.value?.company?.user_id ||
-  project.value?.managers?.some(m => m.id === user?.id)
+  project.value?.managers?.some(m => m.id === user?.id) ||
+  isProjectExecutor.value // 🆕
 )
 
 
 const canManageManagers = computed(() =>
-  user?.id === project.value?.company?.user_id // ✅ только владелец компании
+  user?.id === project.value?.company?.user_id || // ✅ только владелец компании ||
+ project.value?.managers?.some(m => m.id === user?.id)
 )
 
 
@@ -382,6 +391,36 @@ const addWatcher = async () => {
 
 
 
+const showAddExecutorModal = ref(false)
+const selectedExecutors = ref([])
+
+const openAddExecutor = async () => {
+  await fetchEmployees()
+  showAddExecutorModal.value = true
+}
+
+const addExecutors = async () => {
+  if (!selectedExecutors.value.length) {
+    errorText.value = 'Выберите хотя бы одного сотрудника.'
+    return
+  }
+
+  try {
+    await axios.post(`/api/projects/${projectId}/executors`, {
+      user_ids: selectedExecutors.value,
+    })
+    showAddExecutorModal.value = false
+    selectedExecutors.value = []
+    await fetchProject()
+  } catch (e) {
+    errorText.value =
+      e?.response?.data?.message ||
+      Object.values(e?.response?.data?.errors || {})[0]?.[0] ||
+      'Ошибка при добавлении исполнителей'
+  }
+}
+
+
 
 
 
@@ -420,12 +459,29 @@ onMounted(fetchProject)
             Руководители: <b>—</b>
           </span>
 
+        
+
+<span
+  v-for="e in project?.executors || []"
+  :key="e.id"
+  class="px-2 py-1 rounded-full bg-white/20"
+>
+  Исполнитель: <b>{{ e.name }}</b>
+</span>
+
+<span
+  v-if="!project?.executors?.length"
+  class="px-2 py-1 rounded-full bg-white/20"
+>
+  Исполнители: <b>—</b>
+</span>
+
           <span
   v-for="w in project?.watchers || []"
   :key="w.id"
   class="px-2 py-1 rounded-full bg-white/20"
 >
-  Наблюдатель: <b>{{ w.name }}</b>
+  Наблюдатели: <b>{{ w.name }}</b>
 </span>
 
 <span
@@ -553,6 +609,17 @@ onMounted(fetchProject)
           >
             🔄 Изменить руководителя
           </button>
+
+
+<button
+  v-if="isCompanyOwner || isProjectManager"
+  @click="openAddExecutor"
+  class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
+>
+  ➕ Добавить исполнителя
+</button>
+
+
           <button
   v-if="canManageManagers"
   @click="openAddWatcher"
@@ -1077,6 +1144,32 @@ onMounted(fetchProject)
     </div>
   </div>
 </div>
+
+
+<div v-if="showAddExecutorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl">
+    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Добавить исполнителей</h3>
+
+    <div class="max-h-60 overflow-y-auto space-y-2 mb-4">
+      <label
+        v-for="u in employees"
+        :key="u.id"
+        class="flex items-center gap-2"
+      >
+        <input type="checkbox" :value="u.id" v-model="selectedExecutors" />
+        <span>{{ u.name }}</span>
+      </label>
+    </div>
+
+    <p v-if="errorText" class="text-sm text-rose-600 mb-3">{{ errorText }}</p>
+
+    <div class="flex justify-end gap-2">
+      <button @click="showAddExecutorModal = false" class="px-4 py-2 rounded-lg border">Отмена</button>
+      <button @click="addExecutors" class="px-4 py-2 rounded-lg bg-emerald-600 text-white">Добавить</button>
+    </div>
+  </div>
+</div>
+
 
 
 

@@ -54,5 +54,22 @@ public function responsibles()
 }
 
 
+public function files()
+{
+    return $this->hasMany(\App\Models\SubtaskFile::class);
+}
+
+public function parent()
+{
+    return $this->belongsTo(Subtask::class, 'parent_id');
+}
+
+public function children()
+{
+    return $this->hasMany(Subtask::class, 'parent_id');
+}
+
+
+
 
 }

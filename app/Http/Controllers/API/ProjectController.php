@@ -84,6 +84,7 @@ public function show($id)
         'managers:id,name',
         'company:id,name,user_id',
         'watchers:id,name',
+        'executors:id,name',
         'initiator:id,name',
         'subprojects.responsibles:id,name',
         'tasks' => function ($q) {
@@ -390,6 +391,61 @@ public function download($id)
         // Отправляем с оригинальным именем, если есть
         return Storage::disk('public')->download($path, $file->original_name ?? basename($path));
     }
+
+    // ✅ Добавить исполнителя в проект
+public function addExecutor(Request $request, Project $project)
+{
+    $this->authorize('update', $project); // только менеджер/владелец
+
+    $validated = $request->validate([
+        'user_ids' => 'required|array|min:1',
+        'user_ids.*' => 'exists:users,id',
+    ]);
+
+    // Добавляем без удаления старых
+    $project->executors()->syncWithoutDetaching($validated['user_ids']);
+
+    // Telegram уведомления
+    foreach ($validated['user_ids'] as $id) {
+        $user = \App\Models\User::find($id);
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "👷‍♂️ Вы добавлены как исполнитель проекта: <b>{$project->name}</b>\nКомпания: {$project->company->name}"
+            );
+        }
+    }
+
+    return response()->json([
+        'message' => 'Исполнители успешно добавлены',
+        'executors' => $project->executors()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
+// ✅ Удалить исполнителя
+public function removeExecutor(Request $request, Project $project)
+{
+    $this->authorize('update', $project);
+
+    $validated = $request->validate([
+        'user_id' => 'required|exists:users,id',
+    ]);
+
+    // Проверяем, что после удаления останется хотя бы один
+    if ($project->executors()->count() <= 1) {
+        return response()->json([
+            'message' => 'Нельзя удалить всех исполнителей из проекта. Должен остаться хотя бы один.'
+        ], 422);
+    }
+
+    $project->executors()->detach($validated['user_id']);
+
+    return response()->json([
+        'message' => 'Исполнитель удалён',
+        'executors' => $project->executors()->select('users.id', 'users.name')->get(),
+    ]);
+}
+
 
 
 

@@ -31,6 +31,10 @@ class ProjectPolicy
             return true;
         }
 
+        if ($project->executors->contains('id', $user->id)) {
+        return true;
+    }
+
         // Исполнитель хотя бы одной задачи
         if ($project->tasks()->where('executor_id', $user->id)->exists()) {
             return true;
@@ -70,8 +74,10 @@ class ProjectPolicy
      */
     public function createTask(User $user, Project $project): bool
     {
-        return $project->managers->contains('id', $user->id)
-            || $user->id === $project->company->user_id;
+        return
+            $user->id === $project->company->user_id ||
+            $project->managers->contains('id', $user->id) ||
+            $project->executors->contains('id', $user->id); // 🆕 добавили исполнителей
     }
 
     /**
@@ -80,7 +86,8 @@ class ProjectPolicy
     public function update(User $user, Project $project): bool
     {
         return $project->managers->contains('id', $user->id)
-            || $user->id === $project->company->user_id;
+            || $project->managers->contains('id', $user->id) ||
+            $project->executors->contains('id', $user->id); // 🆕 добавили исполнителей
     }
 
      public function updateman(User $user, Project $project): bool
@@ -101,8 +108,10 @@ class ProjectPolicy
      */
     public function updateDescription(User $user, Project $project): bool
     {
-        return $project->managers->contains('id', $user->id)
-            || $user->id === $project->company->user_id;
+        return
+            $user->id === $project->company->user_id ||
+            $project->managers->contains('id', $user->id) ||
+            $project->executors->contains('id', $user->id); // 🆕 добавили исполнителей
     }
 
     public function delete(User $user, Project $project): bool
@@ -118,9 +127,10 @@ class ProjectPolicy
 
 public function updatewat(User $user, Project $project): bool
 {
-    return
-        $user->id === $project->company->user_id || // владелец компании
-        $project->managers->contains('id', $user->id); // менеджер проекта
+   return
+            $user->id === $project->company->user_id ||
+            $project->managers->contains('id', $user->id) ||
+            $project->executors->contains('id', $user->id); // 🆕 добавили исполнителей
 }
 
 

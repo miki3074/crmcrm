@@ -60,6 +60,12 @@ public function managers()
         ->select('users.id', 'users.name');
 }
 
+public function executors()
+{
+    return $this->belongsToMany(User::class, 'project_executors')->withTimestamps();
+}
+
+
 
 
 }

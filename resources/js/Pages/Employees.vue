@@ -275,7 +275,7 @@ onMounted(async () => {
   class="ms-3 rounded-xl bg-green-600 text-white px-4 py-2 hover:bg-green-700"
   @click="openAttach"
 >
-  Сотрудники 2
+  Пригласить сотрудника
 </button>
 
       </div>

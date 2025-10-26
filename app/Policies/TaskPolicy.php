@@ -19,34 +19,49 @@ class TaskPolicy
      * менеджер проекта, владелец компании, исполнитель подзадачи)
      */
     private function participates(User $user, Task $task): bool
-    {
-        return
-            $user->id === $task->creator_id ||
-            $task->executors->contains('id', $user->id) ||
-            $task->responsibles->contains('id', $user->id) ||
-            $task->project->managers->contains('id', $user->id) ||
-            $user->id === ($task->project->company->user_id ?? 0) ||
-            $task->subtasks()->whereHas('executors', fn($q) => $q->where('users.id', $user->id))->exists();
-    }
+{
+    return
+        $user->id === $task->creator_id ||
 
-    public function view(User $user, Task $task): bool
-    {
-        // if ($user->hasRole('admin')) return true;
-        if (optional($task->project->company)->user_id === $user->id) return true;
+        // 👇 Является исполнителем
+        $task->executors()->where('users.id', $user->id)->exists() ||
 
-        // 👁 Наблюдатель проекта
-    if ($task->project->watchers->contains('id', $user->id)) {
-        return true;
-    }
+        // 👇 Является ответственным
+        $task->responsibles()->where('users.id', $user->id)->exists() ||
 
-    // 👁 Наблюдатель задачи
-if ($task->watcherstask->contains('id', $user->id)) {
-    return true;
+        // 👇 Менеджер или исполнитель проекта
+        $task->project->managers->contains('id', $user->id) ||
+        $task->project->executors->contains('id', $user->id) ||
+
+        // 👇 Владелец компании
+        $user->id === ($task->project->company->user_id ?? 0) ||
+
+        // 👇 Исполнитель подзадачи
+        $task->subtasks()
+            ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+            ->exists();
 }
 
+    public function view(User $user, Task $task): bool
+{
+    // Админ всегда может
+    if (method_exists($user, 'hasRole') && $user->hasRole('admin')) return true;
 
-        return $this->participates($user, $task);
-    }
+    // Владелец компании
+    if (optional($task->project->company)->user_id === $user->id) return true;
+
+    // Менеджер или исполнитель проекта
+    if ($task->project->managers->contains('id', $user->id)) return true;
+    if ($task->project->executors->contains('id', $user->id)) return true;
+
+    // Наблюдатели
+    if ($task->project->watchers->contains('id', $user->id)) return true;
+    if ($task->watcherstask->contains('id', $user->id)) return true;
+
+    // Участие в задаче
+    return $this->participates($user, $task);
+}
+
 
     public function comment(User $user, Task $task): bool
     {
@@ -59,56 +74,57 @@ if ($task->watcherstask->contains('id', $user->id)) {
         return $user->id === $comment->user_id ||
                $task->responsibles->contains('id', $user->id) ||
                $task->project->managers->contains('id', $user->id) ||
+               $task->project->executors->contains('id', $user->id) || 
                $user->id === ($task->project->company->user_id ?? 0) ||
                $user->id === $task->creator_id;
     }
 
-    public function create(User $user): bool
+     public function create(User $user, Project $project): bool
     {
-        // Можно, например, разрешить менеджерам и владельцу компании
-        return $user->hasRole('admin');
+        // Владелец компании
+        if ($user->id === $project->company->user_id) {
+            return true;
+        }
+
+        // Руководитель проекта
+        if ($project->managers->contains('id', $user->id)) {
+            return true;
+        }
+
+        // Исполнитель проекта
+        if ($project->executors->contains('id', $user->id)) {
+            return true;
+        }
+
+        return false;
     }
 
     public function createSubtask(User $user, Task $task): bool
     {
         return $task->responsibles->contains('id', $user->id) ||
-               $task->project->managers->contains('id', $user->id);
+               $task->project->managers->contains('id', $user->id) ||
+            $task->project->executors->contains('id', $user->id);
     }
 
-    public function update(User $user, Task $task): bool
-{
-    // Админ всегда может
-    // if ($user->hasRole('admin')) return true;
+ public function update(User $user, Task $task): bool
+    {
+        return
+            $user->id === $task->creator_id ||
+            optional($task->project->company)->user_id === $user->id ||
+            $task->project->managers->contains('id', $user->id) ||
+            $task->project->executors->contains('id', $user->id); // 👈 добавили
+    }
 
-    // Создатель задачи
-    if ($user->id === $task->creator_id) return true;
-
-    // Владелец компании
-    if (optional($task->project->company)->user_id === $user->id) return true;
-
-    // Руководитель проекта
-    if ($task->project->managers->contains('id', $user->id)) return true;
-
-    return false;
-}
-
-public function updateProgress(User $user, Task $task): bool
-{
-   
-
-    // Владелец компании
-    if (optional($task->project->company)->user_id === $user->id) return true;
-
-    // Руководитель проекта
-    if ($task->project->managers->contains('id', $user->id)) return true;
-
-    // Исполнители тоже могут менять прогресс
-    if ($task->executors->contains('id', $user->id)) return true;
-
-    if ($task->responsibles->contains('id', $user->id)) return true;
-
-    return false;
-}
+ public function updateProgress(User $user, Task $task): bool
+    {
+        return
+            optional($task->project->company)->user_id === $user->id ||
+            $task->project->managers->contains('id', $user->id) ||
+            $task->project->executors->contains('id', $user->id) || // 👈 добавили
+            $task->executors->contains('id', $user->id) ||
+            $user->id === $task->creator_id ||
+            $task->responsibles->contains('id', $user->id);
+    }
 
 
 
@@ -117,6 +133,7 @@ public function updateProgress(User $user, Task $task): bool
         return 
             $task->executors->contains('id', $user->id) ||
             $task->responsibles->contains('id', $user->id) ||
+              $task->project->executors->contains('id', $user->id) || 
             $user->id === ($task->project->company->user_id ?? 0);
     }
 
@@ -125,6 +142,7 @@ public function updateProgress(User $user, Task $task): bool
         return
                $task->responsibles->contains('id', $user->id) ||
                $task->project->managers->contains('id', $user->id) ||
+               $task->project->executors->contains('id', $user->id) ||
                $user->id === ($task->project->company->user_id ?? 0) ||
                $user->id === $task->creator_id;
     }
@@ -135,7 +153,8 @@ public function updateProgress(User $user, Task $task): bool
     return
        
         $user->id === $task->project->company->user_id ||
-        $task->project->managers->contains('id', $user->id);
+        $task->project->managers->contains('id', $user->id) ||
+            $task->project->executors->contains('id', $user->id);
 }
 
 public function manageMembers(User $user, \App\Models\Task $task): bool
@@ -143,7 +162,8 @@ public function manageMembers(User $user, \App\Models\Task $task): bool
     // Разрешено владельцу компании и менеджеру проекта
     return
         $user->id === $task->project->company->user_id ||
-        $task->project->managers->contains('id', $user->id);
+        $task->project->managers->contains('id', $user->id) ||
+            $task->project->executors->contains('id', $user->id);
 }
 
 

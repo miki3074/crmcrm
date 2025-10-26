@@ -45,7 +45,8 @@ const canCreateSubtask = computed(() => {
   if (!task.value || !user) return false
   return (
     (task.value.responsibles || []).some(r => r.id === user.id) ||
-    (task.value.project?.managers || []).some(m => m.id === user.id)
+    (task.value.project?.managers || []).some(m => m.id === user.id)||
+    isProjectExecutor.value
   )
 })
 
@@ -164,7 +165,9 @@ const createSubtask = async () => {
   }
 }
 
-
+const isProjectExecutor = computed(() =>
+  task.value?.project?.executors?.some(e => e.id === user?.id)
+)
 
 
 const hasOpenSubtasks = computed(() =>
@@ -199,6 +202,7 @@ const canUploadFiles = computed(() => {
   return (
     (task.value.executors || []).some(e => e.id === user.id) ||
     (task.value.responsibles || []).some(r => r.id === user.id) ||
+    (task.value.project?.executors || []).some(e => e.id === user.id) ||
     user.id === task.value.project?.company?.user_id
   )
 })
@@ -207,7 +211,8 @@ const canDeleteTask = computed(() => {
   if (!task.value || !user) return false
   return (
     user.id === task.value.project?.company?.user_id || // владелец компании
-    (task.value.project?.managers || []).some(m => m.id === user.id)  // менеджер проекта
+    (task.value.project?.managers || []).some(m => m.id === user.id) ||// менеджер проекта
+    isProjectExecutor.value  
   
   )
 })
@@ -217,7 +222,8 @@ const canUpdate = computed(() => {
   if (!task.value || !user) return false
   return (
     user.id === task.value.project?.company?.user_id || // владелец компании
-    (task.value.project?.managers || []).some(m => m.id === user.id)  // менеджер проекта
+    (task.value.project?.managers || []).some(m => m.id === user.id)||
+    isProjectExecutor.value  // менеджер проекта
   
   )
 })
@@ -294,7 +300,8 @@ const canManageMembers = computed(() => {
   if (!task.value || !user) return false
   return (
     user.id === task.value.project?.company?.user_id ||
-    (task.value.project?.managers || []).some(m => m.id === user.id)
+    (task.value.project?.managers || []).some(m => m.id === user.id) ||
+    isProjectExecutor.value // 🆕
   )
 })
 
@@ -334,6 +341,151 @@ const changeResponsible = async () => {
 }
 
 
+const showAddExecutorModal = ref(false)
+const showAddResponsibleModal = ref(false)
+const selectedExecutors = ref([])
+const selectedResponsibles = ref([])
+const employees = ref([]) // список доступных сотрудников
+
+// 🔹 открыть выбор исполнителей
+const openAddExecutor = async () => {
+  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`)
+  employees.value = data
+  showAddExecutorModal.value = true
+}
+
+// 🔹 открыть выбор ответственных
+const openAddResponsible = async () => {
+  const { data } = await axios.get(`/api/projects/${task.value.project.id}/employees`)
+  employees.value = data
+  showAddResponsibleModal.value = true
+}
+
+// 🔹 добавить выбранных исполнителей
+const addExecutors = async () => {
+  if (!selectedExecutors.value.length) return
+  await axios.post(`/api/tasks/${taskId}/executors/add`, {
+    user_ids: selectedExecutors.value
+  })
+  await fetchTask() // обновляем задачу
+  showAddExecutorModal.value = false
+  selectedExecutors.value = []
+}
+
+// 🔹 добавить выбранных ответственных
+const addResponsibles = async () => {
+  if (!selectedResponsibles.value.length) return
+  await axios.post(`/api/tasks/${taskId}/responsibles/add`, {
+    user_ids: selectedResponsibles.value
+  })
+  await fetchTask()
+  showAddResponsibleModal.value = false
+  selectedResponsibles.value = []
+}
+
+const showManageMembers = ref(false)
+const manageError = ref('')
+
+// Удалить исполнителя
+const removeExecutor = async (id) => {
+  manageError.value = ''
+  try {
+    await axios.delete(`/api/tasks/${taskId}/executors`, { data: { user_id: id } })
+    await fetchTask()
+  } catch (e) {
+    manageError.value =
+      e.response?.data?.message ||
+      Object.values(e.response?.data?.errors || {})[0]?.[0] ||
+      'Ошибка при удалении исполнителя'
+  }
+}
+
+// Удалить ответственного
+const removeResponsible = async (id) => {
+  manageError.value = ''
+  try {
+    await axios.delete(`/api/tasks/${taskId}/responsibles`, { data: { user_id: id } })
+    await fetchTask()
+  } catch (e) {
+    manageError.value =
+      e.response?.data?.message ||
+      Object.values(e.response?.data?.errors || {})[0]?.[0] ||
+      'Ошибка при удалении ответственного'
+  }
+}
+
+// Удалить наблюдателя
+const removeWatcher = async (id) => {
+  manageError.value = ''
+  try {
+    await axios.delete(`/api/tasks/${taskId}/watchers`, { data: { user_id: id } })
+    await fetchTask()
+  } catch (e) {
+    manageError.value =
+      e.response?.data?.message ||
+      Object.values(e.response?.data?.errors || {})[0]?.[0] ||
+      'Ошибка при удалении наблюдателя'
+  }
+}
+
+
+
+const replaceExecutorId = ref(null)
+const newExecutorId = ref(null)
+const replaceResponsibleId = ref(null)
+const newResponsibleId = ref(null)
+const executorError = ref('')
+const responsibleError = ref('')
+
+const availableExecutors = computed(() => {
+  if (!companyEmployees.value.length || !task.value) return []
+  const currentIds = (task.value.executors || []).map(e => e.id)
+  return companyEmployees.value.filter(e => !currentIds.includes(e.id))
+})
+
+const availableResponsibles = computed(() => {
+  if (!companyEmployees.value.length || !task.value) return []
+  const currentIds = (task.value.responsibles || []).map(r => r.id)
+  return companyEmployees.value.filter(e => !currentIds.includes(e.id))
+})
+
+const replaceExecutor = async () => {
+  executorError.value = ''
+  if (!replaceExecutorId.value || !newExecutorId.value) {
+    executorError.value = 'Выберите кого и на кого заменить.'
+    return
+  }
+
+  try {
+    await axios.patch(`/api/tasks/${taskId}/executor`, {
+      replace_user_id: replaceExecutorId.value,
+      user_id: newExecutorId.value,
+    })
+    await fetchTask()
+    showExecutorModal.value = false
+  } catch (e) {
+    executorError.value = e?.response?.data?.message || 'Ошибка при замене исполнителя.'
+  }
+}
+
+const replaceResponsible = async () => {
+  responsibleError.value = ''
+  if (!replaceResponsibleId.value || !newResponsibleId.value) {
+    responsibleError.value = 'Выберите кого и на кого заменить.'
+    return
+  }
+
+  try {
+    await axios.patch(`/api/tasks/${taskId}/responsible`, {
+      replace_user_id: replaceResponsibleId.value,
+      user_id: newResponsibleId.value,
+    })
+    await fetchTask()
+    showResponsibleModal.value = false
+  } catch (e) {
+    responsibleError.value = e?.response?.data?.message || 'Ошибка при замене ответственного.'
+  }
+}
 
 
 
@@ -512,6 +664,24 @@ onMounted(fetchTask)
       👨‍💼 Изменить ответственного
     </button>
 
+    <!-- Новые кнопки -->
+<button
+  v-if="canManageMembers"
+  @click="openAddExecutor"
+  class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
+>
+  ➕ Добавить исполнителя
+</button>
+
+<button
+  v-if="canManageMembers"
+  @click="openAddResponsible"
+  class="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded-md transition"
+>
+  ➕ Добавить ответственного
+</button>
+
+
     <button
       v-if="canUpdate"
       @click="openWatcherModal"
@@ -519,6 +689,15 @@ onMounted(fetchTask)
     >
       👁 Добавить наблюдателя
     </button>
+
+<button
+  v-if="canManageMembers"
+  @click="showManageMembers = true"
+  class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-sm rounded-md"
+>
+  ⚙️ Управление участниками
+</button>
+
   </div>
 
   <!-- Третья строка: завершение -->
@@ -862,38 +1041,173 @@ onMounted(fetchTask)
 
 
 <!-- Модалка: Изменить исполнителя -->
+<!-- Модалка: Изменить исполнителя -->
 <div v-if="showExecutorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
     <h3 class="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Изменить исполнителя</h3>
 
-    <select v-model="selectedUser" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
-      <option disabled value="">Выберите сотрудника</option>
-      <option v-for="emp in companyEmployees" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    <!-- кого заменить -->
+    <label class="text-sm text-gray-600 dark:text-gray-300">Кого заменить:</label>
+    <select v-model="replaceExecutorId" class="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white mb-4">
+      <option value="">Выберите текущего исполнителя</option>
+      <option v-for="exe in task.executors" :key="exe.id" :value="exe.id">{{ exe.name }}</option>
     </select>
 
+    <!-- на кого заменить -->
+    <label class="text-sm text-gray-600 dark:text-gray-300">На кого заменить:</label>
+    <select v-model="newExecutorId" class="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white">
+      <option value="">Выберите нового исполнителя</option>
+      <option v-for="emp in availableExecutors" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    </select>
+
+    <p v-if="executorError" class="text-rose-600 text-sm mt-2">{{ executorError }}</p>
+
     <div class="mt-4 flex justify-end gap-2">
-      <button @click="showExecutorModal = false" class="px-3 py-1.5 text-sm rounded-md bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Отмена</button>
-      <button @click="changeExecutor" class="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white">Сохранить</button>
+      <button @click="showExecutorModal = false" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-md text-sm">Отмена</button>
+      <button @click="replaceExecutor" class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm">Сохранить</button>
     </div>
   </div>
 </div>
 
+
+<!-- Модалка: Изменить ответственного -->
 <!-- Модалка: Изменить ответственного -->
 <div v-if="showResponsibleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
     <h3 class="text-lg font-semibold mb-3 text-gray-900 dark:text-white">Изменить ответственного</h3>
 
-    <select v-model="selectedUser" class="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-700 dark:text-white">
-      <option disabled value="">Выберите сотрудника</option>
-      <option v-for="emp in companyEmployees" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    <label class="text-sm text-gray-600 dark:text-gray-300">Кого заменить:</label>
+    <select v-model="replaceResponsibleId" class="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white mb-4">
+      <option value="">Выберите текущего ответственного</option>
+      <option v-for="resp in task.responsibles" :key="resp.id" :value="resp.id">{{ resp.name }}</option>
     </select>
 
+    <label class="text-sm text-gray-600 dark:text-gray-300">На кого заменить:</label>
+    <select v-model="newResponsibleId" class="w-full rounded-md border-gray-300 dark:bg-gray-700 dark:text-white">
+      <option value="">Выберите нового ответственного</option>
+      <option v-for="emp in availableResponsibles" :key="emp.id" :value="emp.id">{{ emp.name }}</option>
+    </select>
+
+    <p v-if="responsibleError" class="text-rose-600 text-sm mt-2">{{ responsibleError }}</p>
+
     <div class="mt-4 flex justify-end gap-2">
-      <button @click="showResponsibleModal = false" class="px-3 py-1.5 text-sm rounded-md bg-gray-200 dark:bg-gray-700 dark:text-gray-300">Отмена</button>
-      <button @click="changeResponsible" class="px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white">Сохранить</button>
+      <button @click="showResponsibleModal = false" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 rounded-md text-sm">Отмена</button>
+      <button @click="replaceResponsible" class="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm">Сохранить</button>
     </div>
   </div>
 </div>
+
+
+<!-- Модалка: добавить исполнителей -->
+<div v-if="showAddExecutorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Добавить исполнителей</h3>
+
+    <div class="max-h-60 overflow-y-auto space-y-2 mb-4">
+      <label
+        v-for="u in employees"
+        :key="u.id"
+        class="flex items-center gap-2"
+      >
+        <input type="checkbox" :value="u.id" v-model="selectedExecutors" />
+        <span>{{ u.name }}</span>
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button @click="showAddExecutorModal = false" class="px-4 py-2 border rounded-lg">Отмена</button>
+      <button @click="addExecutors" class="px-4 py-2 bg-emerald-600 text-white rounded-lg">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка: добавить ответственных -->
+<div v-if="showAddResponsibleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Добавить ответственных</h3>
+
+    <div class="max-h-60 overflow-y-auto space-y-2 mb-4">
+      <label
+        v-for="u in employees"
+        :key="u.id"
+        class="flex items-center gap-2"
+      >
+        <input type="checkbox" :value="u.id" v-model="selectedResponsibles" />
+        <span>{{ u.name }}</span>
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button @click="showAddResponsibleModal = false" class="px-4 py-2 border rounded-lg">Отмена</button>
+      <button @click="addResponsibles" class="px-4 py-2 bg-teal-600 text-white rounded-lg">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модалка управления -->
+<div v-if="showManageMembers" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-4xl shadow-xl">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+      Управление участниками задачи
+    </h3>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <!-- Исполнители -->
+      <div>
+        <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Исполнители</h4>
+        <div v-for="u in task.executors" :key="u.id" class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-2">
+          <span>{{ u.name }}</span>
+          <button
+            @click="removeExecutor(u.id)"
+            class="text-rose-600 hover:text-rose-700 text-xs font-medium"
+          >
+            Удалить
+          </button>
+        </div>
+      </div>
+
+      <!-- Ответственные -->
+      <div>
+        <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Ответственные</h4>
+        <div v-for="u in task.responsibles" :key="u.id" class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-2">
+          <span>{{ u.name }}</span>
+          <button
+            @click="removeResponsible(u.id)"
+            class="text-rose-600 hover:text-rose-700 text-xs font-medium"
+          >
+            Удалить
+          </button>
+        </div>
+      </div>
+
+      <!-- Наблюдатели -->
+      <div>
+        <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Наблюдатели</h4>
+        <div v-for="u in task.watcherstask" :key="u.id" class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-2">
+          <span>{{ u.name }}</span>
+          <button
+            @click="removeWatcher(u.id)"
+            class="text-rose-600 hover:text-rose-700 text-xs font-medium"
+          >
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="manageError" class="mt-3 text-sm text-rose-600">{{ manageError }}</p>
+
+    <div class="flex justify-end mt-5">
+      <button
+        @click="showManageMembers = false"
+        class="px-4 py-2 rounded-lg border dark:border-gray-600"
+      >
+        Закрыть
+      </button>
+    </div>
+  </div>
+</div>
+
 
 
 

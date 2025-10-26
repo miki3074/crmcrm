@@ -142,6 +142,36 @@ foreach ($watcherProjects as $companyId => $projects) {
 }
 
 
+// 7. Компании, где пользователь исполнитель проекта
+$executorProjects = Project::with(['company', 'managers', 'executors'])
+    ->whereHas('executors', function ($q) use ($userId) {
+        $q->where('project_executors.user_id', $userId);
+    })
+    ->get()
+    ->groupBy('company_id');
+
+$projectExecutorCompanies = collect();
+
+foreach ($executorProjects as $companyId => $projects) {
+    $company = $projects->first()->company;
+
+    $company->projects = $projects->map(function ($project) {
+        return [
+            'id' => $project->id,
+            'name' => $project->name,
+            'managers' => $project->managers->map(fn($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+            ]),
+            'is_project_executor' => true, // 🧰 можно помечать, что пользователь — исполнитель проекта
+        ];
+    });
+
+    $projectExecutorCompanies->push($company);
+}
+
+
+
 
 // 5. Компании, где он исполнитель подзадач
 
@@ -229,6 +259,7 @@ $subtaskCompanies = $subtaskCompanies
             ->concat($subtaskCompanies)
             ->concat($memberCompanies) 
             ->concat($watcherCompanies)
+            ->concat($projectExecutorCompanies)
             ->unique('id')
             ->values()
     );
@@ -321,7 +352,8 @@ public function show(Company $company)
         'projects' => function ($q) {
             $q->with([
                 'managers:id,name',
-                'watchers:id,name', // 👁 добавляем
+                'executors:id,name', // 🆕 добавили исполнителей проекта
+                'watchers:id,name',
                 'tasks.executors:id,name',
                 'tasks.responsibles:id,name',
                 'tasks.subtasks.executors:id,name',
@@ -332,16 +364,23 @@ public function show(Company $company)
 
     // Фильтруем проекты по доступу пользователя
     $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-        if ($company->user_id === $userId) return true;
-        if ($project->managers->contains('id', $userId)) return true;
-        if ($project->watchers->contains('id', $userId)) return true; // 👈 добавляем проверку наблюдателя
+        if ($company->user_id === $userId) return true; // владелец компании
+        if ($project->managers->contains('id', $userId)) return true; // руководитель проекта
+        if ($project->executors->contains('id', $userId)) return true; // 🆕 исполнитель проекта
+        if ($project->watchers->contains('id', $userId)) return true; // наблюдатель проекта
 
+        // участник задач
         if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
         if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
 
-        // подзадачи
-        if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId)))) return true;
-        if ($project->tasks->contains(fn($t) => $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId)))) return true;
+        // участник подзадач
+        if ($project->tasks->contains(fn($t) =>
+            $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
+        )) return true;
+
+        if ($project->tasks->contains(fn($t) =>
+            $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
+        )) return true;
 
         return false;
     })->values();
@@ -362,11 +401,18 @@ public function show(Company $company)
                     'id' => $m->id,
                     'name' => $m->name,
                 ]),
-                'is_watcher' => $project->watchers->contains('id', $userId), // 👁 для фронта
+                'executors' => $project->executors->map(fn($e) => [ // 🆕 список исполнителей проекта
+                    'id' => $e->id,
+                    'name' => $e->name,
+                ]),
+                'is_manager' => $project->managers->contains('id', $userId),
+                'is_executor' => $project->executors->contains('id', $userId), // 🆕 для фронта
+                'is_watcher' => $project->watchers->contains('id', $userId),
             ];
         }),
     ]);
 }
+
 
 
 

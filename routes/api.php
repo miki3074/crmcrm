@@ -247,6 +247,43 @@ Route::middleware(['auth:sanctum', 'admin.only', 'throttle:10,1'])->group(functi
 });
 
 
+Route::middleware('auth:sanctum')->group(function () {
+Route::post('/tasks/{task}/executors/add', [TaskController::class, 'addExecutors']);
+Route::post('/tasks/{task}/responsibles/add', [TaskController::class, 'addResponsibles']);
+});
+
+
+Route::delete('/tasks/{task}/executors', [TaskController::class, 'removeExecutor']);
+Route::delete('/tasks/{task}/responsibles', [TaskController::class, 'removeResponsible']);
+Route::delete('/tasks/{task}/watchers', [TaskController::class, 'removeWatcher']);
+
+
+Route::post('/projects/{project}/executors', [ProjectController::class, 'addExecutor']);
+Route::delete('/projects/{project}/executors', [ProjectController::class, 'removeExecutor']);
+
+
+Route::prefix('subtasks/{subtask}')->group(function () {
+    Route::patch('/responsible/change', [SubtaskController::class, 'changeResponsible']);
+    Route::patch('/executor/change', [SubtaskController::class, 'changeExecutor']);
+    Route::post('/executors/add', [SubtaskController::class, 'addExecutors']);
+    Route::post('/responsibles/add', [SubtaskController::class, 'addResponsibles']);
+        Route::delete('/executors', [SubtaskController::class, 'removeExecutor']);
+    Route::delete('/responsibles', [SubtaskController::class, 'removeResponsible']);
+     Route::patch('/update', [SubtaskController::class, 'update']);
+});
+
+
+Route::prefix('subtasks/{subtask}')->group(function () {
+    Route::post('/files', [SubtaskController::class, 'uploadFile']);
+});
+
+Route::get('/subtask-files/{file}/download', [SubtaskController::class, 'downloadFile']);
+Route::delete('/subtask-files/{file}', [SubtaskController::class, 'deleteFile']);
+
+
+Route::post('/subtasks/{subtask}/children', [SubtaskController::class, 'storeChild']);
+
+
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
