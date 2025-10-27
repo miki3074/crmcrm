@@ -352,7 +352,7 @@ public function show(Company $company)
         'projects' => function ($q) {
             $q->with([
                 'managers:id,name',
-                'executors:id,name', // 🆕 добавили исполнителей проекта
+                'executors:id,name',
                 'watchers:id,name',
                 'tasks.executors:id,name',
                 'tasks.responsibles:id,name',
@@ -362,22 +362,19 @@ public function show(Company $company)
         }
     ]);
 
-    // Фильтруем проекты по доступу пользователя
+    // Фильтрация проектов по доступу
     $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
         if ($company->user_id === $userId) return true; // владелец компании
-        if ($project->managers->contains('id', $userId)) return true; // руководитель проекта
-        if ($project->executors->contains('id', $userId)) return true; // 🆕 исполнитель проекта
-        if ($project->watchers->contains('id', $userId)) return true; // наблюдатель проекта
+        if ($project->managers->contains('id', $userId)) return true;
+        if ($project->executors->contains('id', $userId)) return true;
+        if ($project->watchers->contains('id', $userId)) return true;
 
-        // участник задач
+        // участник задач / подзадач
         if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
         if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
-
-        // участник подзадач
         if ($project->tasks->contains(fn($t) =>
             $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
         )) return true;
-
         if ($project->tasks->contains(fn($t) =>
             $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
         )) return true;
@@ -385,33 +382,58 @@ public function show(Company $company)
         return false;
     })->values();
 
-    // Ответ JSON
+    // ✅ Формируем ответ
     return response()->json([
         'id' => $company->id,
         'name' => $company->name,
         'logo' => $company->logo,
         'user_id' => $company->user_id,
+
+        // 📊 Список проектов + данные для графика
         'projects' => $company->projects->map(function ($project) use ($userId) {
+
+            // 👉 Вычисляем дату окончания
+            $endDate = null;
+            if ($project->start_date && $project->duration_days) {
+                $endDate = \Carbon\Carbon::parse($project->start_date)
+                    ->addDays($project->duration_days)
+                    ->format('Y-m-d');
+            }
+
             return [
                 'id' => $project->id,
                 'name' => $project->name,
                 'start_date' => $project->start_date,
                 'duration_days' => $project->duration_days,
+                'end_date' => $endDate, // ✅ добавлено
+
+                // 🔹 данные для графика
+                'chart' => [
+                    'name' => $project->name,
+                    'start' => $project->start_date,
+                    'end' => $endDate,
+                    'duration' => $project->duration_days,
+                ],
+
+                // 🔹 участники
                 'managers' => $project->managers->map(fn($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
                 ]),
-                'executors' => $project->executors->map(fn($e) => [ // 🆕 список исполнителей проекта
+                'executors' => $project->executors->map(fn($e) => [
                     'id' => $e->id,
                     'name' => $e->name,
                 ]),
+
+                // 🔹 роли текущего пользователя
                 'is_manager' => $project->managers->contains('id', $userId),
-                'is_executor' => $project->executors->contains('id', $userId), // 🆕 для фронта
+                'is_executor' => $project->executors->contains('id', $userId),
                 'is_watcher' => $project->watchers->contains('id', $userId),
             ];
         }),
     ]);
 }
+
 
 
 
@@ -677,6 +699,25 @@ public function destroy(Request $request, \App\Models\Company $company)
 
     return response()->json(['message' => 'Компания и все связанные данные удалены.']);
 }
+
+
+ public function members(Company $company)
+    {
+        $user = auth()->user();
+
+        // Только владелец компании может видеть участников
+        if ($user->id !== $company->user_id) {
+            abort(403, 'Доступ запрещён');
+        }
+
+        $members = $company->users()
+            ->withPivot(['role', 'created_by'])
+            ->select('users.id', 'users.name', 'users.email')
+            ->orderByRaw("FIELD(company_user.role, 'owner', 'manager', 'employee') ASC")
+            ->get();
+
+        return response()->json($members);
+    }
 
 
 

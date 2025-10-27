@@ -11,6 +11,10 @@ use App\Models\Company;
 use App\Models\TaskFile;
 use Illuminate\Support\Facades\Storage;
 
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+
+
 class ProjectController extends Controller
 {
 
@@ -445,6 +449,65 @@ public function removeExecutor(Request $request, Project $project)
         'executors' => $project->executors()->select('users.id', 'users.name')->get(),
     ]);
 }
+
+
+public function tasks(Project $project)
+{
+    $this->authorize('view', $project);
+
+    $project->load(['tasks.executors:id,name']);
+
+    return response()->json(
+        $project->tasks->map(function ($task) {
+            $end = \Carbon\Carbon::parse($task->start_date)
+                ->addDays(\Carbon\Carbon::parse($task->start_date)->diffInDays($task->due_date))
+                ->format('Y-m-d');
+
+            return [
+                'id' => $task->id,
+                'title' => $task->title,
+                'start_date' => $task->start_date,
+                'due_date' => $task->due_date,
+                'executor' => $task->executor?->name,
+                'priority' => $task->priority,
+            ];
+        })
+    );
+}
+
+
+public function taskStats(Project $project)
+{
+    $this->authorize('view', $project);
+
+    $project->load('tasks.subtasks');
+
+    $stats = $project->tasks->map(function ($task) {
+        $subtasks = $task->subtasks;
+
+        $total = $subtasks->count();
+        $overdueSubtasks = $subtasks->where('due_date', '<', now())
+                                    ->where('status', '!=', 'completed')
+                                    ->count();
+
+        // Проверяем саму задачу
+        $isOverdue = !$task->completed && $task->due_date < now();
+
+        return [
+            'id' => $task->id,
+            'title' => $task->title,
+            'progress' => $task->progress ?? 0,
+            'subtasks_total' => $total,
+            'subtasks_overdue' => $overdueSubtasks,
+            'is_overdue' => $isOverdue, // 👈 добавили
+            'due_date' => $task->due_date,
+        ];
+    });
+
+    return response()->json($stats);
+}
+
+
 
 
 

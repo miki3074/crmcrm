@@ -283,6 +283,11 @@ Route::delete('/subtask-files/{file}', [SubtaskController::class, 'deleteFile'])
 
 Route::post('/subtasks/{subtask}/children', [SubtaskController::class, 'storeChild']);
 
+Route::get('/companies/{company}/members', [CompanyController::class, 'members']);
+
+Route::get('/projects/{project}/tasks', [ProjectController::class, 'tasks']);
+
+Route::get('/projects/{project}/task-stats', [ProjectController::class, 'taskStats']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

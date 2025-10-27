@@ -21,6 +21,9 @@
         "@fullcalendar/daygrid": "^6.1.19",
         "@fullcalendar/interaction": "^6.1.19",
         "@fullcalendar/vue3": "^6.1.19",
+        "echarts": "^6.0.0",
+        "recharts": "^3.3.0",
+        "vue-echarts": "^8.0.1",
         "ziggy-js": "^2.5.3"
     }
 }

@@ -4,6 +4,24 @@ import axios from 'axios'
 import { Head, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, TitleComponent, LegendComponent } from 'echarts/components'
+import VChart from 'vue-echarts'
+
+import * as echarts from 'echarts'
+
+use([
+  CanvasRenderer,
+  BarChart,
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  TitleComponent,
+  LegendComponent,
+])
+
 const { props } = usePage()
 const companyId = props.id
 
@@ -135,6 +153,220 @@ const deleteCompany = async (companyId) => {
   }
 }
 
+const showMembersModal = ref(false)
+const members = ref([])
+const loadingMembers = ref(false)
+
+const fetchMembers = async () => {
+  loadingMembers.value = true
+  try {
+    const { data } = await axios.get(`/api/companies/${companyId}/members`)
+    members.value = data
+  } finally {
+    loadingMembers.value = false
+  }
+}
+
+const openMembersModal = async () => {
+  await fetchMembers()
+  showMembersModal.value = true
+}
+
+
+const selectedProject = ref(null)
+const projectTasks = ref([])
+const loadingTasks = ref(false)
+
+
+
+
+const chartOptions = computed(() => ({
+  title: { text: 'График проектов' },
+  tooltip: {
+    trigger: 'axis',
+    formatter: function(params) {
+      const project = params[0];
+      return `Проект: ${project.name}<br/>Длительность: ${project.value} дней`;
+    }
+  },
+  grid: { left: 100 },
+  xAxis: {
+    type: 'category',
+    data: company.value?.projects?.map(p => p.name) || [],
+  },
+  yAxis: {
+    type: 'value',
+    name: 'Дней'
+  },
+  series: [
+    {
+      type: 'bar',
+      data: company.value?.projects?.map(p => p.duration_days) || [],
+      itemStyle: { color: '#4f46e5' },
+    },
+  ],
+}))
+
+
+const fetchProjectTasks = async (projectId) => {
+  loadingTasks.value = true
+  try {
+    const { data } = await axios.get(`/api/projects/${projectId}/tasks`)
+    projectTasks.value = data
+  } finally {
+    loadingTasks.value = false
+  }
+}
+
+const onProjectClick = async (params) => {
+  const clickedProject = company.value.projects.find(p => p.name === params.name)
+  if (clickedProject) {
+    selectedProject.value = clickedProject
+    await Promise.all([
+      fetchProjectTasks(clickedProject.id),
+      fetchTaskStats(clickedProject.id),
+    ])
+  }
+}
+
+
+
+const taskStatsChartOptions = computed(() => ({
+  title: { text: 'Прогресс задач проекта', left: 'center' },
+  tooltip: {
+    trigger: 'item',
+    formatter: (params) => {
+      const task = taskStats.value[params.dataIndex]
+      const status = task.is_overdue
+        ? '<span style="color:#ef4444;">⚠️ Просрочена</span>'
+        : task.subtasks_overdue > 0
+        ? '<span style="color:#f59e0b;">⚠️ Частично просроченые подзадачи</span>'
+        : '<span style="color:#22c55e;"></span>'
+      return `
+        <b>${task.title}</b><br/>
+        Прогресс: ${task.progress}%<br/>
+        Подзадач: ${task.subtasks_total}<br/>
+        Просрочено подзадач: ${task.subtasks_overdue}<br/>
+        ${status}
+      `
+    },
+  },
+  grid: { left: '5%', right: '5%', bottom: '10%', containLabel: true },
+  xAxis: {
+    type: 'category',
+    data: taskStats.value.map(t => t.title),
+    axisLabel: { rotate: 25 },
+  },
+  yAxis: {
+    type: 'value',
+    name: '% выполнения',
+    min: 0,
+    max: 100,
+  },
+  series: [
+    {
+      name: 'Прогресс задач',
+      type: 'bar',
+      data: taskStats.value.map(t => {
+        const total = t.subtasks_total || 0
+        const overdue = t.subtasks_overdue || 0
+
+        // 🔢 Рассчитываем долю просроченных подзадач
+        const overdueRatio = total > 0 ? overdue / total : 0
+
+        // 🔥 Если вся задача просрочена — красный полностью
+        if (t.is_overdue) {
+          return {
+            value: t.progress,
+            itemStyle: {
+              color: '#ef4444',
+            },
+          }
+        }
+
+        // 🌈 Если часть подзадач просрочены — градиент
+        if (overdueRatio > 0) {
+          return {
+            value: t.progress,
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#22c55e' }, // верх — зелёный
+                { offset: 1 - overdueRatio, color: '#22c55e' },
+                { offset: 1 - overdueRatio + 0.001, color: '#f59e0b' }, // переход
+                { offset: 1, color: '#f59e0b' }, // низ — жёлтый
+              ]),
+            },
+          }
+        }
+
+        // ✅ Всё ок — обычный синий / зелёный цвет
+        return {
+          value: t.progress,
+          itemStyle: {
+            color: t.progress >= 80 ? '#22c55e' : '#3b82f6',
+          },
+        }
+      }),
+      label: {
+        show: true,
+        position: 'top',
+        formatter: (params) => {
+          const task = taskStats.value[params.dataIndex]
+          if (task.is_overdue) return 'Просрочена'
+          if (task.subtasks_overdue > 0) return `${task.progress}% ⚠️`
+          return `${params.value}%`
+        },
+      },
+    },
+  ],
+}))
+
+
+
+
+
+const taskChartOptions = computed(() => ({
+  title: {
+    text: selectedProject.value
+      ? `Задачи проекта: ${selectedProject.value.name}`
+      : 'Выберите проект',
+  },
+  tooltip: {},
+  grid: { left: 120, right: 20 },
+  xAxis: { type: 'category', data: projectTasks.value.map(t => t.title) },
+  yAxis: { type: 'value' },
+  series: [
+    {
+      type: 'bar',
+      data: projectTasks.value.map(t => {
+        const start = new Date(t.start_date)
+        const end = new Date(t.due_date)
+        return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) // длительность в днях
+      }),
+      itemStyle: {
+        color: '#6366f1',
+      },
+    },
+  ],
+}))
+
+
+// === 📊 Статистика задач проекта ===
+const taskStats = ref([])
+const loadingStats = ref(false)
+
+const fetchTaskStats = async (projectId) => {
+  loadingStats.value = true
+  try {
+    const { data } = await axios.get(`/api/projects/${projectId}/task-stats`)
+    taskStats.value = data
+  } finally {
+    loadingStats.value = false
+  }
+}
+
+
+
 
 onMounted(fetchCompany)
 </script>
@@ -172,6 +404,14 @@ onMounted(fetchCompany)
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V6h2v5h5v2h-5v5h-2v-5H6v-2h5z"/></svg>
               Создать проект
             </button>
+
+             <button
+    @click="openMembersModal"
+    class="inline-flex items-center gap-2 rounded-xl bg-white/20 text-white px-4 py-2.5 hover:bg-white/30 transition"
+  >
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5C23 14.17 18.33 13 16 13z"/></svg>
+    Участники
+  </button>
 
            
           </div>
@@ -282,6 +522,61 @@ onMounted(fetchCompany)
       </div>
     </div>
 
+
+    <!-- <pre v-if="!loadingStats">{{ taskStats }}</pre> -->
+
+<!-- 📊 Первый график — проекты -->
+<div class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    График проектов
+  </h3>
+  <v-chart :option="chartOptions" autoresize style="height: 400px" @click="onProjectClick" />
+</div>
+
+<!-- 📊 Второй график — задачи выбранного проекта -->
+<!-- <div
+  v-if="selectedProject"
+  class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow transition-all duration-300"
+>
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    Задачи проекта "{{ selectedProject.name }}"
+  </h3>
+
+  <div v-if="loadingTasks" class="text-gray-500">Загрузка задач...</div>
+  <v-chart
+    v-else
+    :option="taskChartOptions"
+    autoresize
+    style="height: 350px"
+  />
+</div> -->
+
+<!-- 📊 Третий график — динамика задач -->
+
+<!-- 📊 График прогресса задач -->
+<div
+  v-if="selectedProject && taskStats.length"
+  class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow"
+>
+  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+    Прогресс задач проекта "{{ selectedProject.name }}"
+  </h3>
+
+  <div v-if="loadingStats" class="text-gray-500">Загрузка статистики...</div>
+
+  <VChart
+    v-else
+    :option="taskStatsChartOptions"
+    autoresize
+    style="height: 400px; width: 100%"
+  />
+</div>
+
+
+
+
+
+
     <!-- Модалка создания проекта -->
     <div
       v-if="showProjectModal"
@@ -379,5 +674,57 @@ onMounted(fetchCompany)
         </form>
       </div>
     </div>
+
+
+<!-- Модалка участников -->
+<div
+  v-if="showMembersModal"
+  class="fixed inset-0 z-50 flex items-center justify-center p-4"
+>
+  <div class="absolute inset-0 bg-black/50" @click="showMembersModal = false"></div>
+
+  <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Участники компании</h3>
+      <button @click="showMembersModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+    </div>
+
+    <div v-if="loadingMembers" class="text-center py-6 text-gray-500 dark:text-gray-300">
+      Загрузка...
+    </div>
+
+    <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
+      <div
+        v-for="member in members"
+        :key="member.id"
+        class="flex items-center justify-between py-3"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-medium">
+            {{ managerInitials(member.name) }}
+          </div>
+          <div>
+            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ member.name }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">{{ member.email }}</div>
+          </div>
+        </div>
+        <span
+          :class="{
+            'px-2 py-1 text-xs rounded-full font-medium': true,
+            'bg-amber-100 text-amber-700': member.pivot.role === 'manager',
+            'bg-indigo-100 text-indigo-700': member.pivot.role === 'owner',
+            'bg-gray-100 text-gray-600': member.pivot.role === 'employee',
+          }"
+        >
+          {{ member.pivot.role === 'owner' ? 'Владелец' :
+             member.pivot.role === 'manager' ? 'Менеджер' :
+             'Сотрудник' }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
   </AuthenticatedLayout>
 </template>
