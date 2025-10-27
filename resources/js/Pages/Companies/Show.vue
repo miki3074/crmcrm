@@ -235,13 +235,14 @@ const taskStatsChartOptions = computed(() => ({
   title: { text: 'Прогресс задач проекта', left: 'center' },
   tooltip: {
     trigger: 'item',
+    enterable: true,
     formatter: (params) => {
       const task = taskStats.value[params.dataIndex]
       const status = task.is_overdue
         ? '<span style="color:#ef4444;">⚠️ Просрочена</span>'
         : task.subtasks_overdue > 0
-        ? '<span style="color:#f59e0b;">⚠️ Частично просроченые подзадачи</span>'
-        : '<span style="color:#22c55e;"></span>'
+        ? '<span style="color:#f59e0b;">⚠️ Частично просрочены подзадачи</span>'
+        : '<span style="color:#22c55e;">✅ В срок</span>'
       return `
         <b>${task.title}</b><br/>
         Прогресс: ${task.progress}%<br/>
@@ -251,11 +252,35 @@ const taskStatsChartOptions = computed(() => ({
       `
     },
   },
-  grid: { left: '5%', right: '5%', bottom: '10%', containLabel: true },
+  grid: { left: '5%', right: '5%', bottom: 80, containLabel: true },
   xAxis: {
     type: 'category',
     data: taskStats.value.map(t => t.title),
-    axisLabel: { rotate: 25 },
+    axisLabel: {
+      rotate: 25,
+      fontSize: 11,
+      interval: 0,
+      // 👇 Обрезаем длинные названия и добавляем HTML title для всплывающей подсказки
+      formatter: function (value) {
+        const maxLength = 14
+        if (value.length > maxLength) {
+          // Обрезаем и добавляем tooltip в виде span
+          return `{tooltip|${value.slice(0, maxLength)}…}`
+        }
+        return value
+      },
+      rich: {
+        tooltip: {
+          width: 100,
+          lineHeight: 16,
+          align: 'center',
+          // 👇 добавляем HTML title при наведении
+          rich: true,
+        },
+      },
+    },
+    // 💡 Можно добавить dataZoom, если задач слишком много
+    // dataZoom: [{ type: 'slider', show: true, height: 15, bottom: 10 }],
   },
   yAxis: {
     type: 'value',
@@ -263,6 +288,29 @@ const taskStatsChartOptions = computed(() => ({
     min: 0,
     max: 100,
   },
+
+dataZoom: [
+    {
+      type: 'slider',
+      show: true,
+      start: 0,
+      end: 40,
+      height: 18,
+      bottom: 15,
+      handleSize: '90%',
+      handleStyle: {
+        color: '#4f46e5',
+        borderColor: '#93c5fd',
+      },
+    },
+    {
+      type: 'inside',
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: true,
+    },
+  ],
+
+
   series: [
     {
       name: 'Прогресс задач',
@@ -270,36 +318,29 @@ const taskStatsChartOptions = computed(() => ({
       data: taskStats.value.map(t => {
         const total = t.subtasks_total || 0
         const overdue = t.subtasks_overdue || 0
-
-        // 🔢 Рассчитываем долю просроченных подзадач
         const overdueRatio = total > 0 ? overdue / total : 0
 
-        // 🔥 Если вся задача просрочена — красный полностью
         if (t.is_overdue) {
           return {
             value: t.progress,
-            itemStyle: {
-              color: '#ef4444',
-            },
+            itemStyle: { color: '#ef4444' },
           }
         }
 
-        // 🌈 Если часть подзадач просрочены — градиент
         if (overdueRatio > 0) {
           return {
             value: t.progress,
             itemStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#22c55e' }, // верх — зелёный
+                { offset: 0, color: '#22c55e' },
                 { offset: 1 - overdueRatio, color: '#22c55e' },
-                { offset: 1 - overdueRatio + 0.001, color: '#f59e0b' }, // переход
-                { offset: 1, color: '#f59e0b' }, // низ — жёлтый
+                { offset: 1 - overdueRatio + 0.001, color: '#f59e0b' },
+                { offset: 1, color: '#f59e0b' },
               ]),
             },
           }
         }
 
-        // ✅ Всё ок — обычный синий / зелёный цвет
         return {
           value: t.progress,
           itemStyle: {
@@ -320,6 +361,7 @@ const taskStatsChartOptions = computed(() => ({
     },
   ],
 }))
+
 
 
 
@@ -556,7 +598,7 @@ onMounted(fetchCompany)
 <!-- 📊 График прогресса задач -->
 <div
   v-if="selectedProject && taskStats.length"
-  class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow"
+  class=""
 >
   <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
     Прогресс задач проекта "{{ selectedProject.name }}"
