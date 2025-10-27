@@ -181,31 +181,81 @@ const loadingTasks = ref(false)
 
 
 const chartOptions = computed(() => ({
-  title: { text: 'График проектов' },
+  
   tooltip: {
     trigger: 'axis',
-    formatter: function(params) {
+    axisPointer: { type: 'shadow' },
+    formatter: function (params) {
       const project = params[0];
-      return `Проект: ${project.name}<br/>Длительность: ${project.value} дней`;
-    }
+      const fullName = company.value?.projects?.[project.dataIndex]?.name || '';
+      return `
+        <b>${fullName}</b><br/>
+        Длительность: ${project.value} дней
+      `;
+    },
   },
-  grid: { left: 100 },
+  grid: { left: '5%', right: '5%', bottom: 80, containLabel: true },
+
   xAxis: {
     type: 'category',
     data: company.value?.projects?.map(p => p.name) || [],
+    axisLabel: {
+      rotate: 25,
+      fontSize: 11,
+      interval: 0,
+      // ✂️ сокращаем длинные названия проектов
+      formatter: function (value) {
+        const maxLength = 14;
+        if (value.length > maxLength) {
+          return value.slice(0, maxLength) + '…';
+        }
+        return value;
+      },
+    },
   },
+
   yAxis: {
     type: 'value',
-    name: 'Дней'
+    name: 'Дней',
   },
+
+  // ✅ горизонтальная прокрутка
+  dataZoom: [
+    {
+      type: 'slider', // нижний ползунок
+      show: true,
+      start: 0, // показываем первые 40%
+      end: 40,
+      height: 18,
+      bottom: 15,
+      handleSize: '90%',
+      handleStyle: {
+        color: '#4f46e5',
+        borderColor: '#93c5fd',
+      },
+    },
+    {
+      type: 'inside', // прокрутка колесиком мыши
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: true,
+    },
+  ],
+
   series: [
     {
       type: 'bar',
+      barWidth: '45%', // чтобы не слипались
       data: company.value?.projects?.map(p => p.duration_days) || [],
       itemStyle: { color: '#4f46e5' },
+      label: {
+        show: true,
+        position: 'top',
+        formatter: (params) => `${params.value}д`,
+      },
     },
   ],
-}))
+}));
+
 
 
 const fetchProjectTasks = async (projectId) => {
@@ -232,19 +282,32 @@ const onProjectClick = async (params) => {
 
 
 const taskStatsChartOptions = computed(() => ({
-  title: { text: 'Прогресс задач проекта', left: 'center' },
+  backgroundColor: 'transparent', // убираем серый фон по умолчанию
+  title: {
+   
+    left: 'center',
+    textStyle: {
+      color: '#1e293b', // темно-серый
+      fontWeight: 600,
+      fontSize: 18,
+    },
+  },
   tooltip: {
     trigger: 'item',
-    enterable: true,
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+    textStyle: { color: '#f8fafc' },
+    borderWidth: 1,
+    padding: 10,
     formatter: (params) => {
       const task = taskStats.value[params.dataIndex]
       const status = task.is_overdue
         ? '<span style="color:#ef4444;">⚠️ Просрочена</span>'
         : task.subtasks_overdue > 0
-        ? '<span style="color:#f59e0b;">⚠️ Частично просрочены подзадачи</span>'
+        ? '<span style="color:#f59e0b;">⚠️ Частично просрочены</span>'
         : '<span style="color:#22c55e;">✅ В срок</span>'
       return `
-        <b>${task.title}</b><br/>
+        <b style="font-size:14px;">${task.title}</b><br/>
         Прогресс: ${task.progress}%<br/>
         Подзадач: ${task.subtasks_total}<br/>
         Просрочено подзадач: ${task.subtasks_overdue}<br/>
@@ -252,56 +315,42 @@ const taskStatsChartOptions = computed(() => ({
       `
     },
   },
-  grid: { left: '5%', right: '5%', bottom: 80, containLabel: true },
+  grid: { left: '6%', right: '4%', bottom: 90, containLabel: true },
   xAxis: {
     type: 'category',
     data: taskStats.value.map(t => t.title),
     axisLabel: {
       rotate: 25,
       fontSize: 11,
+      color: '#475569',
       interval: 0,
-      // 👇 Обрезаем длинные названия и добавляем HTML title для всплывающей подсказки
-      formatter: function (value) {
-        const maxLength = 14
-        if (value.length > maxLength) {
-          // Обрезаем и добавляем tooltip в виде span
-          return `{tooltip|${value.slice(0, maxLength)}…}`
-        }
-        return value
-      },
-      rich: {
-        tooltip: {
-          width: 100,
-          lineHeight: 16,
-          align: 'center',
-          // 👇 добавляем HTML title при наведении
-          rich: true,
-        },
-      },
+      formatter: (value) => (value.length > 14 ? value.slice(0, 14) + '…' : value),
     },
-    // 💡 Можно добавить dataZoom, если задач слишком много
-    // dataZoom: [{ type: 'slider', show: true, height: 15, bottom: 10 }],
+    axisLine: { lineStyle: { color: '#cbd5e1' } },
   },
   yAxis: {
     type: 'value',
     name: '% выполнения',
+    nameTextStyle: { color: '#64748b', fontSize: 12, padding: [0, 0, 5, 0] },
     min: 0,
     max: 100,
+    splitLine: { lineStyle: { color: '#e2e8f0' } },
   },
-
-dataZoom: [
+  dataZoom: [
     {
       type: 'slider',
       show: true,
       start: 0,
       end: 40,
       height: 18,
-      bottom: 15,
+      bottom: 10,
       handleSize: '90%',
       handleStyle: {
-        color: '#4f46e5',
+        color: '#6366f1',
         borderColor: '#93c5fd',
       },
+      textStyle: { color: '#64748b' },
+      borderColor: '#c7d2fe',
     },
     {
       type: 'inside',
@@ -309,22 +358,18 @@ dataZoom: [
       moveOnMouseMove: true,
     },
   ],
-
-
   series: [
     {
       name: 'Прогресс задач',
       type: 'bar',
+      barWidth: '45%',
       data: taskStats.value.map(t => {
         const total = t.subtasks_total || 0
         const overdue = t.subtasks_overdue || 0
         const overdueRatio = total > 0 ? overdue / total : 0
 
         if (t.is_overdue) {
-          return {
-            value: t.progress,
-            itemStyle: { color: '#ef4444' },
-          }
+          return { value: t.progress, itemStyle: { color: '#ef4444' } }
         }
 
         if (overdueRatio > 0) {
@@ -343,24 +388,32 @@ dataZoom: [
 
         return {
           value: t.progress,
-          itemStyle: {
-            color: t.progress >= 80 ? '#22c55e' : '#3b82f6',
-          },
+          itemStyle: { color: t.progress >= 80 ? '#22c55e' : '#3b82f6' },
         }
       }),
       label: {
         show: true,
         position: 'top',
+        color: '#334155',
+        fontSize: 11,
         formatter: (params) => {
           const task = taskStats.value[params.dataIndex]
-          if (task.is_overdue) return 'Просрочена'
+          if (task.is_overdue) return '❌ Просрочена'
           if (task.subtasks_overdue > 0) return `${task.progress}% ⚠️`
           return `${params.value}%`
+        },
+      },
+      emphasis: {
+        focus: 'series',
+        itemStyle: {
+          shadowBlur: 10,
+          shadowColor: 'rgba(0, 0, 0, 0.3)',
         },
       },
     },
   ],
 }))
+
 
 
 
@@ -406,6 +459,22 @@ const fetchTaskStats = async (projectId) => {
     loadingStats.value = false
   }
 }
+
+
+// Определяем, мобильное устройство или нет
+const isMobile = ref(false)
+
+onMounted(() => {
+  // 1️⃣ Проверка ширины экрана
+  if (window.innerWidth < 768) {
+    isMobile.value = true
+  }
+
+  // 2️⃣ (опционально) более надёжная проверка по User-Agent
+  if (/Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent)) {
+    isMobile.value = true
+  }
+})
 
 
 
@@ -568,7 +637,7 @@ onMounted(fetchCompany)
     <!-- <pre v-if="!loadingStats">{{ taskStats }}</pre> -->
 
 <!-- 📊 Первый график — проекты -->
-<div class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow">
+<div v-if="!isMobile" class="my-8 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
   <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
     График проектов
   </h3>
@@ -598,11 +667,16 @@ onMounted(fetchCompany)
 <!-- 📊 График прогресса задач -->
 <div
   v-if="selectedProject && taskStats.length"
-  class=""
+  class=" bg-gradient-to-br from-white via-slate-50 to-indigo-50 dark:from-gray-800 dark:via-gray-900 dark:to-indigo-950 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 transition-all duration-300 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
 >
-  <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-    Прогресс задач проекта "{{ selectedProject.name }}"
-  </h3>
+  <div class="flex items-center justify-between mb-5">
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+      📈 Прогресс задач проекта "{{ selectedProject.name }}"
+    </h3>
+    <span class="text-sm text-gray-500 dark:text-gray-400">
+      Всего задач: {{ taskStats.length }}
+    </span>
+  </div>
 
   <div v-if="loadingStats" class="text-gray-500">Загрузка статистики...</div>
 
@@ -610,11 +684,17 @@ onMounted(fetchCompany)
     v-else
     :option="taskStatsChartOptions"
     autoresize
-    style="height: 400px; width: 100%"
+    style="height: 420px; width: 100%"
   />
 </div>
 
 
+<!-- <div style="border-radius: 20px 20px 0 0;"
+  v-else
+  class="mt-5 bg-white dark:bg-gray-800 p-6  shadow text-center text-gray-500"
+>
+  📱 Графики недоступны на мобильных устройствах
+</div> -->
 
 
 
