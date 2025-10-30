@@ -118,7 +118,7 @@ Route::middleware(['auth','verified'])->group(function () {
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Страница визуальной схемы (Draw.io-подобная)
+   
     Route::get('/mapdiagram', function () {
         return Inertia::render('CompanyDiagram');
     })->name('mapdiagram');
