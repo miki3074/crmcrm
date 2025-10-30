@@ -264,7 +264,7 @@ onMounted(async () => {
   <AuthenticatedLayout>
     <template #header>
       <div class="flex items-center justify-between">
-        <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200">Панель управления старая</h2>
+        <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200">Панель управления </h2>
         <div class="flex items-center gap-2">
           <span v-for="r in roles" :key="r"
             class="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
@@ -398,6 +398,28 @@ onMounted(async () => {
             </div>
           </div>
         </button>
+
+
+<button
+  class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
+  @click="$inertia.visit('/mapdiagram')"
+>
+  <div class="flex items-center gap-3">
+    <div class="h-10 w-10 rounded-xl bg-blue-500/10 ring-1 ring-blue-500/30 grid place-items-center">
+      <span class="i">🗺️</span>
+    </div>
+    <div>
+      <div class="font-semibold text-slate-700 ">
+        Визуальная схема
+      </div>
+      <div class="text-xs text-slate-500 ">
+        
+      </div>
+    </div>
+  </div>
+</button>
+
+
       </div>
 
      
@@ -480,33 +502,7 @@ onMounted(async () => {
     </div>
   </div>
 
-<!-- Модальное окно подтверждения -->
-    <div v-if="showConfirmModal" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-96">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Подтверждение удаления</h3>
-        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Введите пароль для подтверждения удаления компании. Это действие необратимо.
-        </p>
 
-        <input
-  v-model="deletePassword"
-  type="password"
-  placeholder="Ваш пароль"
-  class="w-full border rounded-lg px-3 py-2 mb-3 dark:bg-gray-700 dark:text-white"
-  autocomplete="new-password"
-/>
-
-
-        <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
-
-        <div class="flex justify-end gap-2">
-          <button @click="showConfirmModal = false" class="px-4 py-2 border rounded-lg">Отмена</button>
-          <button @click="deleteCompanyConfirm" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700">
-            Удалить
-          </button>
-        </div>
-      </div>
-    </div>
 
 
 
@@ -539,6 +535,35 @@ onMounted(async () => {
     </div>
   </div>
 </div>
+
+
+<!-- Модальное окно подтверждения -->
+    <div v-if="showConfirmModal" class="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 w-96">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Подтверждение удаления</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+          Введите пароль для подтверждения удаления компании. Это действие необратимо.
+        </p>
+
+        <input
+  v-model="deletePassword"
+  type="password"
+  placeholder="Ваш пароль"
+  class="w-full border rounded-lg px-3 py-2 mb-3 dark:bg-gray-700 dark:text-white"
+  autocomplete="new-password"
+/>
+
+
+        <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
+
+        <div class="flex justify-end gap-2">
+          <button @click="showConfirmModal = false" class="px-4 py-2 border rounded-lg">Отмена</button>
+          <button @click="deleteCompanyConfirm" class="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700">
+            Удалить
+          </button>
+        </div>
+      </div>
+    </div>
 
 
       <!-- Модалка создания -->

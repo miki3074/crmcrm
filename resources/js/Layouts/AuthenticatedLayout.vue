@@ -162,6 +162,12 @@ const toggleTheme = () => {
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Главаня
                         </ResponsiveNavLink>
+
+
+                          <ResponsiveNavLink :href="route('mapdiagram')" :active="route().current('mapdiagram')">
+      Визуальная схема
+    </ResponsiveNavLink>
+
                     </div>
 
                     <!-- Responsive Settings Options -->

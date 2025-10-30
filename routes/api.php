@@ -25,6 +25,8 @@ use App\Http\Controllers\API\TelegramController;
 use App\Http\Controllers\API\PasswordResetController;
 use App\Http\Controllers\API\UserManagementController;
 
+use App\Http\Controllers\API\CompanyMapController;
+
 use App\Models\Company;
 
 use App\Http\Controllers\API\TaskDescriptionController;
@@ -293,6 +295,18 @@ Route::get('/projects/{project}/task-stats', [ProjectController::class, 'taskSta
 
 Route::get('/tasks/{task}/description', [TaskDescriptionController::class, 'show']);
 Route::patch('/tasks/{task}/description', [TaskDescriptionController::class, 'update']);
+
+
+
+
+
+Route::get('/mapdiagram', function () {
+    return \App\Models\Company::where('user_id', auth()->id())->get(['id', 'name']);
+})->middleware('auth:sanctum');
+
+// Получить структуру конкретной компании (проект → задачи → подзадачи)
+Route::get('/mapdiagram/{company}/map', [CompanyMapController::class, 'show'])
+    ->middleware('auth:sanctum');
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
