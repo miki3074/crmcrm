@@ -336,69 +336,77 @@ onMounted(async () => {
 
     <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <button
-          class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
-          @click="$inertia.visit('/calendar')">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-purple-500/10 ring-1 ring-purple-500/30 grid place-items-center">
-              <span class="i">📅</span>
-            </div>
-            <div>
-              <div class="font-semibold text-slate-500" >Календарь</div>
-              <div class="text-xs text-slate-500">События и встречи</div>
-            </div>
-          </div>
-        </button>
-
-
-        <button
-          class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
-          @click="$inertia.visit('/file-storage')">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-purple-500/10 ring-1 ring-purple-500/30 grid place-items-center">
-              <span class="i">📂</span>
-            </div>
-            <div>
-              <div class="font-semibold text-slate-500">Хранилище</div>
-              <div class="text-xs text-slate-500">файлы</div>
-            </div>
-          </div>
-        </button>
-
-
-       
-
-        <button
-         v-if="isAdmin"
-          class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
-          @click="$inertia.visit('/employees')">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-indigo-500/10 ring-1 ring-indigo-500/30 grid place-items-center">
-              <span class="i">👥</span>
-            </div>
-            <div>
-              <div class="font-semibold text-slate-500">Сотрудники</div>
-              <div class="text-xs text-slate-500">Роли и доступы</div>
-            </div>
-          </div>
-        </button>
-
-        <button
-          v-if="isAdmin"
-          class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
-          @click="showModal = true">
-          <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/30 grid place-items-center">
-              <span class="i">➕</span>
-            </div>
-            <div>
-              <div class="font-semibold  text-slate-500" >Новая компания</div>
-              <div class="text-xs text-slate-500">Создать организацию</div>
-            </div>
-          </div>
-        </button>
+      <div class="grid gap-4 md:grid-cols-6 auto-rows-[150px]">
+  <!-- Календарь -->
+  <button
+    @click="$inertia.visit('/calendar')"
+    class="group col-span-3 md:col-span-2 row-span-1 relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent border border-purple-500/20 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 p-6 text-left"
+  >
+    <div class="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-transparent opacity-50 group-hover:opacity-70 transition"></div>
+    <div class="relative z-10 flex items-center gap-3">
+      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-purple-500/10 ring-1 ring-purple-500/30">
+        📅
       </div>
+      <div>
+        <h3 class="font-semibold text-slate-800 dark:text-slate-100">Календарь</h3>
+        <p class="text-xs text-slate-500">События и встречи</p>
+      </div>
+    </div>
+  </button>
+
+  <!-- Хранилище -->
+  <button
+    @click="$inertia.visit('/file-storage')"
+    class="group col-span-3 md:col-span-2 row-span-1 relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/10 via-sky-600/5 to-transparent border border-sky-500/20 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 p-6 text-left"
+  >
+    <div class="absolute inset-0 bg-gradient-to-br from-sky-500/20 to-transparent opacity-50 group-hover:opacity-70 transition"></div>
+    <div class="relative z-10 flex items-center gap-3">
+      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-sky-500/10 ring-1 ring-sky-500/30">
+        📂
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800 dark:text-slate-100">Хранилище</h3>
+        <p class="text-xs text-slate-500">Файлы и документы</p>
+      </div>
+    </div>
+  </button>
+
+  <!-- Сотрудники -->
+  <button
+    v-if="isAdmin"
+    @click="$inertia.visit('/employees')"
+    class="group col-span-3 md:col-span-2 row-span-1 relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-indigo-600/5 to-transparent border border-indigo-500/20 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 p-6 text-left"
+  >
+    <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-transparent opacity-50 group-hover:opacity-70 transition"></div>
+    <div class="relative z-10 flex items-center gap-3">
+      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-indigo-500/10 ring-1 ring-indigo-500/30">
+        👥
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800 dark:text-slate-100">Сотрудники</h3>
+        <p class="text-xs text-slate-500">Роли и доступы</p>
+      </div>
+    </div>
+  </button>
+
+  <!-- Новая компания -->
+  <button
+    v-if="isAdmin"
+    @click="showModal = true"
+    class="group col-span-3 md:col-span-3 row-span-1 relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-emerald-600/5 to-transparent border border-emerald-500/20 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 p-6 text-left"
+  >
+    <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/20 to-transparent opacity-50 group-hover:opacity-70 transition"></div>
+    <div class="relative z-10 flex items-center gap-3">
+      <div class="h-12 w-12 flex items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/30">
+        ➕
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-800 dark:text-slate-100">Новая компания</h3>
+        <p class="text-xs text-slate-500">Создать организацию</p>
+      </div>
+    </div>
+  </button>
+</div>
 
      
       <div class="flex items-center gap-3">

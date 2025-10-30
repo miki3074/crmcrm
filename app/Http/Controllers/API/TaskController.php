@@ -36,6 +36,7 @@ public function store(Request $request)
 
     $validated = $request->validate([
         'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
         'priority' => 'required|in:low,medium,high',
         'start_date' => 'required|date',
         'due_date' => 'required|date|after_or_equal:start_date',
@@ -64,6 +65,7 @@ public function store(Request $request)
     // Создание задачи
     $task = Task::create([
         'title' => $validated['title'],
+         'description' => $validated['description'] ?? null,
         'priority' => $validated['priority'],
         'start_date' => $validated['start_date'],
         'due_date' => $validated['due_date'],
@@ -157,24 +159,6 @@ public function updateProgress(Request $request, Task $task)
     return response()->json(['message' => 'Прогресс обновлен', 'progress' => $task->progress]);
 }
 
-
-// public function addFiles(Request $request, Task $task)
-// {
-//     $this->authorize('update', $task); // если есть политика
-
-//     $request->validate([
-//         'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
-//     ]);
-
-//     if ($request->hasFile('files')) {
-//         foreach ($request->file('files') as $file) {
-//             $path = $file->store('task_files', 'public');
-//             $task->files()->create(['file_path' => $path]);
-//         }
-//     }
-
-//     return response()->json(['message' => 'Файлы успешно добавлены']);
-// }
 
 
 public function addFiles(Request $request, Task $task)
@@ -272,6 +256,7 @@ public function complete(Task $task)
 
     $data = $request->validate([
         'title' => 'required|string|max:255',
+        'description' => 'nullable|string',
         'start_date' => 'nullable|date',
         'due_date' => 'nullable|date|after_or_equal:start_date',
     ]);

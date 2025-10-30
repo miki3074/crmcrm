@@ -27,6 +27,7 @@ use App\Http\Controllers\API\UserManagementController;
 
 use App\Models\Company;
 
+use App\Http\Controllers\API\TaskDescriptionController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -288,6 +289,10 @@ Route::get('/companies/{company}/members', [CompanyController::class, 'members']
 Route::get('/projects/{project}/tasks', [ProjectController::class, 'tasks']);
 
 Route::get('/projects/{project}/task-stats', [ProjectController::class, 'taskStats']);
+
+
+Route::get('/tasks/{task}/description', [TaskDescriptionController::class, 'show']);
+Route::patch('/tasks/{task}/description', [TaskDescriptionController::class, 'update']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

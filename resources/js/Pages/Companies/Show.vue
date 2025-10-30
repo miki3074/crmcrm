@@ -299,6 +299,10 @@ const taskStatsChartOptions = computed(() => ({
     textStyle: { color: '#f8fafc' },
     borderWidth: 1,
     padding: 10,
+     position: function (point, params, dom, rect, size) {
+      // Центрируем подсказку относительно графика
+      return [size.contentSize[0] / 2, size.contentSize[1] / 2];
+    },
     formatter: (params) => {
       const task = taskStats.value[params.dataIndex]
       const status = task.is_overdue

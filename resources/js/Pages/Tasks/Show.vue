@@ -487,6 +487,32 @@ const replaceResponsible = async () => {
   }
 }
 
+const showDescriptionModal = ref(false)
+const savingDescription = ref(false)
+const descriptionForm = ref({ description: '' })
+
+const openDescriptionModal = () => {
+  descriptionForm.value.description = task.value?.description || ''
+  showDescriptionModal.value = true
+}
+
+const saveDescription = async () => {
+  if (!task.value) return
+  savingDescription.value = true
+
+  try {
+    await axios.patch(`/api/tasks/${task.value.id}/description`, {
+      description: descriptionForm.value.description,
+    })
+    task.value.description = descriptionForm.value.description
+    showDescriptionModal.value = false
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при сохранении описания')
+  } finally {
+    savingDescription.value = false
+  }
+}
+
 
 
 
@@ -563,6 +589,13 @@ onMounted(fetchTask)
                 Приоритет: <b>{{ priorityLabel(task.priority) }}</b>
               </span>
             </div>
+
+<div v-if="task?.description" class="bg-white/10 rounded-xl p-4 mt-4">
+  <h3 class="text-base font-semibold text-white mb-2">📝 Описание</h3>
+  <p class="text-gray-200 whitespace-pre-line">{{ task.description }}</p>
+</div>
+
+
           </div>
 
           <!-- <div class="hidden sm:flex items-center gap-3">
@@ -595,6 +628,14 @@ onMounted(fetchTask)
 >
   🗑 Удалить задачу
 </button>
+
+<button
+  @click="openDescriptionModal"
+  class="flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 font-medium shadow-sm transition"
+>
+  📝 Описание
+</button>
+
 
 
 <!-- Модалка подтверждения удаления -->
@@ -1203,6 +1244,42 @@ onMounted(fetchTask)
         class="px-4 py-2 rounded-lg border dark:border-gray-600"
       >
         Закрыть
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div
+  v-if="showDescriptionModal"
+  class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+>
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+      📝 Описание задачи
+    </h3>
+
+    <textarea
+      v-model="descriptionForm.description"
+      class="w-full border rounded-lg p-3 min-h-[150px] dark:bg-gray-700 dark:text-white"
+      placeholder="Введите описание задачи..."
+    ></textarea>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button
+        @click="showDescriptionModal = false"
+        class="px-4 py-2 border rounded-lg text-gray-600 dark:border-gray-500"
+      >
+        Отмена
+      </button>
+
+      <button
+        @click="saveDescription"
+        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+        :disabled="savingDescription"
+      >
+        <span v-if="!savingDescription">Сохранить</span>
+        <span v-else>Сохраняю…</span>
       </button>
     </div>
   </div>
