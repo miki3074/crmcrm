@@ -114,34 +114,50 @@ public function index()
 }
 
 
-public function usersForAttach()
-    {
-        $ownerId = auth()->id();
+public function usersForAttach(Request $request)
+{
+    $ownerId = auth()->id();
 
-        // компании, которыми владеет текущий админ
-        $companyIds = Company::where('user_id', $ownerId)->pluck('id')->toArray();
+    // проверим, что компания_id передана
+    $companyId = $request->query('company_id');
 
-        // если у владельца нет компаний — вернуть пустой список
-        if (empty($companyIds)) {
-            return response()->json([], 200);
-        }
-
-        // id пользователей, уже прикреплённых к этим компаниям через pivot company_user
-        $attachedUserIds = \DB::table('company_user')
-            ->whereIn('company_id', $companyIds)
-            ->pluck('user_id')
-            ->unique()
-            ->toArray();
-
-        // исключаем текущего владельца и уже прикреплённых
-        $excluded = array_merge([$ownerId], $attachedUserIds);
-
-        $users = User::whereNotIn('id', $excluded)
-            ->select(['id','name','email'])
-            ->get();
-
-        return response()->json($users);
+    if (!$companyId) {
+        return response()->json(['error' => 'company_id is required'], 400);
     }
+
+    // убедимся, что компания принадлежит текущему владельцу
+    $company = Company::where('id', $companyId)
+        ->where('user_id', $ownerId)
+        ->firstOrFail();
+
+    // пользователи, уже прикреплённые к ЭТОЙ компании
+    $attachedUserIds = \DB::table('company_user')
+        ->where('company_id', $companyId)
+        ->pluck('user_id')
+        ->unique()
+        ->toArray();
+
+    $excluded = array_merge([$ownerId], $attachedUserIds);
+
+    // 🔍 Поиск
+    $query = User::query()
+        ->whereNotIn('id', $excluded)
+        ->select(['id', 'name', 'email']);
+
+    if ($request->filled('q')) {
+        $q = $request->q;
+        $query->where(function ($sub) use ($q) {
+            $sub->where('name', 'like', "%{$q}%")
+                ->orWhere('email', 'like', "%{$q}%");
+        });
+    }
+
+    $users = $query->limit(10)->get();
+
+    return response()->json($users);
+}
+
+
 
     /**
      * Пример attach (если ещё нет) — привязывает существующего юзера к компании через pivot
@@ -192,23 +208,38 @@ public function updateRole(Request $request, $id)
 {
     $request->validate([
         'role' => 'required|in:manager,employee',
+        'company_id' => 'required|exists:companies,id',
     ]);
 
-    $user = \DB::table('company_user')
-        ->where('user_id', $id)
-        ->whereIn('company_id', Company::where('user_id', auth()->id())->pluck('id'))
-        ->first();
+    $ownerId = auth()->id();
 
-    if (!$user) {
-        return response()->json(['message' => 'Forbidden'], 403);
+    // проверяем, что компания принадлежит текущему владельцу
+    $company = Company::where('id', $request->company_id)
+        ->where('user_id', $ownerId)
+        ->firstOrFail();
+
+    // проверяем, что пользователь действительно в этой компании
+    $exists = \DB::table('company_user')
+        ->where('user_id', $id)
+        ->where('company_id', $company->id)
+        ->exists();
+
+    if (!$exists) {
+        return response()->json(['message' => 'User not found in this company'], 404);
     }
 
+    // обновляем только для этой компании
     \DB::table('company_user')
         ->where('user_id', $id)
-        ->update(['role' => $request->role, 'updated_at' => now()]);
+        ->where('company_id', $company->id)
+        ->update([
+            'role' => $request->role,
+            'updated_at' => now(),
+        ]);
 
     return response()->json(['message' => 'Role updated']);
 }
+
 
 
 

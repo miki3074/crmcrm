@@ -537,7 +537,8 @@ public function summary(Request $request)
         ->whereHas('managers', function ($q) use ($user) {
             $q->where('users.id', $user->id);
         })
-        ->latest('id')->take(8)
+        ->latest('id')
+        // ->take(8)
         ->get(['id','name','company_id']);
 
 
@@ -550,7 +551,7 @@ $watchingTasks = Task::with([
         $q->where('users.id', $user->id);
     })
     ->orderByRaw('due_date IS NULL, due_date ASC')
-    ->take(12)
+    // ->take(12)
     ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
 
@@ -561,7 +562,7 @@ $watchingTasks = Task::with([
         ])
         ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
-        ->take(12)
+        // ->take(12)
         ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
     // Задачи, где я ответственный
@@ -571,7 +572,7 @@ $watchingTasks = Task::with([
         ])
         ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
-        ->take(12)
+        // ->take(12)
         ->get(['id','title','priority','progress','start_date','due_date','project_id']);
 
     // 👇 объединяем задачи (исполнитель + ответственный)
@@ -587,7 +588,7 @@ $watchingTasks = Task::with([
         ])
         ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
-        ->take(12)
+        // ->take(12)
         ->get(['id','title','start_date','due_date','task_id']);
 
     // Подзадачи, где я ответственный
@@ -598,7 +599,7 @@ $watchingTasks = Task::with([
         ])
         ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
         ->orderByRaw('due_date IS NULL, due_date ASC')
-        ->take(12)
+        // ->take(12)
         ->get(['id','title','start_date','due_date','task_id']);
 
     // 👇 объединяем подзадачи
@@ -613,7 +614,8 @@ $watchingTasks = Task::with([
         ])
         ->withCount(['tasks as open_tasks_count' => fn($q) => $q->where('completed', false)])
         ->where('responsible_id', $user->id)
-        ->latest('id')->take(8)
+        ->latest('id')
+        // ->take(8)
         ->get(['id','title','project_id','responsible_id']);
 
 
@@ -626,7 +628,7 @@ $watchingProjects = Project::with([
         $q->where('users.id', $user->id);
     })
     ->latest('id')
-    ->take(8)
+    // ->take(8)
     ->get(['id','name','company_id','initiator_id']);
 
 
@@ -641,10 +643,30 @@ $watchingProjects = Project::with([
     )->values();
 
 
+// === Группировка подзадач ===
+$groupedSubtasks = [];
+
+foreach ($allSubtasks as $sub) {
+    $company = $sub->task->project->company->name ?? 'Без компании';
+    $project = $sub->task->project->name ?? 'Без проекта';
+    $task    = $sub->task->title ?? 'Без задачи';
+
+    $groupedSubtasks[$company][$project][$task][] = [
+        'id' => $sub->id,
+        'title' => $sub->title,
+        'start_date' => $sub->start_date,
+        'due_date' => $sub->due_date,
+        'task_id' => $sub->task_id,
+    ];
+}
+
+
+
     return response()->json([
         'managing_projects'       => $managingProjects,
-        'all_tasks'               => $allTasks,        
-        'all_subtasks'            => $allSubtasks,     
+        'all_tasks'               => $allTasks,      
+        'all_subtasks'            => $groupedSubtasks,  
+        // 'all_subtasks'            => $allSubtasks,     
         'responsible_subprojects' => $responsibleSubprojects,
         'due_today'               => $dueToday,
         'overdue'                 => $overdue,

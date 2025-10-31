@@ -116,15 +116,19 @@ const attaching = ref(false)
 const qAttach = ref('') // поиск в модалке
 
 // Загрузить все зарегистрированные пользователи (исключим текущего владельца)
-const loadUsers = async () => {
+const loadUsers = async (query = '') => {
   loadingUsers.value = true
   try {
-    const { data } = await axios.get('/api/users/for-attach') // см. backend ниже
+    const { data } = await axios.get('/api/users/for-attach', {
+      params: { q: query, company_id: attachForm.value.company_id }
+    })
     allUsers.value = data
   } finally {
     loadingUsers.value = false
   }
 }
+
+
 
 // Загрузить компании текущего владельца (или используемые ранее)
 // const loadOwnerCompanies = async () => {
@@ -146,8 +150,10 @@ const loadOwnerCompanies = async () => {
 
 const openAttach = async () => {
   showAttachModal.value = true
-  await Promise.all([loadUsers(), loadOwnerCompanies()])
+  await loadOwnerCompanies()
+  allUsers.value = [] // пустой список до поиска
 }
+
 
 // Фильтр в модалке
 const filteredAttachUsers = computed(() => {
@@ -238,8 +244,9 @@ const updateEmployeeRole = async () => {
 
   try {
     await axios.put(`/api/employees/${selectedEmployee.value.id}/update-role`, {
-      role: updateForm.value.role
-    })
+  role: updateForm.value.role,
+  company_id: selectedEmployee.value.company?.id
+})
     alert('Роль обновлена')
     showUpdateModal.value = false
     await fetchEmployees()
@@ -249,7 +256,19 @@ const updateEmployeeRole = async () => {
   }
 }
 
+import { watch } from 'vue'
 
+let searchTimeout
+watch(qAttach, (val) => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    if (val.trim().length >= 2) {
+      loadUsers(val.trim())
+    } else {
+      allUsers.value = [] // если пусто — очищаем
+    }
+  }, 400)
+})
 
 
 
@@ -444,7 +463,7 @@ onMounted(async () => {
     <!-- Заголовок -->
     <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
       <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">
-        Добавить зарегистрированного пользователя
+        пригласить сотрудника
       </h3>
       <button @click="showAttachModal = false"
               class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
@@ -472,36 +491,50 @@ onMounted(async () => {
 
     <!-- Список пользователей -->
     <div class="px-6 pb-4">
-      <div class="mb-3 max-h-64 overflow-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-700">
-        <template v-if="loadingUsers">
-          <div class="p-4 text-sm text-slate-500">Загрузка пользователей...</div>
-        </template>
+  <div class="mb-3 max-h-64 overflow-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-700">
+    <template v-if="loadingUsers">
+      <div class="p-4 text-sm text-slate-500 text-center">Загрузка пользователей...</div>
+    </template>
 
-        <template v-else>
-          <div v-for="u in filteredAttachUsers"
-               :key="u.id"
-               class="flex items-center justify-between gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition rounded">
-            <div>
-              <div class="font-medium text-slate-800 dark:text-slate-100">{{ u.name }}</div>
-              <div class="text-xs text-slate-500">{{ u.email }}</div>
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="text-xs text-slate-500">Роль</label>
-              <select v-model="attachForm.role"
-                      class="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm px-2 py-1">
-                <option value="employee">Сотрудник</option>
-                <option value="manager">Менеджер</option>
-              </select>
+    <template v-else>
+      <div v-for="u in allUsers"
+           :key="u.id"
+           class="flex items-center justify-between gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition rounded">
+        <div>
+          <div class="font-medium text-slate-800 dark:text-slate-100">{{ u.name }}</div>
+          <div class="text-xs text-slate-500">{{ u.email }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-500">Роль</label>
+          <select v-model="attachForm.role"
+                  class="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm px-2 py-1">
+            <option value="employee">Сотрудник</option>
+            <option value="manager">Менеджер</option>
+          </select>
 
-              <button @click="attachForm.user_id = u.id"
-                      class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
-                Выбрать
-              </button>
-            </div>
-          </div>
-        </template>
+          <button @click="attachForm.user_id = u.id"
+                  class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition">
+            Выбрать
+          </button>
+        </div>
       </div>
+    </template>
+  </div>
+
+  <!-- Добавленные сообщения -->
+  <template v-if="!loadingUsers && qAttach.trim().length === 0">
+    <div class="p-4 text-sm text-slate-500 text-center">
+      🔍 Введите имя или email пользователя
     </div>
+  </template>
+
+  <template v-else-if="!loadingUsers && qAttach.trim().length >= 2 && allUsers.length === 0">
+    <div class="p-4 text-sm text-slate-500 text-center">
+      Пользователи не найдены
+    </div>
+  </template>
+</div>
+
 
     <!-- Кнопки -->
     <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-700">

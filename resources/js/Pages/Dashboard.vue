@@ -145,21 +145,33 @@ const prioBadge = (p) => ({
 
 
 const allSubtasksByCompany = computed(() => {
-  return (summary.value.all_subtasks || []).reduce((acc, st) => {
-    const companyName = st.task?.project?.company?.name || 'Без компании'
-    const projectName = st.task?.project?.name || 'Без проекта'
+  const data = summary.value.all_subtasks
 
-    if (!acc[companyName]) acc[companyName] = {}
-    if (!acc[companyName][projectName]) acc[companyName][projectName] = []
+  // если это уже объект — просто возвращаем
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data
+  }
 
-    // исключаем дубликаты
-    if (!acc[companyName][projectName].some(s => s.id === st.id)) {
-      acc[companyName][projectName].push(st)
-    }
+  // если это массив — собираем вручную
+  if (Array.isArray(data)) {
+    return data.reduce((acc, st) => {
+      const companyName = st.task?.project?.company?.name || 'Без компании'
+      const projectName = st.task?.project?.name || 'Без проекта'
 
-    return acc
-  }, {})
+      if (!acc[companyName]) acc[companyName] = {}
+      if (!acc[companyName][projectName]) acc[companyName][projectName] = []
+
+      if (!acc[companyName][projectName].some(s => s.id === st.id)) {
+        acc[companyName][projectName].push(st)
+      }
+
+      return acc
+    }, {})
+  }
+
+  return {}
 })
+
 
 
 
@@ -250,7 +262,169 @@ const deleteCompanyConfirm = async () => {
   }
 }
 
+const showAllMyCompanies = ref(false)
+const showAllOtherCompanies = ref(false)
 
+// поля поиска
+const searchMyCompany = ref('')
+const searchOtherCompany = ref('')
+
+// фильтры
+const filteredMyCompanies = computed(() => {
+  if (!searchMyCompany.value.trim()) return myCompanies.value || []
+  const q = searchMyCompany.value.toLowerCase()
+  return (myCompanies.value || []).filter(c => c.name.toLowerCase().includes(q))
+})
+
+const filteredOtherCompanies = computed(() => {
+  if (!searchOtherCompany.value.trim()) return otherCompanies.value || []
+  const q = searchOtherCompany.value.toLowerCase()
+  return (otherCompanies.value || []).filter(c => c.name.toLowerCase().includes(q))
+})
+
+
+const showAllProjectsModal = ref(false)
+const selectedCompanyName = ref('')
+const selectedProjects = ref([])
+const projectSearch = ref('')
+
+const openShowAllProjects = (companyName, projects) => {
+  selectedCompanyName.value = companyName
+  selectedProjects.value = projects
+  showAllProjectsModal.value = true
+  projectSearch.value = ''
+}
+
+const filteredProjects = computed(() => {
+  if (!projectSearch.value.trim()) return selectedProjects.value
+  const q = projectSearch.value.toLowerCase()
+  return selectedProjects.value.filter(p => p.name.toLowerCase().includes(q))
+})
+
+
+// ===== Глобальный поиск =====
+const showSearchModal = ref(false)
+
+const getSubtasksArray = (data) => {
+  if (Array.isArray(data)) return data
+  if (data && typeof data === 'object') {
+    const arr = []
+    Object.values(data).forEach(projects =>
+      Object.values(projects).forEach(tasks =>
+        Object.values(tasks).forEach(subs => arr.push(...subs))
+      )
+    )
+    return arr
+  }
+  return []
+}
+
+const globalResults = computed(() => {
+  const query = q.value.trim().toLowerCase()
+  if (!query) {
+    return { companies: [], projects: [], tasks: [], subtasks: [] }
+  }
+
+  return {
+    companies: companies.value.filter(c =>
+      (c.name || '').toLowerCase().includes(query)
+    ),
+    projects: (summary.value.managing_projects || [])
+      .filter(p => p.name?.toLowerCase().includes(query)),
+    tasks: (summary.value.all_tasks || [])
+      .filter(t => t.title?.toLowerCase().includes(query)),
+    subtasks: getSubtasksArray(summary.value.all_subtasks)
+      .filter(s => s.title?.toLowerCase().includes(query)),
+  }
+})
+
+
+const hasResults = computed(() =>
+  Object.values(globalResults.value).some(arr => arr.length > 0)
+)
+
+const onGlobalSearch = () => {
+  if (q.value.trim().length >= 2) {
+    showSearchModal.value = true
+  } else {
+    showSearchModal.value = false
+  }
+}
+
+const closeSearchModal = () => {
+  showSearchModal.value = false
+}
+
+
+
+// ====== Модалки и поиски ======
+const showAllTasksModal = ref(false)
+const showAllSubtasksModal = ref(false)
+const selectedCompanyTasks = ref('')
+const selectedCompanySubtasks = ref('')
+const selectedTasks = ref([])
+const selectedSubtasks = ref([])
+const searchTasks = ref('')
+const searchSubtasks = ref('')
+
+// ====== Методы ======
+const openAllTasks = (company, tasks) => {
+  selectedCompanyTasks.value = company
+  selectedTasks.value = tasks
+  showAllTasksModal.value = true
+  searchTasks.value = ''
+}
+
+
+// ====== Фильтрация ======
+const filteredTasks = computed(() => {
+  if (!searchTasks.value.trim()) return selectedTasks.value
+  const q = searchTasks.value.toLowerCase()
+  return selectedTasks.value.filter(t => t.title.toLowerCase().includes(q))
+})
+
+
+
+
+const showProjectTasksModal = ref(false)
+
+
+const selectedProjectTasks = ref([])
+const projectTasksSearch = ref('')
+
+const openProjectTasks = (companyName, projectName, tasks) => {
+  selectedCompanyName.value = companyName
+  selectedProjectName.value = projectName
+  selectedProjectTasks.value = tasks
+  showProjectTasksModal.value = true
+  projectTasksSearch.value = ''
+}
+
+const filteredProjectTasks = computed(() => {
+  if (!projectTasksSearch.value.trim()) return selectedProjectTasks.value
+  const q = projectTasksSearch.value.toLowerCase()
+  return selectedProjectTasks.value.filter(t => t.title.toLowerCase().includes(q))
+})
+
+
+const selectedProjectName = ref('')
+const selectedTaskTitle = ref('')
+
+
+const openAllSubtasks = (company, project, task, subtasks) => {
+  selectedCompanyName.value = company
+  selectedProjectName.value = project
+  selectedTaskTitle.value = task
+  selectedSubtasks.value = subtasks
+  showAllSubtasksModal.value = true
+  searchSubtasks.value = ''
+}
+
+const filteredSubtasks = computed(() => {
+  if (!searchSubtasks.value.trim()) return selectedSubtasks.value
+  const q = searchSubtasks.value.toLowerCase()
+  return selectedSubtasks.value.filter(st => st.title.toLowerCase().includes(q))
+})
 
 // onMounted
 onMounted(async () => {
@@ -425,15 +599,16 @@ onMounted(async () => {
      
       <div class="flex items-center gap-3">
         <div class="relative flex-1">
-          <input
-            v-model="q"
-            @input="filterList"
-            type="text"
-            placeholder="Поиск компаний…"
-            style="color: aliceblue;"
-            class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-4 py-2.5 text-sm outline-none focus:border-slate-300 dark:focus:border-slate-700" />
-          <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⌘K</span>
-        </div>
+  <input
+    v-model="q"
+    @input="onGlobalSearch"
+    type="text"
+    placeholder="Поиск по компаниям, проектам, задачам…"
+    class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 px-4 py-2.5 text-sm outline-none focus:border-slate-300 dark:focus:border-slate-700 text-slate-800 dark:text-slate-100"
+  />
+  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⌘K</span>
+</div>
+
         <button
           v-if="isAdmin"
           @click="showModal = true"
@@ -452,89 +627,394 @@ onMounted(async () => {
       </div>
 
       <!-- Компании -->
-      <div v-else>
-  <!-- Проверка, есть ли вообще компании -->
-  <div v-if="!filtered.length" class="text-center py-16 border border-dashed rounded-2xl dark:border-slate-800">
-    <div class="text-4xl mb-2">🏢</div>
-    <div class="font-medium text-slate-500">Пока нет компаний</div>
-    <p class="text-sm text-slate-500 mt-1">Создайте первую компанию, чтобы начать работу.</p>
-    <button
-      v-if="isAdmin"
-      class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold hover:opacity-90"
-      @click="showModal = true">
-      Добавить компанию
-    </button>
-  </div>
+  <div v-else class="flex flex-col lg:flex-row gap-6 mt-6">
 
-  <!-- Мои компании -->
-  <div v-if="myCompanies.length">
-    <h3 class="text-lg font-semibold mb-2 text-slate-500">Мои компании</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <!-- 🏢 Мои компании -->
+  <div class="flex-1 bg-white/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+        💼 Мои компании
+      </h3>
+      <button
+        v-if="myCompanies.length > 6"
+        @click="showAllMyCompanies = true"
+        class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition">
+        Показать все
+      </button>
+    </div>
+
+    <div
+      v-if="myCompanies.length"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+    >
       <div
-        v-for="company in myCompanies"
+        v-for="company in myCompanies.slice(0, 6)"
         :key="company.id"
-        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-        @click="$inertia.visit(`/companies/${company.id}`)">
+        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 hover:shadow-md transition cursor-pointer relative"
+        @click="$inertia.visit(`/companies/${company.id}`)"
+      >
+        <button
+          v-if="company.user_id === userId"
+          @click.stop="confirmDelete(company.id)"
+          class="absolute top-2 right-2 text-rose-500 hover:text-rose-700 text-sm">
+          ✕
+        </button>
+
         <div class="flex items-center gap-3">
           <img
             v-if="company.logo"
             :src="`/storage/${company.logo}`"
             alt=""
-            class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800" />
+            class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800"
+          />
           <div
             v-else
             class="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 grid place-items-center text-slate-400">
             🏢
           </div>
           <div class="min-w-0">
-            <div class="font-semibold truncate text-slate-500 break-words">{{ company.name }}</div>
+            <div class="font-semibold truncate text-slate-700 dark:text-slate-100 break-words">
+              {{ company.name }}
+            </div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
-          <button
-      v-if="company.user_id === userId"
-      @click.stop="confirmDelete(company.id)"
-      class="text-rose-500 hover:text-rose-700 text-sm"
-    >
-      удалить
-    </button>
           </div>
         </div>
       </div>
     </div>
+
+    <div v-else class="text-center text-slate-500 py-16 border border-dashed rounded-2xl dark:border-slate-700">
+      <div class="text-3xl mb-2">🏙️</div>
+      <div>Пока нет компаний</div>
+      <button
+        v-if="isAdmin"
+        class="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-2.5 text-sm font-semibold hover:opacity-90"
+        @click="showModal = true">
+        Добавить компанию
+      </button>
+    </div>
   </div>
 
+  <!-- 🤝 Другие компании -->
+  <div class="flex-[0.8] bg-white/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+        🤝 Другие компании
+      </h3>
 
+      <!-- кнопка показать все -->
+      <button
+        v-if="otherCompanies.length > 4"
+        @click="showAllOtherCompanies = true"
+        class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition">
+        Показать все
+      </button>
+    </div>
 
-
-
-  <!-- Другие компании -->
-  <div v-if="otherCompanies.length" class="mt-8">
-    <h3 class="text-lg font-semibold mb-2 text-slate-500">Другие компании</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div
+      v-if="otherCompanies.length"
+      class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+    >
       <div
-        v-for="company in otherCompanies"
+        v-for="company in otherCompanies.slice(0, 4)"
         :key="company.id"
-        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-        @click="$inertia.visit(`/companies/${company.id}`)">
+        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/companies/${company.id}`)"
+      >
         <div class="flex items-center gap-3">
           <img
             v-if="company.logo"
             :src="`/storage/${company.logo}`"
             alt=""
-            class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800" />
+            class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800"
+          />
           <div
             v-else
             class="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 grid place-items-center text-slate-400">
             🏢
           </div>
           <div class="min-w-0">
-            <div class="font-semibold truncate text-slate-500 break-words">{{ company.name }}</div>
+            <div class="font-semibold truncate text-slate-700 dark:text-slate-100 break-words">
+              {{ company.name }}
+            </div>
             <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
           </div>
         </div>
       </div>
+    </div>
+
+    <div v-else class="text-center text-slate-500 py-16 border border-dashed rounded-2xl dark:border-slate-700">
+      <div class="text-3xl mb-2">🏗️</div>
+      <div>Нет других компаний</div>
     </div>
   </div>
 </div>
+
+<!-- 🪟 Модальное окно "Все мои компании" -->
+<div
+  v-if="showAllMyCompanies"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+
+    <button
+      @click="showAllMyCompanies = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        💼 Все мои компании ({{ myCompanies.length }})
+      </h3>
+
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="searchMyCompany"
+          type="text"
+          placeholder="🔍 Поиск компании..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="filteredMyCompanies.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div
+        v-for="company in filteredMyCompanies"
+        :key="company.id"
+        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/companies/${company.id}`)">
+        <div class="flex items-center gap-3">
+          <img v-if="company.logo" :src="`/storage/${company.logo}`" alt="" class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800"/>
+          <div v-else class="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 grid place-items-center text-slate-400">🏢</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate text-slate-700 dark:text-slate-100 break-words">{{ company.name }}</div>
+            <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="text-center py-12 text-slate-500">
+      <div class="text-3xl mb-2">🔍</div>
+      Компаний не найдено
+    </div>
+  </div>
+</div>
+
+<!-- 🪟 Модальное окно "Все другие компании" -->
+<div
+  v-if="showAllOtherCompanies"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+
+    <button
+      @click="showAllOtherCompanies = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        🤝 Все другие компании ({{ otherCompanies.length }})
+      </h3>
+
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="searchOtherCompany"
+          type="text"
+          placeholder="🔍 Поиск компании..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="filteredOtherCompanies.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div
+        v-for="company in filteredOtherCompanies"
+        :key="company.id"
+        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/companies/${company.id}`)">
+        <div class="flex items-center gap-3">
+          <img v-if="company.logo" :src="`/storage/${company.logo}`" alt="" class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800"/>
+          <div v-else class="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 grid place-items-center text-slate-400">🏢</div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate text-slate-700 dark:text-slate-100 break-words">{{ company.name }}</div>
+            <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="text-center py-12 text-slate-500">
+      <div class="text-3xl mb-2">🔍</div>
+      Компаний не найдено
+    </div>
+  </div>
+</div>
+
+
+<!-- 🪟 Модальное окно "Все компании" -->
+<div
+  v-if="showAllMyCompanies"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition">
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+
+    <!-- ✕ Кнопка закрытия -->
+    <button
+      @click="showAllMyCompanies = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <!-- Заголовок -->
+    <div class="flex flex-col sm:flex-row sm:items-center  gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        💼 Все мои компании ({{ myCompanies.length }})
+      </h3>
+
+      <!-- 🔍 Поле поиска -->
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="searchCompanyQuery"
+          type="text"
+          placeholder="🔍 Поиск компании..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm text-slate-700 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <!-- Список компаний -->
+    <div
+      v-if="filteredMyCompanies.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div
+        v-for="company in filteredMyCompanies"
+        :key="company.id"
+        class="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/companies/${company.id}`)">
+        <div class="flex items-center gap-3">
+          <img
+            v-if="company.logo"
+            :src="`/storage/${company.logo}`"
+            alt=""
+            class="h-12 w-12 object-cover rounded-xl ring-1 ring-slate-200 dark:ring-slate-800"
+          />
+          <div
+            v-else
+            class="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 grid place-items-center text-slate-400">
+            🏢
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold truncate text-slate-700 dark:text-slate-100 break-words">
+              {{ company.name }}
+            </div>
+            <div class="text-xs text-slate-500">Проектов: {{ company.projects?.length ?? '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Если ничего не найдено -->
+    <div v-else class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <div class="text-3xl mb-2">🔍</div>
+      <p>Компаний не найдено по запросу “{{ searchCompanyQuery }}”</p>
+    </div>
+  </div>
+</div>
+
+<!-- 🔍 Глобальный поиск -->
+<div
+  v-if="showSearchModal"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+    <button
+      @click="closeSearchModal"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <h3 class="text-xl font-semibold mb-4 text-slate-700 dark:text-slate-100">
+      Результаты поиска: "{{ q }}"
+    </h3>
+
+    <template v-if="!q.trim()">
+      <div class="text-center text-slate-500 py-10">Введите запрос для поиска…</div>
+    </template>
+
+    <template v-else>
+      <!-- Компании -->
+      <div v-if="globalResults.companies.length" class="mb-6">
+        <h4 class="text-slate-500 font-semibold mb-2">🏢 Компании</h4>
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div
+            v-for="c in globalResults.companies"
+            :key="'company-'+c.id"
+            class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 hover:shadow cursor-pointer transition"
+            @click="$inertia.visit(`/companies/${c.id}`)">
+            <div class="font-medium text-slate-700 dark:text-slate-100 truncate">{{ c.name }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Проекты -->
+      <div v-if="globalResults.projects.length" class="mb-6">
+        <h4 class="text-slate-500 font-semibold mb-2">📁 Проекты</h4>
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div
+            v-for="p in globalResults.projects"
+            :key="'project-'+p.id"
+            class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 hover:shadow cursor-pointer transition"
+            @click="$inertia.visit(`/projects/${p.id}`)">
+            <div class="font-medium text-slate-700 dark:text-slate-100 truncate">{{ p.name }}</div>
+            <div class="text-xs text-slate-500">{{ p.company?.name }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Задачи -->
+      <div v-if="globalResults.tasks.length" class="mb-6">
+        <h4 class="text-slate-500 font-semibold mb-2">✅ Задачи</h4>
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div
+            v-for="t in globalResults.tasks"
+            :key="'task-'+t.id"
+            class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 hover:shadow cursor-pointer transition"
+            @click="$inertia.visit(`/tasks/${t.id}`)">
+            <div class="font-medium text-slate-700 dark:text-slate-100 truncate">{{ t.title }}</div>
+            <div class="text-xs text-slate-500">{{ t.project?.name }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Подзадачи -->
+      <div v-if="globalResults.subtasks.length" class="mb-6">
+        <h4 class="text-slate-500 font-semibold mb-2">🧩 Подзадачи</h4>
+        <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div
+            v-for="s in globalResults.subtasks"
+            :key="'sub-'+s.id"
+            class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 hover:shadow cursor-pointer transition"
+            @click="$inertia.visit(`/subtasks/${s.id}`)">
+            <div class="font-medium text-slate-700 dark:text-slate-100 truncate">{{ s.title }}</div>
+            <div class="text-xs text-slate-500">{{ s.task?.project?.name }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!hasResults" class="text-center text-slate-500 py-10">
+        Ничего не найдено по запросу "{{ q }}"
+      </div>
+    </template>
+  </div>
+</div>
+
+
+
+
 
 
 <!-- Модальное окно подтверждения -->
@@ -603,28 +1083,109 @@ onMounted(async () => {
 
 
 <!-- ================= Я руковожу ================= -->
-<div class="mt-12 space-y-4">
+<div class="mt-12 space-y-6">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-slate-500" >Я руковожу</h3>
+    <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">
+      🚀 Я руковожу
+    </h3>
   </div>
 
+  <!-- Загрузка -->
   <div v-if="loadingSummary">
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="i in 3" :key="'mp'+i" class="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
     </div>
   </div>
 
-  <div v-else>
-    <div v-for="(projects, companyName) in managingByCompany" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2 text-slate-500 break-words" >Компания: {{ companyName }}</h4>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="p in projects" :key="p.id"
-             class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-             @click="$inertia.visit(`/projects/${p.id}`)">
-          <div class="font-semibold truncate text-slate-500 break-words">{{ p.name }}</div>
-          
+  <!-- Контент -->
+  <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div
+      v-for="(projects, companyName) in managingByCompany"
+      :key="companyName"
+      class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-5 shadow-sm flex flex-col"
+    >
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-semibold text-slate-700 dark:text-slate-200 break-words">
+          🏢 {{ companyName }}
+        </h4>
+
+        <button
+          v-if="projects.length > 6"
+          @click="openShowAllProjects(companyName, projects)"
+          class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition">
+          Показать все
+        </button>
+      </div>
+
+      <!-- Сетка проектов -->
+      <div class="grid grid-cols-2 gap-3 flex-1">
+        <div
+          v-for="p in projects.slice(0, 6)"
+          :key="p.id"
+          class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-3 hover:shadow-md transition cursor-pointer"
+          @click="$inertia.visit(`/projects/${p.id}`)"
+        >
+          <div class="font-semibold text-sm truncate text-slate-700 dark:text-slate-100">{{ p.name }}</div>
         </div>
       </div>
+
+      <div v-if="!projects.length" class="text-sm text-slate-500 dark:text-slate-400 mt-4 text-center">
+        Нет проектов
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 🪟 Модальное окно с проектами -->
+<div
+  v-if="showAllProjectsModal"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+    
+    <!-- Кнопка закрытия -->
+    <button
+      @click="showAllProjectsModal = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        📁 Проекты компании: {{ selectedCompanyName }}
+      </h3>
+
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="projectSearch"
+          type="text"
+          placeholder="🔍 Поиск проекта..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <!-- Список проектов -->
+    <div
+      v-if="filteredProjects.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+    >
+      <div
+        v-for="p in filteredProjects"
+        :key="p.id"
+        class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/projects/${p.id}`)"
+      >
+        <div class="font-semibold text-slate-700 dark:text-slate-100 break-words truncate">
+          {{ p.name }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Если нет проектов -->
+    <div v-else class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <div class="text-3xl mb-2">🔍</div>
+      <p>Проекты не найдены</p>
     </div>
   </div>
 </div>
@@ -632,10 +1193,14 @@ onMounted(async () => {
 
 
 
+
 <!-- ================= Мои задачи ================= -->
-<div class="mt-12 space-y-4">
+
+<div class="mt-12 space-y-6">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-slate-500">Мои задачи</h3>
+    <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">
+      ✅ Мои задачи
+    </h3>
   </div>
 
   <div v-if="loadingSummary">
@@ -644,28 +1209,54 @@ onMounted(async () => {
     </div>
   </div>
 
-  <div v-else>
-    <div v-for="(projects, companyName) in allTasksByCompanyAndProject" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2 text-slate-500 break-words">Компания: {{ companyName }}</h4>
+  <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+    <!-- === Компании === -->
+    <div
+      v-for="(projects, companyName) in allTasksByCompanyAndProject"
+      :key="companyName"
+      class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-5 shadow-sm mb-6"
+    >
+      <h4 class="font-semibold text-lg text-slate-700 dark:text-slate-200 mb-4">
+        🏢 {{ companyName }}
+      </h4>
 
-      <div v-for="(tasks, projectName) in projects" :key="projectName" class="mb-4">
-        <h5 class="text-sm text-slate-400 mb-2 break-words">Проект: {{ projectName }}</h5>
+      <!-- === Проекты внутри компании === -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+        <div
+          v-for="(tasks, projectName) in projects"
+          :key="projectName"
+          class="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-800/40"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h5 class="text-base font-semibold text-slate-600 dark:text-slate-300">
+              📁 {{ projectName }}
+            </h5>
+            <button
+              v-if="tasks.length > 6"
+              @click="openProjectTasks(companyName, projectName, tasks)"
+              class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition"
+            >
+              Показать все
+            </button>
+          </div>
 
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="t in tasks" :key="t.id"
-               class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-               @click="$inertia.visit(`/tasks/${t.id}`)">
-            <div class="flex items-center justify-between gap-2">
-              <div class="font-semibold text-slate-500 truncate max-w-[150px] sm:max-w-[200px] md:max-w-[250px]">{{ t.title }}</div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full" :class="prioBadge(t.priority)">
-                {{ t.priority ?? '—' }}
-              </span>
-            </div>
-            <div class="text-xs text-slate-400 truncate mt-1">
-              {{ t.start_date }} → {{ t.due_date || 'без срока' }}
-            </div>
-            <div class="mt-2 h-2 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
-              <div class="h-full bg-slate-900 dark:bg-white" :style="{width: ((t.progress ?? 0) + '%')}"/>
+          <!-- === Сетка задач внутри проекта === -->
+          <div class="grid grid-cols-2 gap-3">
+            <div
+              v-for="t in tasks.slice(0, 6)"
+              :key="t.id"
+              class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-3 hover:shadow-md transition cursor-pointer"
+              @click="$inertia.visit(`/tasks/${t.id}`)"
+            >
+              <div class="font-semibold text-sm truncate text-slate-700 dark:text-slate-100">
+                {{ t.title }}
+              </div>
+              <div class="text-[11px] text-slate-400 mt-1">
+                {{ t.start_date }} → {{ t.due_date || 'без срока' }}
+              </div>
+              <div class="mt-1 h-1.5 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div class="h-full bg-slate-900 dark:bg-white" :style="{width: ((t.progress ?? 0) + '%')}"/>
+              </div>
             </div>
           </div>
         </div>
@@ -674,34 +1265,137 @@ onMounted(async () => {
   </div>
 </div>
 
+<!-- 🪟 Модалка “Все задачи проекта” -->
+<div
+  v-if="showProjectTasksModal"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+    <button
+      @click="showProjectTasksModal = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        📁 {{ selectedProjectName }} ({{ selectedCompanyName }})
+      </h3>
+
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="projectTasksSearch"
+          type="text"
+          placeholder="🔍 Поиск задачи..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="filteredProjectTasks.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+    >
+      <div
+        v-for="t in filteredProjectTasks"
+        :key="t.id"
+        class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/tasks/${t.id}`)"
+      >
+        <div class="font-semibold text-slate-700 dark:text-slate-100 break-words truncate">
+          {{ t.title }}
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">
+          {{ t.start_date }} → {{ t.due_date || 'без срока' }}
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <div class="text-3xl mb-2">🔍</div>
+      Задачи не найдены
+    </div>
+  </div>
+</div>
+
+
+
 
 <!-- ================= Мои подзадачи ================= -->
-<div class="mt-12 space-y-4">
+
+<div class="mt-12 space-y-6">
   <div class="flex items-center justify-between">
-    <h3 class="text-lg font-semibold text-slate-500">Мои подзадачи</h3>
+    <h3 class="text-lg font-semibold text-slate-600 dark:text-slate-300">
+      🧩 Мои подзадачи
+    </h3>
   </div>
 
-  <!-- Скелетоны -->
+  <!-- Скелетон -->
   <div v-if="loadingSummary">
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="i in 3" :key="'st'+i" class="h-24 rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse"/>
     </div>
   </div>
 
-  <!-- Список -->
-  <div v-else>
-    <div v-for="(projects, companyName) in allSubtasksByCompany" :key="companyName" class="mb-6">
-      <h4 class="font-semibold mb-2 text-slate-500">Компания: {{ companyName }}</h4>
+  <!-- Контент -->
+  <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+    <!-- === Компании === -->
+    <div
+      v-for="(projects, companyName) in allSubtasksByCompany"
+      :key="companyName"
+      class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-5 shadow-sm mb-6"
+    >
+      <h4 class="font-semibold text-lg text-slate-700 dark:text-slate-200 mb-4">
+        🏢 {{ companyName }}
+      </h4>
 
-      <div v-for="(subtasks, projectName) in projects" :key="projectName" class="mb-4">
-        <h5 class="text-sm text-slate-400 mb-2">Проект: {{ projectName }}</h5>
-        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div v-for="st in subtasks" :key="st.id"
-               class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 p-4 hover:shadow transition cursor-pointer"
-               @click="$inertia.visit(`/tasks/${st.task_id}`)">
-            <div class="font-semibold truncate text-slate-500">{{ st.title }}</div>
-            <div class="mt-2 text-xs text-slate-400">
-              {{ st.start_date }} → {{ st.due_date || 'без срока' }}
+      <!-- === Проекты === -->
+      <div class="space-y-6">
+        <div
+          v-for="(tasks, projectName) in projects"
+          :key="projectName"
+          class="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/60 dark:bg-slate-800/40"
+        >
+          <h5 class="text-base font-semibold text-slate-600 dark:text-slate-300 mb-3">
+            📁 {{ projectName }}
+          </h5>
+
+          <!-- === Задачи внутри проекта === -->
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+            <div
+              v-for="(subtasks, taskTitle) in tasks"
+              :key="taskTitle"
+              class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white/90 dark:bg-slate-900/70"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <div class="font-semibold text-slate-700 dark:text-slate-100 truncate">
+                  ✅ {{ taskTitle }}
+                </div>
+
+                <button
+                  v-if="subtasks.length > 4"
+                  @click="openAllSubtasks(companyName, projectName, taskTitle, subtasks)"
+                  class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition">
+                  Показать все
+                </button>
+              </div>
+
+              <!-- Сетка подзадач -->
+              <div class="grid grid-cols-2 gap-3">
+                <div
+                  v-for="st in subtasks.slice(0, 4)"
+                  :key="st.id"
+                  class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 hover:shadow-md transition cursor-pointer"
+                  @click="$inertia.visit(`/tasks/${st.task_id}`)"
+                >
+                  <div class="font-medium text-sm text-slate-700 dark:text-slate-100 truncate">
+                    🧩 {{ st.title }}
+                  </div>
+                  <div class="text-[11px] text-slate-400 mt-1">
+                    {{ st.start_date }} → {{ st.due_date || 'без срока' }}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -709,6 +1403,61 @@ onMounted(async () => {
     </div>
   </div>
 </div>
+
+<!-- 🪟 Модалка для всех подзадач -->
+<div
+  v-if="showAllSubtasksModal"
+  class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
+    <button
+      @click="showAllSubtasksModal = false"
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">
+      ✕
+    </button>
+
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-xl font-semibold text-slate-700 dark:text-slate-100">
+        🧩 Все подзадачи: {{ selectedTaskTitle }} <br class="sm:hidden"/> ({{ selectedProjectName }} / {{ selectedCompanyName }})
+      </h3>
+
+      <div class="relative w-full sm:w-72">
+        <input
+          v-model="searchSubtasks"
+          type="text"
+          placeholder="🔍 Поиск подзадачи..."
+          class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+      </div>
+    </div>
+
+    <div
+      v-if="filteredSubtasks.length"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+    >
+      <div
+        v-for="st in filteredSubtasks"
+        :key="st.id"
+        class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-4 hover:shadow-md transition cursor-pointer"
+        @click="$inertia.visit(`/tasks/${st.task_id}`)"
+      >
+        <div class="font-semibold text-slate-700 dark:text-slate-100 break-words truncate">
+          {{ st.title }}
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">
+          {{ st.start_date }} → {{ st.due_date || 'без срока' }}
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="text-center py-12 text-slate-500 dark:text-slate-400">
+      <div class="text-3xl mb-2">🔍</div>
+      Подзадачи не найдены
+    </div>
+  </div>
+</div>
+
+
 
 
 <!-- ================= Я наблюдатель ================= -->

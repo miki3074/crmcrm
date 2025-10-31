@@ -48,6 +48,19 @@ const projectForm = ref({
   company_id: props.auth.user.company_id, // если есть
 })
 
+const resetProjectForm = () => {
+  projectForm.value = {
+    name: '',
+    manager_ids: [],
+    start_date: new Date().toISOString().slice(0, 10),
+    duration_days: '',
+    company_id: companyId,
+  }
+}
+
+
+
+
 // perms
 // const isAdmin = computed(() => (props.auth?.roles || []).includes('admin'))
 const isOwner = computed(() => company.value?.user_id === props.auth?.user?.id)
@@ -95,26 +108,23 @@ const fetchManagers = async () => {
 
 const openCreateModal = async () => {
   errorText.value = ''
+  resetProjectForm() // ← сбрасываем все данные формы
   await fetchManagers()
+  // по желанию: автоматически добавить текущего пользователя как руководителя
+  // projectForm.value.manager_ids.push(props.auth.user.id)
   showProjectModal.value = true
 }
+
 
 const createProject = async () => {
   errorText.value = ''
   submitLoading.value = true
   try {
     await axios.get('/sanctum/csrf-cookie')
-    await axios.post('/api/projects', {
-      ...projectForm.value,
-      company_id: companyId,
-    })
-    showProjectModal.value = false
-    projectForm.value = {
-      name: '',
-      manager_id: '',
-      start_date: new Date().toISOString().slice(0, 10),
-      duration_days: '',
-    }
+    await axios.post('/api/projects', { ...projectForm.value, company_id: companyId })
+showProjectModal.value = false
+resetProjectForm()
+await fetchCompany()
     await fetchCompany()
   } catch (e) {
     errorText.value = e?.response?.data?.message || 'Не удалось создать проект'

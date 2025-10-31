@@ -431,208 +431,180 @@ onMounted(fetchProject)
   <Head :title="project?.name ? `Проект — ${project.name}` : 'Проект'" />
   <AuthenticatedLayout>
     <!-- HERO -->
-   <div class="relative overflow-hidden">
-  <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 opacity-90"></div>
-  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
-    <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-      <!-- Левая часть -->
-      <div class="flex-1">
-        <h1 class="text-2xl sm:text-3xl font-semibold">
-          {{ project?.name ?? 'Загрузка…' }}
-        </h1>
-        <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span class="px-2 py-1 rounded-full bg-white/20">
-            Компания: <b>{{ project?.company?.name ?? '—' }}</b>
+   <div class="relative overflow-hidden rounded-b-3xl shadow-lg">
+  <!-- Фон с градиентом -->
+  <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600"></div>
+
+  <!-- Контент -->
+  <div class="relative max-w-7xl mx-auto px-6 py-10 text-white">
+    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
+      
+      <!-- ==== Левая часть ==== -->
+      <div class="flex-1 space-y-4">
+        <div>
+          <h1 class="text-3xl sm:text-4xl font-bold tracking-tight flex items-center gap-2">
+            <span>{{ project?.name ?? 'Загрузка…' }}</span>
+            <span v-if="project?.status"
+              class="px-2 py-1 text-xs font-semibold rounded-lg bg-white/20 backdrop-blur-sm">
+              {{ project.status }}
+            </span>
+          </h1>
+        </div>
+
+        <!-- Бейджи -->
+        <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <span class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+            🏢 Компания: <b>{{ project?.company?.name ?? '—' }}</b>
           </span>
 
+          <template v-if="project?.managers?.length">
+            <span
+              v-for="m in project.managers"
+              :key="'m'+m.id"
+              class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20"
+            >
+              👨‍💼Руководители <b>{{ m.name }}</b>
+            </span>
+          </template>
+          <span v-else class="px-3 py-1.5 rounded-lg bg-white/20">👨‍💼 Руководитель: —</span>
 
+          <template v-if="project?.executors?.length">
+            <span
+              v-for="e in project.executors"
+              :key="'e'+e.id"
+              class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20"
+            >
+              🧑‍🔧 Исполнители <b>{{ e.name }}</b>
+            </span>
+          </template>
+          <span v-else class="px-3 py-1.5 rounded-lg bg-white/20">🧑‍🔧 Исполнители: —</span>
 
+          <template v-if="project?.watchers?.length">
+            <span
+              v-for="w in project.watchers"
+              :key="'w'+w.id"
+              class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20"
+            >
+              👁 Наблюдатели <b>{{ w.name }}</b>
+            </span>
+          </template>
+          <span v-else class="px-3 py-1.5 rounded-lg bg-white/20">👁 Наблюдатели: —</span>
+        </div>
 
+        <!-- Даты и бюджет -->
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <span class="px-3 py-1.5 rounded-lg bg-white/20">📅 Старт: <b>{{ project?.start_date ?? '—' }}</b></span>
+          <span class="px-3 py-1.5 rounded-lg bg-white/20">⏳ Длительность: <b>{{ project?.duration_days ?? '—' }}</b> дн.</span>
           <span
-            v-for="m in project?.managers || []"
-            :key="m.id"
-            class="px-2 py-1 rounded-full bg-white/20"
-          >
-            Руководитель: <b>{{ m.name }}</b>
-          </span>
-          <span v-if="!project?.managers?.length" class="px-2 py-1 rounded-full bg-white/20">
-            Руководители: <b>—</b>
-          </span>
-
-        
-
-<span
-  v-for="e in project?.executors || []"
-  :key="e.id"
-  class="px-2 py-1 rounded-full bg-white/20"
->
-  Исполнитель: <b>{{ e.name }}</b>
-</span>
-
-<span
-  v-if="!project?.executors?.length"
-  class="px-2 py-1 rounded-full bg-white/20"
->
-  Исполнители: <b>—</b>
-</span>
-
-          <span
-  v-for="w in project?.watchers || []"
-  :key="w.id"
-  class="px-2 py-1 rounded-full bg-white/20"
->
-  Наблюдатели: <b>{{ w.name }}</b>
-</span>
-
-<span
-  v-if="!project?.watchers?.length"
-  class="px-2 py-1 rounded-full bg-white/20"
->
-  Наблюдатели: <b>—</b>
-</span>
-
-          <span class="px-2 py-1 rounded-full bg-white/20">
-            Старт: <b>{{ project?.start_date ?? '—' }}</b>
-          </span>
-          <span class="px-2 py-1 rounded-full bg-white/20">
-            Длительность: <b>{{ project?.duration_days ?? '—' }}</b> дн.
-          </span>
-          <span
-            class="px-2 py-1 rounded-full bg-white text-gray-900"
             v-if="project"
+            class="px-3 py-1.5 rounded-lg bg-white text-gray-900 font-semibold"
             :class="daysBadge(daysLeft(project.start_date, project.duration_days))"
           >
-            Осталось: <b>{{ daysLeft(project.start_date, project.duration_days) }}</b> дн.
+            🔔 Осталось: {{ daysLeft(project.start_date, project.duration_days) }} дн.
           </span>
-          <span class="px-2 py-1 rounded-full bg-white/20" v-if="project?.budget">
-            Бюджет: <b>{{ Number(project.budget).toLocaleString('ru-RU') }} ₽</b>
+          <span v-if="project?.budget" class="px-3 py-1.5 rounded-lg bg-white/20">
+            💰 <b>{{ Number(project.budget).toLocaleString('ru-RU') }} ₽</b>
           </span>
         </div>
       </div>
 
-      <!-- Правая часть — блок кнопок -->
-      <div class="flex flex-col sm:items-end gap-3">
-        <!-- Основные действия -->
-        <div class="flex flex-wrap justify-end gap-2">
-          <button
-            v-if="canCreateTask"
-            @click="openCreateTask"
-            class="rounded-xl bg-emerald-400 hover:bg-emerald-500 text-gray-900 px-4 py-2 font-medium shadow-sm"
-          >
-            + Задача
-          </button>
-          <button
-            v-if="canEditName"
-            @click="showNameModal = true"
-            class="rounded-xl bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 font-medium shadow-sm"
-          >
-            ✏️ Изменить название
-          </button>
+      <!-- ==== Правая часть: кнопки ==== -->
+    <div class="flex flex-col sm:items-end gap-6">
 
-          <button
-  v-if="isCompanyOwner"
-  @click="showDeleteModal = true"
-  class="rounded-xl bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm"
->
-  🗑 Удалить проект
-</button>
+  <!-- 🔹 Основные действия -->
+  <div class="w-full sm:w-auto flex flex-wrap justify-start sm:justify-end gap-2">
+    <button
+      v-if="canCreateTask"
+      @click="openCreateTask"
+      class="btn-main bg-emerald-500 hover:bg-emerald-600 text-white"
+    >
+      ➕ Задача
+    </button>
 
-<!-- модалка -->
-<div
-  v-if="showDeleteModal"
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
->
-  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-      Подтверждение удаления
-    </h3>
-    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-      Вы уверены, что хотите удалить этот проект и все связанные задачи и подзадачи?
-      Это действие <span class="font-semibold text-rose-600">необратимо</span>.
-    </p>
+    <button
+      v-if="canEditName"
+      @click="showNameModal = true"
+      class="btn-main bg-blue-500 hover:bg-blue-600 text-white"
+    >
+      ✏️ Изменить название
+    </button>
 
-    <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
+    <button
+      v-if="canEditBudget"
+      @click="showBudgetModal = true"
+      class="btn-main bg-amber-400/90 hover:bg-amber-500 text-gray-900"
+    >
+      💰 Бюджет
+    </button>
 
-    <div class="flex justify-end gap-2">
+    <button
+      v-if="canEditDescription"
+      @click="showDescriptionModal = true"
+      class="btn-main bg-white/90 hover:bg-white text-gray-900"
+    >
+      📝 Описание
+    </button>
+
+    <button
+      v-if="isCompanyOwner"
+      @click="showDeleteModal = true"
+      class="btn-main bg-rose-500 hover:bg-rose-600 text-white"
+    >
+      🗑 Удалить проект
+    </button>
+  </div>
+
+  <!-- 🔹 Управление персоналом -->
+  <div
+    v-if="canManageManagers || isProjectManager || isCompanyOwner"
+    class="w-full sm:w-auto bg-white/10 dark:bg-white/5 rounded-2xl p-4 border border-white/20 backdrop-blur-sm shadow-sm"
+  >
+    <h4 class="text-sm uppercase tracking-wide text-white/70 font-semibold mb-3 flex items-center gap-1">
+      ⚙️ Управление персоналом
+    </h4>
+
+    <div class="grid grid-cols-2 sm:grid-cols-2 gap-3">
       <button
-      style="color: gray;"
-        @click="showDeleteModal = false"
-        class="px-4 py-2 rounded-lg border dark:border-gray-600"
+        v-if="canManageManagers"
+        @click="openAddManager"
+        class="btn-grid bg-emerald-500 hover:bg-emerald-600 text-white"
       >
-        Отмена
+        ➕ Руководитель
       </button>
+
       <button
-        @click="confirmDeleteProject"
-        class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
-        :disabled="deleting"
+        v-if="canManageManagers"
+        @click="openReplaceManager"
+        class="btn-grid bg-amber-500 hover:bg-amber-600 text-white"
       >
-        <span v-if="!deleting">Удалить</span>
-        <span v-else>Удаляю…</span>
+        🔄 Сменить руководителя
+      </button>
+
+      <button
+        v-if="isCompanyOwner || isProjectManager"
+        @click="openAddExecutor"
+        class="btn-grid bg-indigo-500 hover:bg-indigo-600 text-white"
+      >
+        👷 Исполнитель
+      </button>
+
+      <button
+        v-if="canManageManagers"
+        @click="openAddWatcher"
+        class="btn-grid bg-purple-500 hover:bg-purple-600 text-white"
+      >
+        👁 Наблюдатель
       </button>
     </div>
   </div>
 </div>
 
-<!-- енд модалка -->
 
 
-
-        </div>
-
-        <!-- Дополнительные настройки -->
-        <div class="flex flex-wrap justify-end gap-2 text-sm">
-          <button
-            v-if="canEditBudget"
-            @click="showBudgetModal = true"
-            class="rounded-xl bg-amber-400/90 hover:bg-amber-500 text-gray-900 px-3 py-1.5"
-          >
-            💰 Бюджет
-          </button>
-          <button
-            v-if="canEditDescription"
-            @click="showDescriptionModal = true"
-            class="rounded-xl bg-white/90 hover:bg-white text-gray-900 px-3 py-1.5"
-          >
-            📝 Описание
-          </button>
-          <button
-            v-if="canManageManagers"
-            @click="openAddManager"
-            class="rounded-xl bg-emerald-500/90 hover:bg-emerald-600 text-white px-3 py-1.5"
-          >
-            ➕ Добавить руководителя
-          </button>
-          <button
-            v-if="canManageManagers && (project?.managers?.length || 0) > 0"
-            @click="openReplaceManager"
-            class="rounded-xl bg-amber-500/90 hover:bg-amber-600 text-white px-3 py-1.5"
-          >
-            🔄 Изменить руководителя
-          </button>
-
-
-<button
-  v-if="isCompanyOwner || isProjectManager"
-  @click="openAddExecutor"
-  class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
->
-  ➕ Добавить исполнителя
-</button>
-
-
-          <button
-  v-if="canManageManagers"
-  @click="openAddWatcher"
-  class="rounded-xl bg-emerald-500/90 hover:bg-emerald-600 text-white px-4 py-2 font-medium"
->
-  👁 Добавить наблюдателя
-</button>
-
-        </div>
-      </div>
     </div>
   </div>
 </div>
+
 
 
     <!-- BODY -->
@@ -1177,3 +1149,21 @@ onMounted(fetchProject)
 
   </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.btn-main {
+  @apply px-4 py-2 rounded-xl font-semibold shadow-sm transition text-sm focus:outline-none focus:ring-2 focus:ring-offset-1;
+}
+
+.btn-grid {
+  @apply flex items-center justify-center text-sm font-semibold rounded-xl px-3 py-3 transition shadow-sm focus:outline-none focus:ring-2 focus:ring-white/30;
+}
+
+.btn-main:hover,
+.btn-grid:hover {
+  @apply shadow-md scale-[1.02];
+  transition: all 0.2s ease;
+}
+
+
+</style>

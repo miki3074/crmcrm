@@ -526,257 +526,162 @@ onMounted(fetchTask)
   <AuthenticatedLayout>
     <!-- HERO -->
      
-    <div class="relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600 opacity-90"></div>
-      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-white">
-        <div class="flex items-start gap-4">
-          <div >
-            <h1 class="text-2xl sm:text-3xl font-semibold">
-              {{ task?.title ?? 'Загрузка…' }}
-            </h1>
+    <div class="relative overflow-hidden rounded-b-3xl shadow-lg">
+  <!-- Фон -->
+  <div class="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600"></div>
 
+  <!-- Контент -->
+  <div class="relative max-w-7xl mx-auto px-6 py-10 text-white">
+    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
 
-<span
-  v-if="task?.watcherstask?.some(w => w.id === $page.props.auth.user.id)"
-  class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
->
-  👁 Вы наблюдатель этой задачи
-</span>
+      <!-- ==== Левая часть: информация о задаче ==== -->
+      <div class="flex-1 space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">
+            {{ task?.title ?? 'Загрузка…' }}
+          </h1>
 
+          <span
+            v-if="task?.watcherstask?.some(w => w.id === $page.props.auth.user.id)"
+            class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+          >
+            👁 Вы наблюдаете
+          </span>
+        </div>
 
-            <div class="mt-2 flex flex-wrap items-center gap-2 text-sm">
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Проект: <b>{{ task?.project?.name ?? '—' }}</b>
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                Компания: <b>{{ task?.project?.company?.name ?? '—' }}</b>
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-                От: <b>{{ task?.creator?.name ?? '—' }}</b>
-              </span>
-              <span class="px-2 py-1 rounded-full bg-white/20">
-  Кому:
-  <b>
-    {{ task?.executors?.length
-        ? task.executors.map(e => e.name).join(', ')
-        : '—'
-    }}
-  </b>
-</span>
+        <!-- Бейджи -->
+        <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
+          <span class="badge">📁 Проект: <b>{{ task?.project?.name ?? '—' }}</b></span>
+          <span class="badge">🏢 Компания: <b>{{ task?.project?.company?.name ?? '—' }}</b></span>
+          <span class="badge">👤 От: <b>{{ task?.creator?.name ?? '—' }}</b></span>
+          <span class="badge">
+            👷 Исполнители:
+            <b>{{ task?.executors?.length ? task.executors.map(e => e.name).join(', ') : '—' }}</b>
+          </span>
+          <span class="badge">
+            👨‍💼 Ответственные:
+            <b>{{ task?.responsibles?.length ? task.responsibles.map(r => r.name).join(', ') : '—' }}</b>
+          </span>
+          <span class="badge">
+            👁 Наблюдатели:
+            <b>{{ task?.watcherstask?.length ? task.watcherstask.map(w => w.name).join(', ') : '—' }}</b>
+          </span>
+          <span
+            v-if="task"
+            class="badge bg-white text-gray-900 ring-1"
+            :class="priorityBadge(task.priority)"
+          >
+            ⚡ Приоритет: <b>{{ priorityLabel(task.priority) }}</b>
+          </span>
+        </div>
 
-<span class="px-2 py-1 rounded-full bg-white/20">
-  Ответственный:
-  <b>
-    {{ task?.responsibles?.length
-        ? task.responsibles.map(r => r.name).join(', ')
-        : '—'
-    }}
-  </b>
-</span>
+        <!-- Описание -->
+        <div v-if="task?.description" class="bg-white/10 rounded-xl p-4 mt-4 backdrop-blur-sm">
+          <h3 class="text-base font-semibold mb-1">📝 Описание</h3>
+          <p class="text-gray-100 whitespace-pre-line">{{ task.description }}</p>
+        </div>
+      </div>
 
+      <!-- ==== Правая часть: кнопки действий ==== -->
+      <div class="flex flex-col gap-6 w-full sm:w-auto">
 
+        <!-- 🔹 Основные действия -->
+        <div class="flex flex-wrap justify-start sm:justify-end gap-2">
+          <button
+            v-if="canUpdate"
+            @click="showEditModal = true"
+            class="btn-action bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            ✏️ Изменить
+          </button>
 
-<span v-if="task && task.watcherstask" class="px-2 py-1 rounded-full bg-white/20">
-  Наблюдатели:
-  <b>{{ task.watcherstask.map(w => w.name).join(', ') || '—' }}</b>
-</span>
+          <button
+            v-if="canDeleteTask"
+            @click="showDeleteModal = true"
+            class="btn-action bg-rose-500 hover:bg-rose-600 text-white"
+          >
+            🗑 Удалить
+          </button>
 
-
-
-
-
-              <span v-if="task" class="px-2 py-1 rounded-full ring-1 bg-white text-gray-900" :class="priorityBadge(task.priority)">
-                Приоритет: <b>{{ priorityLabel(task.priority) }}</b>
-              </span>
-            </div>
-
-<div v-if="task?.description" class="bg-white/10 rounded-xl p-4 mt-4">
-  <h3 class="text-base font-semibold text-white mb-2">📝 Описание</h3>
-  <p class="text-gray-200 whitespace-pre-line">{{ task.description }}</p>
-</div>
-
-
-          </div>
-
-          <!-- <div class="hidden sm:flex items-center gap-3">
-            <a v-if="task?.project?.id" :href="`/projects/${task.project.id}`"
-               class="rounded-xl bg-white text-gray-900 hover:bg-white/90 px-4 py-2 font-medium">
-              К проекту
-            </a>
-          </div> -->
-
+<div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" > <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl"> <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2"> Удалить задачу? </h3> <p class="text-sm text-gray-600 dark:text-gray-300 mb-4"> Это действие <span class="font-semibold text-rose-600">необратимо</span>.<br> Задача и все связанные подзадачи и файлы будут безвозвратно удалены. </p> <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p> <div class="flex justify-end gap-2"> <button style="color: gray;" @click="showDeleteModal = false" class="px-4 py-2 rounded-lg border dark:border-gray-600" > Отмена </button> <button @click="confirmDeleteTask" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white" :disabled="deleting" > <span v-if="!deleting">Удалить</span> <span v-else>Удаляю…</span> </button> </div> </div> </div>
           
 
+          <button
+            @click="openDescriptionModal"
+            class="btn-action bg-indigo-500 hover:bg-indigo-600 text-white"
+          >
+            📝 Описание
+          </button>
 
-<!-- Кнопки действий -->
-<div class="flex flex-col sm:flex-row flex-wrap gap-3 mt-6 sm:mt-0 sm:ml-auto w-full sm:w-auto">
+          <a
+            v-if="task?.project?.id"
+            :href="`/projects/${task.project.id}`"
+            class="btn-action bg-white hover:bg-gray-100 text-gray-900"
+          >
+            🔙 К проекту
+          </a>
+        </div>
 
-  <!-- Первая строка: основные действия -->
-  <div class="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
-    <button
-      v-if="canUpdate"
-      @click="showEditModal = true"
-      class="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-medium shadow-sm transition"
-    >
-      ✏️ Изменить
-    </button>
+        <!-- 🔹 Управление участниками -->
+        <div
+          v-if="canManageMembers"
+          class="grid grid-cols-2 sm:grid-cols-2 gap-3 bg-white/10 dark:bg-white/5 rounded-2xl p-4 border border-white/20 backdrop-blur-sm shadow-sm"
+        >
+          <h4 class="col-span-2 text-sm uppercase tracking-wide text-white/70 font-semibold mb-1">
+            ⚙️ Управление участниками
+          </h4>
 
-   <button
-  v-if="canDeleteTask"
-  @click="showDeleteModal = true"
-  class="flex items-center gap-1 rounded-xl bg-rose-500/90 hover:bg-rose-600 text-white px-4 py-2 font-medium shadow-sm transition"
->
-  🗑 Удалить задачу
+          <button @click="openChangeExecutor" class="btn-grid bg-blue-500 hover:bg-blue-600">
+            👷 Изменить исполнителя
+          </button>
+
+          <button @click="openChangeResponsible" class="btn-grid bg-indigo-500 hover:bg-indigo-600">
+            👨‍💼 Изменить ответственного
+          </button>
+
+          <button @click="openAddExecutor" class="btn-grid bg-emerald-500 hover:bg-emerald-600">
+            ➕ Добавить исполнителя
+          </button>
+
+          <button @click="openAddResponsible" class="btn-grid bg-teal-500 hover:bg-teal-600">
+            ➕ Добавить ответственного
+          </button>
+
+          <button @click="openWatcherModal" class="btn-grid bg-purple-500 hover:bg-purple-600 col-span-2">
+            👁 Добавить наблюдателя
+          </button>
+
+<button v-if="canManageMembers" @click="showManageMembers = true" 
+class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" > 
+  ⚙️ Управление участниками 
 </button>
 
-<button
-  @click="openDescriptionModal"
-  class="flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 font-medium shadow-sm transition"
->
-  📝 Описание
-</button>
+        </div>
 
-
-
-<!-- Модалка подтверждения удаления -->
-<div
-  v-if="showDeleteModal"
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
->
-  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-      Удалить задачу?
-    </h3>
-    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-      Это действие <span class="font-semibold text-rose-600">необратимо</span>.<br>
-      Задача и все связанные подзадачи и файлы будут безвозвратно удалены.
-    </p>
-
-    <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p>
-
-    <div class="flex justify-end gap-2">
-      <button
-      style="color: gray;"
-        @click="showDeleteModal = false"
-        class="px-4 py-2 rounded-lg border dark:border-gray-600"
-      >
-        Отмена
-      </button>
-
-      <button
-        @click="confirmDeleteTask"
-        class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
-        :disabled="deleting"
-      >
-        <span v-if="!deleting">Удалить</span>
-        <span v-else>Удаляю…</span>
-      </button>
-    </div>
-  </div>
-</div>
-
-
-
-    <a
-      v-if="task?.project?.id"
-      :href="`/projects/${task.project.id}`"
-      class="flex items-center gap-1 rounded-xl bg-white hover:bg-gray-100 text-gray-900 px-4 py-2 font-medium shadow-sm transition"
-    >
-      🔙 К проекту
-    </a>
-  </div>
-
-  <!-- Вторая строка: управление участниками -->
-  <div
-    v-if="canManageMembers"
-    class="flex flex-wrap  gap-2 w-full sm:w-auto border-t border-white/20 sm:border-t-0 sm:border-l sm:pl-3 sm:ml-3 pt-3 sm:pt-0 mt-3 sm:mt-0"
-  >
-    <button
-      @click="openChangeExecutor"
-      class="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-md transition"
-    >
-      👷 Изменить исполнителя
-    </button>
-
-    <button
-      @click="openChangeResponsible"
-      class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm rounded-md transition"
-    >
-      👨‍💼 Изменить ответственного
-    </button>
-
-    <!-- Новые кнопки -->
-<button
-  v-if="canManageMembers"
-  @click="openAddExecutor"
-  class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
->
-  ➕ Добавить исполнителя
-</button>
-
-<button
-  v-if="canManageMembers"
-  @click="openAddResponsible"
-  class="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded-md transition"
->
-  ➕ Добавить ответственного
-</button>
-
-
-    <button
-      v-if="canUpdate"
-      @click="openWatcherModal"
-      class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-md transition"
-    >
-      👁 Добавить наблюдателя
-    </button>
-
-<button
-  v-if="canManageMembers"
-  @click="showManageMembers = true"
-  class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white text-sm rounded-md"
->
-  ⚙️ Управление участниками
-</button>
-
-  </div>
-
-  <!-- Третья строка: завершение -->
-  <div
-    v-if="canManageTask"
-    class="flex justify-end gap-2 w-full sm:w-auto border-t border-white/20 sm:border-t-0 sm:border-l sm:pl-3 sm:ml-3 pt-3 sm:pt-0 mt-3 sm:mt-0"
-  >
-    <button
-      v-if="canFinish"
-      @click="finishTask"
-      class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition"
-    >
-      ✅ Завершить задачу
-    </button>
-
-    <div v-else-if="(task?.progress === 100) && !task?.completed" class="text-xs text-amber-200">
-      <span v-if="hasOpenSubtasks">
-        Есть незавершённые подзадачи — завершите их, чтобы закрыть задачу.
-      </span>
-    </div>
-
-    <div v-if="task?.completed" class="text-sm text-emerald-200">
-      Завершена {{ task?.completed_at || '' }}
-    </div>
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
+        <!-- 🔹 Завершение -->
+        <div v-if="canManageTask" class="flex justify-end gap-2 mt-3">
+          <button
+            v-if="canFinish"
+            @click="finishTask"
+            class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            ✅ Завершить задачу
+          </button>
+          <div
+            v-else-if="(task?.progress === 100) && !task?.completed"
+            class="text-xs text-amber-200 max-w-xs text-right"
+          >
+            Есть незавершённые подзадачи — завершите их, чтобы закрыть задачу.
+          </div>
+          <div v-if="task?.completed" class="text-sm text-emerald-200">
+            ✅ Завершена {{ task?.completed_at || '' }}
+          </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
 
     <!-- BODY -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-4 pb-10" style="    margin-top: 3%;">
@@ -1290,4 +1195,31 @@ onMounted(fetchTask)
 
 
   </AuthenticatedLayout>
+
+
+
+
 </template>
+
+<style scoped>
+.badge {
+  @apply px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm;
+}
+
+.btn-action {
+  @apply px-4 py-2 rounded-xl font-semibold shadow-sm transition text-sm focus:outline-none focus:ring-2 focus:ring-white/30;
+}
+
+.btn-action:hover {
+  @apply scale-[1.02] shadow-md;
+}
+
+.btn-grid {
+  @apply flex items-center justify-center text-sm font-semibold rounded-xl px-3 py-3 transition shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-white/30;
+}
+
+.btn-grid:hover {
+  @apply scale-[1.03] shadow-md;
+}
+
+</style>
