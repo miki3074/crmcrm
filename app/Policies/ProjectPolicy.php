@@ -36,21 +36,32 @@ class ProjectPolicy
     }
 
         // Исполнитель хотя бы одной задачи
-        if ($project->tasks()->where('executor_id', $user->id)->exists()) {
-            return true;
-        }
+if ($project->tasks()
+    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
 
-        // Ответственный хотя бы одной задачи
-        if ($project->tasks()->where('responsible_id', $user->id)->exists()) {
-            return true;
-        }
+// Ответственный хотя бы одной задачи
+if ($project->tasks()
+    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
 
-        // Исполнитель подзадачи
-        if (\App\Models\Subtask::whereHas('task', function ($q) use ($project) {
-            $q->where('project_id', $project->id);
-        })->where('executor_id', $user->id)->exists()) {
-            return true;
-        }
+// Исполнитель подзадачи
+if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
+
+// Ответственный подзадачи
+if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+    ->exists()) {
+    return true;
+}
 
         // 👁 Наблюдатель проекта
     if ($project->watchers->contains('id', $user->id)) {

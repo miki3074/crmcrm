@@ -14,6 +14,8 @@ class CompanyPolicy
     public function viewAny(User $user): bool
     {
         //
+
+        return \App\Models\Company::where('user_id', $user->id)->exists();
     }
 
     /**

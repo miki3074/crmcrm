@@ -57,7 +57,7 @@ public function view(User $user, Subtask $subtask): bool
 
     return
         // 🔹 Админ
-        (method_exists($user, 'hasRole') && $user->hasRole('admin')) ||
+        // (method_exists($user, 'hasRole') && $user->hasRole('admin')) ||
 
         // 🔹 Владелец компании
         $user->id === $companyUserId ||

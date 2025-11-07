@@ -123,6 +123,9 @@ public function store(Request $request)
 
 public function show($id)
 {
+
+   
+
     $project = Project::with([
        
         'managers:id,name',
@@ -146,33 +149,26 @@ public function show($id)
 }
     ])->findOrFail($id);
 
+
+ $this->authorize('view', $project);
+
     $user = auth()->user();
 
-    foreach ($project->tasks as $task) {
-        // если пользователь владелец компании → видит все файлы
-        if ($user->id === $project->company->user_id) {
+   foreach ($project->tasks as $task) {
+        if (
+            $user->id === $project->company->user_id || // владелец компании
+            $user->id === $task->creator_id ||          // создатель задачи
+            $task->executors->contains('id', $user->id) ||
+            $task->responsibles->contains('id', $user->id)
+        ) {
             continue;
         }
 
-        // если пользователь создатель задачи
-        if ($user->id === $task->creator_id) {
-            continue;
-        }
-
-        // если пользователь исполнитель
-        if ($task->executors->contains('id', $user->id)) {
-            continue;
-        }
-
-        // если пользователь ответственный
-        if ($task->responsibles->contains('id', $user->id)) {
-            continue;
-        }
-
-        // иначе скрываем файлы
+        // ❌ иначе скрываем файлы
         $task->setRelation('files', collect([]));
     }
 
+    // 5️⃣ Возвращаем проект
     return response()->json($project);
 }
 

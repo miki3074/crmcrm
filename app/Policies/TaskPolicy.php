@@ -45,7 +45,7 @@ class TaskPolicy
     public function view(User $user, Task $task): bool
 {
     // Админ всегда может
-    if (method_exists($user, 'hasRole') && $user->hasRole('admin')) return true;
+    // if (method_exists($user, 'hasRole') && $user->hasRole('admin')) return true;
 
     // Владелец компании
     if (optional($task->project->company)->user_id === $user->id) return true;
