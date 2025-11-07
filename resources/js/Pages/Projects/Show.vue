@@ -421,6 +421,13 @@ const addExecutors = async () => {
 }
 
 
+const showClientModal = ref(false)
+const activeClient = ref(null)
+
+const openClientModal = (client) => {
+  activeClient.value = client
+  showClientModal.value = true
+}
 
 
 
@@ -450,6 +457,9 @@ onMounted(fetchProject)
             </span>
           </h1>
         </div>
+
+       
+
 
         <!-- Бейджи -->
         <div class="flex flex-wrap items-center gap-2 text-sm font-medium">
@@ -506,6 +516,83 @@ onMounted(fetchProject)
             💰 <b>{{ Number(project.budget).toLocaleString('ru-RU') }} ₽</b>
           </span>
         </div>
+
+
+ <!-- === Клиенты проекта === -->
+<div v-if="project?.clients?.length" class="mt-10">
+  <h3 class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm mb-2">
+    👥 Клиенты в этом проекте
+  </h3>
+
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div
+      v-for="c in project.clients"
+      :key="c.id"
+      class="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 shadow-sm hover:shadow transition"
+    >
+      <div class="flex items-center justify-between mb-2">
+        <span
+          class="px-2 py-1 text-xs rounded-full"
+          :class="c.type === 'jur' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+        >
+          {{ c.type === 'jur' ? 'Юр. лицо' : 'Физ. лицо' }}
+        </span>
+       
+      </div>
+      <div class="font-semibold text-slate-700 dark:text-slate-100 truncate">
+        {{ c.type === 'jur' && c.organization_name ? c.organization_name : c.name }}
+      </div>
+
+       <button
+          @click="openClientModal(c)"
+          class="text-sm text-blue-600 hover:underline"
+        >
+          Подробнее →
+        </button>
+    </div>
+  </div>
+</div>
+
+<!-- === Модальное окно клиента === -->
+<div
+  v-if="showClientModal"
+  class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-xl relative">
+    <button
+      class="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+      @click="showClientModal = false"
+    >
+      ✕
+    </button>
+
+    <h2 class="text-xl font-semibold mb-4 text-slate-800 dark:text-white">
+      🧾 Клиент: {{ activeClient?.name }}
+    </h2>
+
+    <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+      <div v-if="activeClient?.organization_name">
+        <b>Организация:</b> {{ activeClient.organization_name }}
+      </div>
+      <div v-if="activeClient?.email"><b>Email:</b> {{ activeClient.email }}</div>
+      <div v-if="activeClient?.phone"><b>Телефон:</b> {{ activeClient.phone }}</div>
+      <div v-if="activeClient?.city"><b>Город:</b> {{ activeClient.city }}</div>
+      <div v-if="activeClient?.address"><b>Адрес:</b> {{ activeClient.address }}</div>
+      
+      <div v-if="activeClient?.notes" class="pt-2">
+        <b>Заметки:</b>
+        <p class="whitespace-pre-line text-slate-500 dark:text-slate-400 mt-1">
+          {{ activeClient.notes }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+     <!-- === енд Клиенты проекта === -->
+
+
+
+
       </div>
 
       <!-- ==== Правая часть: кнопки ==== -->

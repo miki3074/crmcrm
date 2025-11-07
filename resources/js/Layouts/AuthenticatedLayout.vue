@@ -58,6 +58,13 @@ const toggleTheme = () => {
                                 </NavLink>
                             </div>
 
+                             <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink :href="route('ruk')" :active="route().current('ruk')">
+                                    Руководство
+                                </NavLink>
+                            </div> -->
+
+
 
                             <div class="shrink-0 flex items-center" style="margin-left: 19%;">
 
@@ -164,11 +171,17 @@ const toggleTheme = () => {
                         </ResponsiveNavLink>
 
 
-                          <ResponsiveNavLink :href="route('mapdiagram')" :active="route().current('mapdiagram')">
-      Визуальная схема
-    </ResponsiveNavLink>
+                     
 
                     </div>
+
+                     <!-- <div class="pt-2 pb-3 space-y-1">
+                        <ResponsiveNavLink :href="route('ruk')" :active="route().current('ruk')">
+                            Руководство
+                        </ResponsiveNavLink>
+
+                    </div> -->
+
 
                     <!-- Responsive Settings Options -->
                     <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">

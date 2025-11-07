@@ -13,16 +13,46 @@ use App\Models\Company;
 class EmployeeController extends Controller
 {
 
-public function index()
+public function index() { 
+    abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden'); 
+    $ownerId = auth()->id();
+     $companies = Company::where('user_id', $ownerId)->pluck('id'); 
+     $users = \DB::table('company_user') 
+     ->join('users', 'company_user.user_id', '=', 'users.id') 
+     ->join('companies', 'company_user.company_id', '=', 'companies.id') 
+     ->whereIn('companies.id', $companies) 
+     ->select( 'users.id', 
+     'users.name', 
+     'users.email', 
+     'companies.id as company_id', 
+     'companies.name as company_name', 
+     'company_user.role', 
+     'company_user.created_by' ) 
+     ->get() 
+     ->map(function ($row) {
+         return [ 
+            'id' => $row->id, 
+            'name' => $row->name, 
+            'email' => $row->email, 
+            'company' => [ 
+                'id' => $row->company_id, 
+                'name' => $row->company_name, 
+            ], 
+            'role' => $row->role, 
+            'created_by' => $row->created_by, 
+        ]; 
+    }); 
+    return response()->json($users->values()); 
+}
+
+public function employeesqw()
 {
     abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden');
 
     $ownerId = auth()->id();
 
+    $companies = \App\Models\Company::where('user_id', $ownerId)->pluck('id');
 
-    $companies = Company::where('user_id', $ownerId)->pluck('id');
-
-    
     $users = \DB::table('company_user')
         ->join('users', 'company_user.user_id', '=', 'users.id')
         ->join('companies', 'company_user.company_id', '=', 'companies.id')
@@ -49,10 +79,14 @@ public function index()
                 'role'       => $row->role,
                 'created_by' => $row->created_by,
             ];
-        });
+        })
+        ->unique('id') // ← удаляет дубликаты по user_id
+        ->values();   // ← переиндексируем коллекцию
 
-    return response()->json($users->values());
+    return response()->json($users);
 }
+
+
 
 
 

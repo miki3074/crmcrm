@@ -125,6 +125,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
+Route::middleware(['auth', 'verified'])->group(function () {
+   
+    Route::get('/ruk', function () {
+        return Inertia::render('Ruk');
+    })->name('ruk');
+});
+
 
 
 Route::middleware(['auth', 'verified'])->get('/users', function () {

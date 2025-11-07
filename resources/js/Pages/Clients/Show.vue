@@ -24,12 +24,16 @@ const fetchClient = async () => {
   const { data } = await axios.get(`/api/clients/${clientId}`)
   client.value = data
   // префил для редактирования
-  editForm.value = {
-    name: data.name || '',
-    phone: data.phone || '',
-    email: data.email || '',
-    notes: data.notes || ''
-  }
+ editForm.value = {
+  name: data.name || '',
+  organization_name: data.organization_name || '',
+  city: data.city || '',
+  address: data.address || '',
+  phone: data.phone || '',
+  email: data.email || '',
+  notes: data.notes || ''
+}
+
 }
 
 const fetchDeals = async () => {
@@ -71,6 +75,24 @@ const moveDeal = async (deal, status) => {
   await fetchDeals()
 }
 
+
+const deleteClient = async () => {
+  if (!confirm('Удалить клиента?')) return
+
+  try {
+    await axios.delete(`/api/clients/${clientId}`)
+    alert('Клиент удалён')
+    window.location.href = '/clients' // редирект на список клиентов
+  } catch (err) {
+    if (err.response?.status === 403) {
+      alert('❌ Только создатель может удалить клиента')
+    } else {
+      alert('Ошибка при удалении')
+    }
+  }
+}
+
+
 onMounted(async () => {
   await fetchClient()
   await fetchDeals()
@@ -102,40 +124,163 @@ onMounted(async () => {
           class="px-4 py-2 -mb-px"
           :class="activeTab==='interactions' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 dark:text-gray-400'"
           @click="activeTab='interactions'">Взаимодействия</button>
-        <button
+        <button disabled
           class="px-4 py-2 -mb-px"
           :class="activeTab==='deals' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 dark:text-gray-400'"
-          @click="activeTab='deals'">Сделки</button>
+          @click="activeTab='deals'">Сделки <span style="color: red;">(в разработке)</span></button>
       </div>
 
       <!-- PROFILE -->
       <div v-if="activeTab==='profile'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
-          <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">Карточка клиента</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="text-sm text-gray-500 dark:text-gray-400">Имя</label>
-              <input v-model="editForm.name" class="mt-1 w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white" />
-            </div>
-            <div>
-              <label class="text-sm text-gray-500 dark:text-gray-400">Телефон</label>
-              <input v-model="editForm.phone" class="mt-1 w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white" />
-            </div>
-            <div>
-              <label class="text-sm text-gray-500 dark:text-gray-400">Email</label>
-              <input v-model="editForm.email" type="email" class="mt-1 w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white" />
-            </div>
-            <div class="md:col-span-2">
-              <label class="text-sm text-gray-500 dark:text-gray-400">Заметки</label>
-              <textarea v-model="editForm.notes" rows="5" class="mt-1 w-full border rounded px-3 py-2 dark:bg-gray-700 dark:text-white" />
-            </div>
-          </div>
-          <div class="mt-4 flex justify-end">
-            <button @click="saveClient" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-              Сохранить
-            </button>
-          </div>
-        </div>
+  <h3 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
+    🧾 Карточка клиента
+  </h3>
+
+  <div v-if="client" class="space-y-6">
+    <!-- Тип клиента -->
+    <div class="flex items-center gap-3">
+      <span
+        class="px-3 py-1 text-xs rounded-full"
+        :class="client.type === 'jur' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'"
+      >
+        {{ client.type === 'jur' ? 'Юридическое лицо' : 'Физическое лицо' }}
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Название организации -->
+      <div v-if="client.type === 'jur'">
+        <label class="text-sm text-gray-500 dark:text-gray-400">Название организации</label>
+        <input
+          v-model="editForm.organization_name"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="ООО Ромашка"
+        />
+      </div>
+
+      <!-- ФИО -->
+      <div>
+        <label class="text-sm text-gray-500 dark:text-gray-400">ФИО</label>
+        <input
+          v-model="editForm.name"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="Иванов Иван Иванович"
+        />
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="text-sm text-gray-500 dark:text-gray-400">Email</label>
+        <input
+          v-model="editForm.email"
+          type="email"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="example@mail.ru"
+        />
+      </div>
+
+      <!-- Телефон -->
+      <div>
+        <label class="text-sm text-gray-500 dark:text-gray-400">Телефон</label>
+        <input
+          v-model="editForm.phone"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="+7 (999) 999-99-99"
+        />
+      </div>
+
+      <!-- Город -->
+      <div v-if="client.type === 'jur'">
+        <label class="text-sm text-gray-500 dark:text-gray-400">Город</label>
+        <input
+          v-model="editForm.city"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="Москва"
+        />
+      </div>
+
+      <!-- Адрес -->
+      <div v-if="client.type === 'jur'">
+        <label class="text-sm text-gray-500 dark:text-gray-400">Адрес</label>
+        <input
+          v-model="editForm.address"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+          placeholder="ул. Ленина, д. 10"
+        />
+      </div>
+
+<!-- Ответственный -->
+<div
+  v-if="client.responsible"
+  class="md:col-span-2"
+>
+  <label class="text-sm text-gray-500 dark:text-gray-400">Ответственный</label>
+  <div
+    class="mt-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white flex items-center justify-between"
+  >
+    <span>{{ client.responsible.name }}</span>
+  </div>
+</div>
+
+<!-- Проект -->
+<div
+  v-if="client.project"
+  class="md:col-span-2"
+>
+  <label class="text-sm text-gray-500 dark:text-gray-400">Проект</label>
+  <div
+    class="mt-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+  >
+    <div class="flex flex-col">
+      <span class="font-medium text-gray-900 dark:text-gray-100">
+        {{ client.project.name }}
+      </span>
+      <span
+        v-if="client.project.company"
+        class="text-sm text-gray-500 dark:text-gray-400"
+      >
+        Компания: {{ client.project.company.name }}
+      </span>
+    </div>
+  </div>
+</div>
+
+
+
+      <!-- Заметки -->
+      <div class="md:col-span-2">
+        <label class="text-sm text-gray-500 dark:text-gray-400">Заметки</label>
+        <textarea
+          v-model="editForm.notes"
+          rows="5"
+          class="mt-1 w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="mt-4 flex justify-end">
+      <button
+        @click="saveClient"
+        class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow transition"
+      >
+        💾 Сохранить изменения
+      </button>
+
+
+      <button
+  @click="deleteClient"
+  class="ml-5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg shadow transition"
+>
+  🗑 
+</button>
+
+    </div>
+  </div>
+
+  <div v-else class="text-slate-500">Загрузка клиента...</div>
+</div>
+
 
         <!-- Quick stats -->
         <div class="space-y-4">

@@ -19,6 +19,46 @@ class ProjectController extends Controller
 {
 
 
+
+
+public function groupedByCompany()
+{
+    $user = auth()->user();
+
+    $companies = \App\Models\Company::where('user_id', $user->id)
+        ->select('id', 'name')
+        ->get();
+
+    $companies->load(['projects:id,name,company_id']);
+
+    return response()->json($companies);
+}
+
+
+
+
+public function index()
+{
+    // Возвращаем проекты, к которым у пользователя есть доступ
+    $user = auth()->user();
+
+    // Если пользователь — владелец компании
+    $companies = \App\Models\Company::where('user_id', $user->id)->pluck('id');
+
+    // Все проекты этих компаний
+    $projects = \App\Models\Project::whereIn('company_id', $companies)
+        ->with(['company:id,name'])
+        ->select('id', 'name', 'company_id')
+        ->orderByDesc('created_at')
+        ->get();
+
+    return response()->json($projects);
+}
+
+
+
+
+
 public function store(Request $request)
 {
 
@@ -91,6 +131,9 @@ public function show($id)
         'executors:id,name',
         'initiator:id,name',
         'subprojects.responsibles:id,name',
+
+         'clients' => fn($q) => $q->with('responsible:id,name'),
+
         'tasks' => function ($q) {
     $q->select('id', 'project_id', 'title', 'creator_id', 'start_date', 'due_date', 'priority', 'progress', 'completed') // ✅
       ->with([

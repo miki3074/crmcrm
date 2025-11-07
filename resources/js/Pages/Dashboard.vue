@@ -540,9 +540,6 @@ onMounted(async () => {
           </div>
         </button>
 
-
-       
-
         <button
          v-if="isAdmin"
           class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
@@ -554,6 +551,21 @@ onMounted(async () => {
             <div>
               <div class="font-semibold text-slate-500">Сотрудники</div>
               <div class="text-xs text-slate-500">Роли и доступы</div>
+            </div>
+          </div>
+        </button>
+
+        <button
+         v-if="isAdmin"
+          class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
+          @click="$inertia.visit('/clients')">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-indigo-500/10 ring-1 ring-indigo-500/30 grid place-items-center">
+              <span class="i">👥</span>
+            </div>
+            <div>
+              <div class="font-semibold text-slate-500">Клиенты</div>
+              
             </div>
           </div>
         </button>
@@ -572,7 +584,6 @@ onMounted(async () => {
             </div>
           </div>
         </button>
-
 
 <button
   class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"

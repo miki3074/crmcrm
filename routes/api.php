@@ -66,14 +66,23 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
+
+Route::get('/projects/grouped', [ProjectController::class, 'groupedByCompany']);
+
+
 Route::middleware('auth:sanctum')->post('/employees', [EmployeeController::class, 'store']);
 Route::middleware('auth:sanctum')->get('/employees', [EmployeeController::class, 'index']);
+
+Route::middleware('auth:sanctum')->get('/employeesqw', [EmployeeController::class, 'employeesqw']);
+
+
 
 Route::middleware('auth:sanctum')->post('/projects', [ProjectController::class, 'store']);
 Route::middleware('auth:sanctum')->get('/projects/{id}', [ProjectController::class, 'show']);
 Route::middleware('auth:sanctum')->get('/projects/{project}/employees', [ProjectController::class, 'employees']);
 Route::middleware('auth:sanctum')->get('/users/managers', [UserController::class, 'managers']);
 Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyController::class, 'companiesWhereUserIsManager']);
+
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tasks', [TaskController::class, 'store']);
@@ -297,6 +306,9 @@ Route::get('/tasks/{task}/description', [TaskDescriptionController::class, 'show
 Route::patch('/tasks/{task}/description', [TaskDescriptionController::class, 'update']);
 
 
+Route::get('/projects', [ProjectController::class, 'index']);
+
+Route::delete('/clients/{client}', [ClientController::class, 'destroy']);
 
 
 
