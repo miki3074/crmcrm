@@ -7,6 +7,8 @@ import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link } from '@inertiajs/vue3';
 
+import SupportButton from '@/Components/SupportButton.vue'
+
 const showingNavigationDropdown = ref(false);
 
 const isDark = ref(false)
@@ -55,6 +57,12 @@ const toggleTheme = () => {
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Главная
+                                </NavLink>
+                            </div>
+
+                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink :href="route('support.history')" :active="route().current('support.history')">
+                                    Техподдержка
                                 </NavLink>
                             </div>
 
@@ -126,6 +134,11 @@ const toggleTheme = () => {
                                 </Dropdown>
                             </div>
                         </div>
+
+                
+   
+    <SupportButton />
+
 
                         <!-- Hamburger -->
                         <div class="-me-2 flex items-center sm:hidden">

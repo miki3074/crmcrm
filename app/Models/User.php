@@ -105,5 +105,10 @@ public function watchingProjects()
     return $this->belongsToMany(Project::class, 'project_watchers')->withTimestamps();
 }
 
+public function supportMessagesAssigned()
+{
+    return $this->hasMany(SupportMessage::class, 'assigned_support_id');
+}
+
 
 }

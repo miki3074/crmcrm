@@ -43,12 +43,12 @@ axios.interceptors.response.use(
     }
 
     // 404 — страница не найдена
-    if (status === 404) {
-      if (window.location.pathname !== '/dashboard') {
+    // if (status === 404) {
+    //   if (window.location.pathname !== '/dashboard') {
         
-        window.location.href = '/dashboard'
-      }
-    }
+    //     window.location.href = '/dashboard'
+    //   }
+    // }
 
     return Promise.reject(error)
   }

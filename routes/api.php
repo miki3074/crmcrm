@@ -30,6 +30,15 @@ use App\Http\Controllers\API\CompanyMapController;
 use App\Models\Company;
 
 use App\Http\Controllers\API\TaskDescriptionController;
+
+
+use App\Http\Controllers\API\SupportController;
+
+use App\Http\Controllers\API\AdminSupportController;
+
+use App\Http\Controllers\API\SupportMessageController;
+
+use App\Http\Controllers\API\SupportReplyController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -311,6 +320,12 @@ Route::get('/projects', [ProjectController::class, 'index']);
 Route::delete('/clients/{client}', [ClientController::class, 'destroy']);
 
 
+Route::middleware(['auth:sanctum', 'throttle:5,1']) // не более 5 раз в минуту
+    ->post('/support', [SupportController::class, 'store']);
+
+Route::middleware(['auth', 'role:support'])->group(function () {
+    Route::get('/support/messages', [AdminSupportController::class, 'index'])->name('support.index');
+});
 
 Route::get('/mapdiagram', function () {
     return \App\Models\Company::where('user_id', auth()->id())->get(['id', 'name']);
@@ -319,6 +334,29 @@ Route::get('/mapdiagram', function () {
 // Получить структуру конкретной компании (проект → задачи → подзадачи)
 Route::get('/mapdiagram/{company}/map', [CompanyMapController::class, 'show'])
     ->middleware('auth:sanctum');
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/support/history', [SupportMessageController::class, 'index']);
+});
+
+
+// Route::middleware('auth:sanctum')->group(function () {
+//     Route::post('/support/reply', [SupportReplyController::class, 'store']);
+// });
+
+Route::middleware('auth:sanctum')->group(function () {
+    // пользователь пишет ответ
+    Route::post('/support/reply', [SupportReplyController::class, 'storeUser']);
+
+    // техподдержка отвечает пользователю
+    Route::post('/support/admin-reply', [SupportReplyController::class, 'storeSupport'])
+        ->middleware('role:support');
+});
+
+
+Route::post('/support/messages/{id}/transfer', [SupportMessageController::class, 'transfer'])
+    ->middleware(['auth:sanctum']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

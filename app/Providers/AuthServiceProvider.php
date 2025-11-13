@@ -19,6 +19,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Task::class => \App\Policies\TaskPolicy::class,
         \App\Models\Subtask::class => \App\Policies\SubtaskPolicy::class,
         \App\Models\StorageFile::class => \App\Policies\StorageFilePolicy::class,
+         \App\Models\SupportMessage::class => \App\Policies\SupportPolicy::class,
 
     ];
 

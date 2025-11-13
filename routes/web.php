@@ -10,6 +10,8 @@ use App\Models\Subproject;
 use App\Models\User;
 
 use App\Http\Controllers\Auth\NewPasswordController;
+
+use App\Http\Controllers\Support\AdminSupportController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -124,6 +126,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('mapdiagram');
 });
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Панель техподдержки (только для support — проверка через Policy)
+    Route::get('/support/messages', [AdminSupportController::class, 'index'])
+        ->name('support.index');
+
+    Route::post('/support/messages/{message}/reply', [AdminSupportController::class, 'reply'])
+        ->name('support.reply');
+
+    Route::post('/support/messages/{message}/close', [AdminSupportController::class, 'close'])
+        ->name('support.close');
+
+    // История обращений для обычных пользователей
+    Route::get('/support-history', function () {
+        return Inertia::render('SupportHistory/supporthistory');
+    })->name('support.history');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/support/messages/{id}/transfer', [AdminSupportController::class, 'transfer'])
+        ->name('support.transfer');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
    

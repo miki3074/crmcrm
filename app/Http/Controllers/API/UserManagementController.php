@@ -24,8 +24,13 @@ class UserManagementController extends Controller
      */
     public function index()
     {
-         return User::select('id', 'name', 'email', 'created_at')
-        ->where('id', '<>', auth()->id()) // 👈 исключаем текущего пользователя
+
+        $currentUserId = auth()->id();
+
+        return User::select('id', 'name', 'email', 'created_at')
+        ->with('roles:id,name') // 👈 добавили
+        // ->where('id', '<>', auth()->id())
+        ->orderByRaw("id = $currentUserId DESC") 
         ->orderBy('id', 'asc')
         ->get();
     }
@@ -33,27 +38,38 @@ class UserManagementController extends Controller
     /**
      * Обновить данные пользователя
      */
-    public function update(Request $request, User $user)
-    {
-        $this->ensureAdminAccess();
+public function update(Request $request, User $user)
+{
+    $this->ensureAdminAccess();
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'nullable|min:6',
-        ]);
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+        'password' => 'nullable|min:6',
+        'roles' => 'nullable|array',
+        'roles.*' => 'string|in:admin,manager,employee,support',
+    ]);
 
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
+    $user->name = $validated['name'];
+    $user->email = $validated['email'];
 
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-
-        $user->save();
-
-        return response()->json(['message' => 'Данные пользователя обновлены', 'user' => $user]);
+    if (!empty($validated['password'])) {
+        $user->password = Hash::make($validated['password']);
     }
+
+    $user->save();
+
+    if (!empty($validated['roles'])) {
+        $user->syncRoles($validated['roles']); // ← несколько ролей
+    }
+
+    return response()->json([
+        'message' => 'Данные пользователя обновлены',
+        'user' => $user->load('roles:id,name'),
+    ]);
+}
+
+
 
     /**
      * Удалить пользователя

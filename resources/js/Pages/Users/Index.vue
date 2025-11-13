@@ -9,6 +9,8 @@ const errorText = ref('')
 const editingUser = ref(null)
 const editForm = ref({ name: '', email: '', password: '' })
 
+const roles = ['admin', 'manager', 'employee', 'support']
+
 // загрузка пользователей
 const fetchUsers = async () => {
   loading.value = true
@@ -26,7 +28,13 @@ const fetchUsers = async () => {
 // открыть форму редактирования
 const openEdit = (user) => {
   editingUser.value = user
-  editForm.value = { name: user.name, email: user.email, password: '' }
+ 
+  editForm.value = { 
+  name: user.name,
+  email: user.email,
+  password: '',
+  roles: user.roles?.map(r => r.name) || [] // массив ролей
+}
 }
 
 // обновить пользователя
@@ -101,11 +109,27 @@ onMounted(fetchUsers)
                  autocomplete="new-password"
                  class="w-full border rounded p-2 mb-4 dark:bg-gray-700 dark:text-white" />
 
+<!-- <select v-model="editForm.role"
+        class="w-full border rounded p-2 mb-4 dark:bg-gray-700 dark:text-white">
+  <option disabled value="">Выберите роль</option>
+  <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
+</select> -->
+
+<select v-model="editForm.roles"
+        multiple
+        class="w-full border rounded p-2 mb-4 dark:bg-gray-700 dark:text-white">
+  <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
+</select>
+
           <div class="flex justify-end gap-2">
             <button @click="editingUser = null" class="px-4 py-2 border rounded-lg">Отмена</button>
             <button @click="saveUser" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Сохранить</button>
           </div>
+        
+        
         </div>
+      
+      
       </div>
     </div>
   </AuthenticatedLayout>
