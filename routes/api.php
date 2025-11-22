@@ -39,6 +39,12 @@ use App\Http\Controllers\API\AdminSupportController;
 use App\Http\Controllers\API\SupportMessageController;
 
 use App\Http\Controllers\API\SupportReplyController;
+
+use App\Http\Controllers\API\TaskCalendarController;
+
+use App\Http\Controllers\API\SubtaskChecklistController;
+
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -357,6 +363,47 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::post('/support/messages/{id}/transfer', [SupportMessageController::class, 'transfer'])
     ->middleware(['auth:sanctum']);
+
+
+
+Route::delete('/projects/{project}/members', [ProjectController::class, 'remove']);
+Route::delete('/tasks/files/{file}', [TaskController::class, 'deleteFile']);
+
+
+Route::post('/support/read/{id}', [SupportMessageController::class, 'markRead']);
+Route::post('/support/read-user/{id}', [SupportMessageController::class, 'markUserRead']);
+
+Route::post('/support/read-support/{id}', [SupportMessageController::class, 'markSupportRead']);
+
+
+
+
+
+Route::get('/calendar/tasks', [TaskCalendarController::class, 'index']);
+
+
+Route::middleware('auth')->group(function () {
+
+    Route::post('/subtasks/{id}/comments', [SubtaskController::class, 'addComment']);
+    Route::patch('/subtask-comments/{id}', [SubtaskController::class, 'updateComment']);
+    Route::delete('/subtask-comments/{id}', [SubtaskController::class, 'deleteComment']);
+
+});
+
+Route::prefix('subtasks/{id}/checklist')->group(function () {
+    Route::post('/', [SubtaskChecklistController::class, 'store']);
+});
+
+Route::prefix('subtask-checklist/{id}')->group(function () {
+    Route::patch('/', [SubtaskChecklistController::class, 'update']);
+    Route::patch('/toggle', [SubtaskChecklistController::class, 'toggle']);
+    Route::delete('/', [SubtaskChecklistController::class, 'destroy']);
+});
+
+
+Route::patch('/subtasks/{subtask}/description', [SubtaskController::class, 'updateDescription']);
+
+
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

@@ -429,6 +429,34 @@ const openClientModal = (client) => {
   showClientModal.value = true
 }
 
+const goBackToCompany = () => {
+  if (!project.value?.company?.id) return
+  window.location.href = `/companies/${project.value.company.id}`
+}
+
+
+const showManageMembersModal = ref(false)
+
+const openManageMembers = () => {
+  showManageMembersModal.value = true
+}
+
+const removeMember = async (role, userId) => {
+  if (role === 'manager' && project.value.managers.length <= 1) {
+    return alert("В проекте должен быть хотя бы 1 руководитель!")
+  }
+  
+
+  try {
+    await axios.delete(`/api/projects/${projectId}/members`, {
+      data: { user_id: userId, role }
+    })
+    await fetchProject() // обновляем данные проекта
+  } catch (e) {
+    alert(e?.response?.data?.message || "Ошибка при удалении участника")
+  }
+}
+
 
 
 onMounted(fetchProject)
@@ -639,6 +667,24 @@ onMounted(fetchProject)
     >
       🗑 Удалить проект
     </button>
+
+
+    <button
+  v-if="project?.company"
+  @click="goBackToCompany"
+  class="btn-main bg-white/90 hover:bg-white text-gray-900"
+>
+  ← Назад к компании
+</button>
+
+  <a
+            v-if="task?.project?.id"
+            :href="`/projects/${task.project.id}`"
+            class="btn-action bg-white hover:bg-gray-100 text-gray-900"
+          >
+            🔙 К проекту
+          </a>
+    
   </div>
 
   <!-- 🔹 Управление персоналом -->
@@ -682,6 +728,15 @@ onMounted(fetchProject)
       >
         👁 Наблюдатель
       </button>
+
+      <button
+  v-if="isCompanyOwner || isProjectManager"
+  @click="openManageMembers"
+  class="btn-grid bg-teal-500 hover:bg-teal-600 text-white"
+>
+  👥 Управление участниками
+</button>
+
     </div>
   </div>
 </div>
@@ -689,6 +744,70 @@ onMounted(fetchProject)
 
 
     </div>
+  </div>
+</div>
+
+
+
+
+<!-- МОДАЛКА: Управление участниками -->
+<div
+  v-if="showManageMembersModal"
+  class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+>
+  <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-[95%] max-w-4xl shadow-xl border dark:border-slate-700">
+
+    <h3 class="text-lg font-semibold mb-4 text-slate-800 dark:text-slate-100">
+      👥 Управление участниками проекта
+    </h3>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <!-- Руководители -->
+      <div class="p-3 border rounded-xl dark:border-slate-700">
+        <h4 class="font-semibold mb-2 text-amber-600">Руководители</h4>
+        <div v-for="m in project.managers" :key="m.id" class="flex justify-between items-center mb-1">
+          <span>{{ m.name }}</span>
+          <button
+            class="text-red-500 hover:text-red-700 text-sm"
+            @click="removeMember('manager', m.id)"
+          >Убрать</button>
+        </div>
+      </div>
+
+      <!-- Исполнители -->
+      <div class="p-3 border rounded-xl dark:border-slate-700">
+        <h4 class="font-semibold mb-2 text-indigo-600">Исполнители</h4>
+        <div v-for="e in project.executors" :key="e.id" class="flex justify-between items-center mb-1">
+          <span>{{ e.name }}</span>
+          <button
+            class="text-red-500 hover:text-red-700 text-sm"
+            @click="removeMember('executor', e.id)"
+          >Убрать</button>
+        </div>
+      </div>
+
+      <!-- Наблюдатели -->
+      <div class="p-3 border rounded-xl dark:border-slate-700">
+        <h4 class="font-semibold mb-2 text-purple-600">Наблюдатели</h4>
+        <div v-for="w in project.watchers" :key="w.id" class="flex justify-between items-center mb-1">
+          <span>{{ w.name }}</span>
+          <button
+            class="text-red-500 hover:text-red-700 text-sm"
+            @click="removeMember('watcher', w.id)"
+          >Убрать</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="text-right mt-5">
+      <button
+        @click="showManageMembersModal = false"
+        class="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg"
+      >Закрыть</button>
+    </div>
+
   </div>
 </div>
 

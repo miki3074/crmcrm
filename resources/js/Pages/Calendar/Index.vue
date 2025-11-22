@@ -18,6 +18,9 @@ let calendar = null
 const loading = ref(false)
 const events = ref([])
 
+
+
+
 // UI state
 const showCreateModal = ref(false)
 const showViewModal = ref(false)
@@ -44,6 +47,17 @@ const form = ref({
   start_at: '',
   end_at: '',
 })
+
+
+const tasks = ref([]);
+
+const loadTasks = async () => {
+  const { data } = await axios.get('/api/tasks/list'); // сделаем ниже
+  tasks.value = data;
+};
+
+
+
 
 const isCompanyEvent = computed(() => form.value.visibility !== 'personal')
 const isSelectedCompany = computed(() => form.value.visibility === 'company_selected')
@@ -135,8 +149,42 @@ const submitEvent = async () => {
   }
 }
 
+// const onEventClick = (info) => {
+//   const base = JSON.parse(JSON.stringify(info.event.extendedProps || {}))
+//   selectedEvent.value = {
+//     ...base,
+//     id: info.event.id,
+//     title: info.event.title || base.title || '',
+//     start_at: info.event.start ? info.event.start.toISOString() : null,
+//     end_at: info.event.end ? info.event.end.toISOString() : null,
+//   }
+//   showViewModal.value = true
+// }
+
 const onEventClick = (info) => {
-  const base = JSON.parse(JSON.stringify(info.event.extendedProps || {}))
+  const ext = info.event.extendedProps || {}
+
+  // если это задача
+  if (ext.event_type === 'task') {
+    selectedTask.value = {
+      id: ext.task_id,
+      title: info.event.title,
+      start_at: info.event.start?.toISOString() ?? ext.start,
+      end_at: info.event.end?.toISOString() ?? ext.end,
+      priority: ext.priority,
+      is_overdue: ext.is_overdue,
+      project_name: ext.project_name,
+      company_name: ext.company_name,
+      executors: ext.executors || [],
+      responsibles: ext.responsibles || [],
+      watchers: ext.watchers || [],
+    }
+    showTaskModal.value = true
+    return
+  }
+
+  // иначе – старое модальное окно события
+  const base = JSON.parse(JSON.stringify(ext || {}))
   selectedEvent.value = {
     ...base,
     id: info.event.id,
@@ -146,6 +194,7 @@ const onEventClick = (info) => {
   }
   showViewModal.value = true
 }
+
 
 const editEvent = async () => {
   const ev = selectedEvent.value
@@ -196,6 +245,67 @@ const onMoreLinkClick = (arg) => {
   return 'none'
 }
 
+const taskFilter = ref('all')
+const taskEvents = ref([])
+const tasksList = ref([])
+
+const fetchTasks = async () => {
+  const { data } = await axios.get('/api/calendar/tasks', {
+    params: {
+      filter: taskFilter.value,
+    }
+  })
+
+  // список для боковой панели
+  tasksList.value = data
+
+  // события для календаря
+  const mapped = data.map(t => ({
+    id: t.id,
+    title: t.title,
+    start: t.start,
+    end: t.end,
+    allDay: true,
+    backgroundColor:
+      t.priority === 'high' ? '#dc2626' :
+      t.priority === 'medium' ? '#f59e0b' :
+      '#16a34a',
+    borderColor: 'transparent',
+    extendedProps: t
+  }))
+
+  taskEvents.value = mapped
+
+  // Добавляем в календарь
+  calendar?.addEventSource(mapped)
+}
+
+
+
+const goToTask = (t) => {
+  calendar.gotoDate(t.start)
+
+  // подсветка события
+  const ev = calendar.getEventById(t.id)
+  if (ev) {
+    ev.setProp('backgroundColor', '#0ea5e9')
+    setTimeout(() => {
+      ev.setProp('backgroundColor',
+        t.priority === 'high' ? '#dc2626' :
+        t.priority === 'medium' ? '#f59e0b' :
+        '#16a34a'
+      )
+    }, 1500)
+  }
+}
+
+const showTaskModal = ref(false)
+const selectedTask = ref(null)
+
+
+
+
+
 onMounted(async () => {
   await loadCompanies()
 
@@ -204,6 +314,9 @@ onMounted(async () => {
     initialView: 'dayGridMonth',
     height: 'auto',
     locale: ruLocale,
+    
+    
+
     selectable: true,
     selectMirror: true,
     editable: true,         // drag & drop + resize
@@ -226,8 +339,10 @@ onMounted(async () => {
       openCreateModal(dt.toISOString(), dt.toISOString())
     },
     datesSet: async (info) => {
-      await fetchEvents(info.startStr, info.endStr)
-    },
+  calendar.removeAllEvents()
+  await fetchEvents(info.startStr, info.endStr)
+  await fetchTasks()
+},
     eventClick: onEventClick,
     eventDidMount: (info) => { info.el.style.cursor = 'pointer' },
     eventDrop: patchEventDates,
@@ -250,12 +365,72 @@ onMounted(async () => {
         >
           + Событие
         </button>
+
+        <!-- <select v-model="taskFilter" @change="fetchTasks"
+        class="border rounded px-3 py-2 dark:bg-gray-700 dark:text-white ml-4">
+  <option value="all">Все задачи</option>
+  <option value="my">Мои задачи</option>
+  <option value="project">По проекту</option>
+  <option value="company">По компании</option>
+</select> -->
+
       </div>
     </template>
 
     <div class="max-w-7xl mx-auto py-6 px-4">
       <div v-if="loading" class="mb-3 text-sm text-gray-500">Загрузка…</div>
+
+      
       <div ref="calendarEl"></div>
+
+<div class="mt-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow">
+  <h3 class="text-lg font-semibold mb-3">Список задач</h3>
+
+  <div v-if="tasksList.length === 0" class="text-gray-500">Нет задач</div>
+
+  <ul class="space-y-2 max-h-80 overflow-auto">
+
+    <li v-for="t in tasksList" :key="t.id"
+    class="border p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+    :class="t.is_overdue ? 'border-red-500 bg-red-50 dark:bg-red-900/30' : ''"
+    @click="goToTask(t)"
+>
+  <div class="font-medium flex items-center justify-between">
+    <span>{{ t.title }}</span>
+
+    <!-- Метка просрочки -->
+    <span v-if="t.is_overdue"
+          class="text-xs text-red-600 font-semibold ml-2">
+      ❗ Просрочена
+    </span>
+  </div>
+
+  <!-- Компания -->
+  <div v-if="t.company" class="text-xs text-gray-500 mt-1">
+    🏢 Компания: <strong>{{ t.company }}</strong>
+  </div>
+
+  <!-- Проект -->
+  <div v-if="t.project" class="text-xs text-gray-500">
+    📁 Проект: <strong>{{ t.project }}</strong>
+  </div>
+
+  <div class="text-xs text-gray-500 mt-1">
+    {{ t.start }} → {{ t.end }}
+  </div>
+
+  <span class="text-xs"
+    :class="t.priority === 'high' ? 'text-red-600' :
+             t.priority === 'medium' ? 'text-orange-600' : 'text-green-600'">
+    ● {{ t.priority }}
+  </span>
+</li>
+
+
+  </ul>
+</div>
+
+
     </div>
 
     <!-- Create/Edit modal -->
@@ -377,5 +552,101 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+
+
+<!-- Модалка задачи -->
+<div
+  v-if="showTaskModal && selectedTask"
+  class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+>
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 w-full max-w-lg">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        📝 Задача: {{ selectedTask.title }}
+      </h3>
+      <button
+        @click="showTaskModal = false"
+        class="text-gray-400 hover:text-gray-600"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Компания / проект -->
+    <div class="space-y-1 text-sm text-gray-700 dark:text-gray-300 mb-3">
+      <div v-if="selectedTask.company_name">
+        🏢 <span class="text-gray-500">Компания:</span>
+        <strong>{{ selectedTask.company_name }}</strong>
+      </div>
+      <div v-if="selectedTask.project_name">
+        📁 <span class="text-gray-500">Проект:</span>
+        <strong>{{ selectedTask.project_name }}</strong>
+      </div>
+    </div>
+
+    <!-- Сроки -->
+    <div class="space-y-1 text-sm text-gray-700 dark:text-gray-300 mb-3">
+      <div>
+        ⏱ <span class="text-gray-500">Начало:</span>
+        {{ new Date(selectedTask.start_at).toLocaleDateString('ru-RU') }}
+      </div>
+      <div>
+        🧭 <span class="text-gray-500">Дедлайн:</span>
+        <span
+          :class="selectedTask.is_overdue ? 'text-red-600 font-semibold' : ''"
+        >
+          {{ new Date(selectedTask.end_at).toLocaleDateString('ru-RU') }}
+          <span v-if="selectedTask.is_overdue"> — ❗ Просрочена</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Исполнители / Ответственные / Наблюдатели -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-700 dark:text-gray-300 mb-4">
+      <div>
+        <div class="font-semibold mb-1">Исполнители</div>
+        <div v-if="selectedTask.executors?.length">
+          <div v-for="u in selectedTask.executors" :key="u.id">• {{ u.name }}</div>
+        </div>
+        <div v-else class="text-gray-400">нет</div>
+      </div>
+
+      <div>
+        <div class="font-semibold mb-1">Ответственные</div>
+        <div v-if="selectedTask.responsibles?.length">
+          <div v-for="u in selectedTask.responsibles" :key="u.id">• {{ u.name }}</div>
+        </div>
+        <div v-else class="text-gray-400">нет</div>
+      </div>
+
+      <div>
+        <div class="font-semibold mb-1">Наблюдатели</div>
+        <div v-if="selectedTask.watchers?.length">
+          <div v-for="u in selectedTask.watchers" :key="u.id">• {{ u.name }}</div>
+        </div>
+        <div v-else class="text-gray-400">нет</div>
+      </div>
+    </div>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        class="px-4 py-2 rounded bg-slate-500 text-white"
+        @click="showTaskModal = false"
+      >
+        Закрыть
+      </button>
+      <a
+        :href="`/tasks/${selectedTask.id}`"
+        class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+      >
+        Открыть задачу
+      </a>
+    </div>
+  </div>
+</div>
+
+
+
   </AuthenticatedLayout>
 </template>

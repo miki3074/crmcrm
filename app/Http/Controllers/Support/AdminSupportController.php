@@ -24,15 +24,16 @@ class AdminSupportController extends Controller
         ->get();
 
     $messages = SupportMessage::with([
-        'user:id,name,email,telegram_chat_id',
-        'replies.user:id,name',
-        'replies.user.roles:id,name',
-        'attachments:id,support_message_id,path,original_name,mime_type' // ⬅ ДОБАВИЛИ
-    ])
-    ->where('status', 'open')
-    ->where('assigned_support_id', $supportId)
-    ->latest()
-    ->paginate(20);
+    'user:id,name,email,telegram_chat_id',
+    'attachments:id,support_message_id,path,original_name,mime_type',
+    'replies.user:id,name',
+    'replies.user.roles:id,name',
+    'replies.attachment:id,support_reply_id,path,original_name,mime_type' // ⬅ ДОБАВИТЬ
+])
+->where('status', 'open')
+->where('assigned_support_id', $supportId)
+->latest()
+->paginate(20);
 
     return inertia('Support/Index', [
         'messages' => $messages,
@@ -46,41 +47,35 @@ public function reply(Request $r, SupportMessage $message)
 {
     $this->authorize('viewAny', SupportMessage::class);
 
-    $r->validate(['reply' => 'required|string|max:2000']);
+    $r->validate([
+        'reply' => 'nullable|string|max:2000',
+        'file'  => 'nullable|file|max:51200' // 50MB
+    ]);
+
+    if (!$r->reply && !$r->file) {
+        return response()->json(['error' => 'Пустое сообщение'], 422);
+    }
 
     $reply = SupportReply::create([
         'support_message_id' => $message->id,
-        'user_id' => auth()->id(),
-        'reply' => $r->reply,
+        'user_id'            => auth()->id(),
+        'reply'              => $r->reply
     ]);
 
-    // Подгружаем роль отправителя
-    $reply->load('user.roles');
+    if ($r->hasFile('file')) {
+        $path = $r->file('file')->store('support/replies', 'public');
 
-    // 🟦 Отметить тикет как открытый (активный)
-    if ($message->status === 'closed') {
-        $message->update(['status' => 'open']);
+        $reply->attachment()->create([
+            'path'          => $path,
+            'original_name' => $r->file('file')->getClientOriginalName(),
+            'mime_type'     => $r->file('file')->getMimeType()
+        ]);
     }
 
-    // 🟦 🔔 Уведомление пользователю (если есть telegram_chat_id)
-    if (!empty($message->telegram_chat_id)) {
-
-        $text =
-            "🛠 <b>Ответ от техподдержки</b>\n\n" .
-            "<b>Обращение №{$message->id}</b>\n\n" .
-            "<b>Ответ:</b>\n" .
-            "{$reply->reply}\n";
-
-        
-
-        TelegramService::sendMessage($message->telegram_chat_id, $text);
-    }
-
-    return response()->json([
-        'success' => true,
-        'reply' => $reply,
-    ]);
+    $reply->load('user.roles', 'attachment');
+    return response()->json(['reply' => $reply]);
 }
+
 
 
 

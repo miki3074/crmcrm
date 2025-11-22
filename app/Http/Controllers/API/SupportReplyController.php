@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\SupportMessage;
 use App\Models\SupportReply;
 use Illuminate\Support\Facades\Auth;
+use App\Models\SupportReplyAttachment;
 
 use App\Models\User;
 
@@ -20,22 +21,40 @@ class SupportReplyController extends Controller
     public function storeUser(Request $request)
     {
         $validated = $request->validate([
-            'support_message_id' => 'required|exists:support_messages,id',
-            'reply' => 'required|string|max:1000',
+        'support_message_id' => 'required|exists:support_messages,id',
+        'reply' => 'nullable|string|max:1000',
+        'file'  => 'nullable|file|max:20480', // до 20MB
+    ]);
+
+    $message = SupportMessage::findOrFail($validated['support_message_id']);
+
+    if ($message->user_id !== Auth::id()) {
+        return response()->json(['message' => 'Доступ запрещён.'], 403);
+    }
+
+    $reply = SupportReply::create([
+        'support_message_id' => $message->id,
+        'user_id' => Auth::id(),
+        'reply' => $validated['reply'] ?? '',
+    ]);
+
+    if ($request->hasFile('file')) {
+        $file = $request->file('file');
+        $path = $file->store('support/replies', 'public');
+
+        $attachment = SupportReplyAttachment::create([
+            'support_reply_id' => $reply->id,
+            'path'            => $path,
+            'original_name'   => $file->getClientOriginalName(),
+            'mime_type'       => $file->getMimeType(),
+            'size'            => $file->getSize(),
         ]);
 
-        $message = SupportMessage::findOrFail($validated['support_message_id']);
+        $reply->setRelation('attachment', $attachment);
+    }
 
-        // Проверяем, что обращение принадлежит текущему пользователю
-        if ($message->user_id !== Auth::id()) {
-            return response()->json(['message' => 'Доступ запрещён.'], 403);
-        }
+    $message->update(['status' => 'open']);
 
-        $reply = SupportReply::create([
-            'support_message_id' => $message->id,
-            'user_id' => Auth::id(),
-            'reply' => $validated['reply'],
-        ]);
 
         // Обновим статус
         $message->update(['status' => 'open']);

@@ -548,6 +548,35 @@ public function taskStats(Project $project)
 
 
 
+public function remove(Request $request, Project $project)
+{
+    $request->validate([
+        'user_id' => 'required|exists:users,id',
+        'role'    => 'required|in:manager,executor,watcher',
+    ]);
+
+    $userId = $request->user_id;
+    $role = $request->role;
+
+    if ($role === 'manager') {
+        if ($project->managers()->count() <= 1) {
+            return response()->json(['message' => 'Нельзя удалить последнего руководителя'], 422);
+        }
+        $project->managers()->detach($userId);
+    }
+
+    if ($role === 'executor') {
+        // $project->executors()
+        
+        $project->executors()->detach($userId);
+    }
+
+    if ($role === 'watcher') {
+        $project->watchers()->detach($userId);
+    }
+
+    return response()->json(['success' => true]);
+}
 
 
 

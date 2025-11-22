@@ -21,7 +21,7 @@ defineProps({
           <!-- simple logo -->
           <svg viewBox="0 0 24 24" class="h-5 w-5 text-red-600"><path fill="currentColor" d="M12 2 2 7l10 5 10-5-10-5Zm0 7L2 4v13l10 5 10-5V4l-10 5Z"/></svg>
         </div>
-        <span class="font-semibold tracking-tight">crmiq</span>
+        <span class="font-semibold tracking-tight">Планшет</span>
       </div>
 
       <nav v-if="canLogin" class="flex items-center gap-3">

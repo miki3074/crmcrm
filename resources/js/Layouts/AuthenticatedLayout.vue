@@ -9,6 +9,8 @@ import { Link } from '@inertiajs/vue3';
 
 import SupportButton from '@/Components/SupportButton.vue'
 
+import DevtoolsGuard from '@/Components/DevtoolsGuard.vue'
+
 const showingNavigationDropdown = ref(false);
 
 const isDark = ref(false)
@@ -227,6 +229,10 @@ const toggleTheme = () => {
                 <slot />
             </main>
         </div>
+
+
+<!-- <DevtoolsGuard :enabled="true" /> -->
+
     </div>
 
 

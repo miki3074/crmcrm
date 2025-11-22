@@ -14,6 +14,7 @@ class Subtask extends Model
         'task_id',
         'title',
         // 'executor_id',
+         'description',
         'start_date',
         'due_date',
         'progress',
@@ -68,6 +69,21 @@ public function children()
 {
     return $this->hasMany(Subtask::class, 'parent_id');
 }
+
+public function comments()
+{
+    return $this->hasMany(SubtaskComment::class);
+}
+
+// public function checklists()
+// {
+//     return $this->hasMany(SubtaskChecklist::class);
+// }
+public function checklist()
+{
+    return $this->hasMany(SubtaskChecklist::class);
+}
+
 
 
 

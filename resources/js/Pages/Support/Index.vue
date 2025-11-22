@@ -4,10 +4,30 @@ import { Head } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import axios from 'axios'
 
+
+
 const props = defineProps({
   messages: Object,
   supportUsers: Array, 
 })
+
+
+
+
+const files = ref({});
+const fileInputs = ref({});
+
+const fileSelected = (e, id) => {
+  files.value[id] = e.target.files[0];
+};
+
+const openFileDialog = (id) => {
+  if (fileInputs.value[id]) {
+    fileInputs.value[id].click();
+  }
+};
+
+
 
 // Создаём локальную копию для работы
 const messages = ref(JSON.parse(JSON.stringify(props.messages)))
@@ -15,18 +35,22 @@ const selectedMessage = ref(null)
 const replyForms = ref({})
 
 const sendReply = async (id) => {
-  const text = replyForms.value[id];
-  if (!text || text.trim() === "") return;
+  const text = replyForms.value[id] ?? "";
+  const file = files.value[id] ?? null;
+
+  if (!text.trim() && !file) return;
+
+  const form = new FormData();
+  if (text.trim()) form.append('reply', text);
+  if (file) form.append('file', file);
 
   try {
-    const { data } = await axios.post(`/support/messages/${id}/reply`, {
-      reply: text,
+    const { data } = await axios.post(`/support/messages/${id}/reply`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
 
-    // сервер возвращает reply с user.roles
     const newReply = data.reply;
 
-    // Добавляем в список сообщений
     const msg = messages.value.data.find(m => m.id === id);
     if (msg) msg.replies.push(newReply);
 
@@ -35,11 +59,14 @@ const sendReply = async (id) => {
     }
 
     replyForms.value[id] = "";
+    files.value[id] = null;
   } catch (err) {
     console.error(err);
     alert("Ошибка при отправке ответа");
   }
 };
+
+
 
 
 
@@ -226,7 +253,7 @@ const closeMessage = async (id) => {
           <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-800">
 
             
-            <div
+           <div
   v-for="r in selectedMessage.replies"
   :key="r.id"
   class="flex"
@@ -245,9 +272,41 @@ const closeMessage = async (id) => {
       {{ r.user?.roles?.some(role => role.name === 'support') ? '🛠 Техподдержка' : r.user?.name }}
     </p>
 
-    <p class="text-sm leading-relaxed">
+    <!-- Текст -->
+    <p class="text-sm leading-relaxed" v-if="r.reply">
       {{ r.reply }}
     </p>
+
+    <!-- Вложение -->
+    <div v-if="r.attachment" class="mt-2">
+
+      <!-- Фото -->
+      <img
+        v-if="r.attachment.mime_type.startsWith('image')"
+        :src="`/storage/${r.attachment.path}`"
+        class="rounded-lg max-w-xs border"
+      />
+
+      <!-- Видео -->
+      <video
+        v-else-if="r.attachment.mime_type.startsWith('video')"
+        controls
+        class="rounded-lg max-w-xs border"
+      >
+        <source :src="`/storage/${r.attachment.path}`" />
+      </video>
+
+      <!-- Документ -->
+      <a
+        v-else
+        :href="`/storage/${r.attachment.path}`"
+        class="text-blue-300 underline"
+        target="_blank"
+      >
+        📎 {{ r.attachment.original_name }}
+      </a>
+
+    </div>
 
     <p class="text-[10px] opacity-70 mt-1 text-right">
       {{ new Date(r.created_at).toLocaleTimeString().slice(0, 5) }}
@@ -256,23 +315,41 @@ const closeMessage = async (id) => {
 </div>
 
 
+
           </div>
 
           <!-- Поле для ответа -->
           <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex gap-2 bg-white dark:bg-slate-900">
-            <input
-              v-model="replyForms[selectedMessage.id]"
-              type="text"
-              placeholder="Введите ответ..."
-              class="flex-1 border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              @click="sendReply(selectedMessage.id)"
-              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
-            >
-              ➤
-            </button>
-          </div>
+
+  <input
+    v-model="replyForms[selectedMessage.id]"
+    type="text"
+    placeholder="Введите ответ..."
+    class="flex-1 border rounded-lg px-3 py-2 text-sm dark:bg-slate-800 dark:text-white"
+  />
+
+  <input
+    type="file"
+    class="hidden"
+    :ref="el => fileInputs[selectedMessage.id] = el"
+    @change="fileSelected($event, selectedMessage.id)"
+  />
+
+  <button
+    @click="openFileDialog(selectedMessage.id)"
+    class="px-3 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+  >
+    📎
+  </button>
+
+  <button
+    @click="sendReply(selectedMessage.id)"
+    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm"
+  >
+    ➤
+  </button>
+</div>
+
         </div>
       </div>
     </div>

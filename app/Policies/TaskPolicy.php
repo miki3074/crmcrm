@@ -18,29 +18,31 @@ class TaskPolicy
      * Проверка участия в задаче (создатель, исполнитель, ответственный,
      * менеджер проекта, владелец компании, исполнитель подзадачи)
      */
-    private function participates(User $user, Task $task): bool
+private function participates(User $user, Task $task): bool
 {
     return
         $user->id === $task->creator_id ||
 
-        // 👇 Является исполнителем
         $task->executors()->where('users.id', $user->id)->exists() ||
 
-        // 👇 Является ответственным
         $task->responsibles()->where('users.id', $user->id)->exists() ||
 
-        // 👇 Менеджер или исполнитель проекта
         $task->project->managers->contains('id', $user->id) ||
         $task->project->executors->contains('id', $user->id) ||
 
-        // 👇 Владелец компании
         $user->id === ($task->project->company->user_id ?? 0) ||
 
         // 👇 Исполнитель подзадачи
         $task->subtasks()
             ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+            ->exists() ||
+
+        // 👇 Ответственный подзадачи
+        $task->subtasks()
+            ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
             ->exists();
 }
+
 
     public function view(User $user, Task $task): bool
 {
@@ -63,10 +65,28 @@ class TaskPolicy
 }
 
 
-    public function comment(User $user, Task $task): bool
-    {
-        return $this->participates($user, $task);
-    }
+   public function comment(User $user, Task $task): bool
+{
+    return
+        // Автор задачи
+        $user->id === $task->creator_id ||
+
+        // Исполнитель задачи
+        $task->executors()->where('users.id', $user->id)->exists() ||
+
+        // Ответственный задачи
+        $task->responsibles()->where('users.id', $user->id)->exists() ||
+
+        // Руководители проекта
+        $task->project?->managers?->contains('id', $user->id) ||
+
+        // Исполнители проекта
+        $task->project?->executors?->contains('id', $user->id) ||
+
+        // Владелец компании
+        $user->id === ($task->project?->company?->user_id ?? 0);
+}
+
 
     public function deleteComment(User $user, \App\Models\TaskComment $comment): bool
     {

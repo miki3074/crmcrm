@@ -14,10 +14,16 @@ const fetchHistory = async () => {
   loading.value = false
 }
 
-const openSidebar = (message) => {
+const openSidebar = async (message) => {
   selectedMessage.value = message
   sidebarOpen.value = true
+
+  if (message.has_unread) {
+    await axios.post(`/api/support/read/${message.id}`)
+    message.has_unread = false // убираем маркер локально
+  }
 }
+
 
 const closeSidebar = () => {
   sidebarOpen.value = false
@@ -25,26 +31,38 @@ const closeSidebar = () => {
 }
 
 const sendReply = async () => {
-  if (!selectedMessage.value.newReply?.trim()) return alert('Введите сообщение')
+  if (!selectedMessage.value.newReply?.trim() && !selectedMessage.value.newFile) {
+    return alert('Введите текст или прикрепите файл')
+  }
+
+  const formData = new FormData()
+  formData.append('support_message_id', selectedMessage.value.id)
+  formData.append('reply', selectedMessage.value.newReply || '')
+  if (selectedMessage.value.newFile) {
+    formData.append('file', selectedMessage.value.newFile)
+  }
 
   try {
-    await axios.post('/api/support/reply', {
-      support_message_id: selectedMessage.value.id,
-      reply: selectedMessage.value.newReply,
+    const { data } = await axios.post('/api/support/reply', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    selectedMessage.value.replies.push({
-      reply: selectedMessage.value.newReply,
-      user: { name: 'Вы' },
-      created_at: new Date().toISOString(),
-    })
+    selectedMessage.value.replies.push(data.reply)
 
     selectedMessage.value.newReply = ''
+    selectedMessage.value.newFile = null
+
   } catch (err) {
     console.error(err)
     alert('Ошибка при отправке ответа')
   }
 }
+
+
+
+
+
+
 
 onMounted(fetchHistory)
 </script>
@@ -67,16 +85,29 @@ onMounted(fetchHistory)
           class="cursor-pointer p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md transition"
         >
           <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold text-slate-800 dark:text-slate-100">
-              Обращение №{{ m.id }}
-            </h3>
-            <span
-              class="px-2 py-1 text-xs rounded-full"
-              :class="m.status === 'closed' ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-700'"
-            >
-              {{ m.status === 'closed' ? 'Завершено' : 'Открыто' }}
-            </span>
-          </div>
+  <h3 class="font-semibold text-slate-800 dark:text-slate-100">
+    Обращение №{{ m.id }}
+  </h3>
+
+  <div class="flex items-center gap-2">
+
+    <!-- 🟦 Индикатор непрочитанного -->
+    <span
+      v-if="m.has_unread"
+      class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"
+      title="Есть новые сообщения"
+    ></span>
+
+    <span
+      class="px-2 py-1 text-xs rounded-full"
+      :class="m.status === 'closed' ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-700'"
+    >
+      {{ m.status === 'closed' ? 'Завершено' : 'Открыто' }}
+    </span>
+
+  </div>
+</div>
+
           <p class="text-slate-600 dark:text-slate-300 line-clamp-3">
             {{ m.message }}
           </p>
@@ -174,21 +205,82 @@ onMounted(fetchHistory)
         <p class="text-xs text-slate-400 mt-1 text-right">
           {{ new Date(r.created_at).toLocaleTimeString() }}
         </p>
+
+
+<div v-if="r.attachment" class="mt-2">
+
+  <img
+    v-if="r.attachment.mime_type.startsWith('image')"
+    :src="`/storage/${r.attachment.path}`"
+    class="rounded-lg max-w-xs border"
+  />
+
+  <a
+    v-else
+    :href="`/storage/${r.attachment.path}`"
+    class="text-blue-400 underline"
+    target="_blank"
+  >
+    📎 {{ r.attachment.original_name }}
+  </a>
+
+</div>
+
+
+
       </div>
 
       <!-- Сообщение техподдержки -->
-      <div
-        v-else
-        class="max-w-[75%] mt-5 bg-blue-600 text-white rounded-2xl px-4 py-2 shadow-sm"
-      >
-        <p class="flex items-center gap-1 text-sm">
-          🛠 <strong>Техподдержка:</strong>
-        </p>
-        <p style="overflow-wrap: break-word" class="whitespace-pre-line text-sm mt-1">{{ r.reply }}</p>
-        <p  class="text-xs text-blue-100 mt-1 text-right">
-          {{ new Date(r.created_at).toLocaleTimeString() }}
-        </p>
-      </div>
+      <!-- Сообщение техподдержки -->
+<div
+  v-else
+  class="max-w-[75%] mt-5 bg-blue-600 text-white rounded-2xl px-4 py-2 shadow-sm"
+>
+  <p class="flex items-center gap-1 text-sm">
+    🛠 <strong>Техподдержка:</strong>
+  </p>
+
+  <!-- Текст -->
+  <p v-if="r.reply" style="overflow-wrap: break-word" class="whitespace-pre-line text-sm mt-1">
+    {{ r.reply }}
+  </p>
+
+  <!-- Вложение -->
+  <div v-if="r.attachment" class="mt-2">
+
+    <!-- Фото -->
+    <img
+      v-if="r.attachment.mime_type.startsWith('image')"
+      :src="`/storage/${r.attachment.path}`"
+      class="rounded-lg max-w-xs border"
+    />
+
+    <!-- Видео -->
+    <video
+      v-else-if="r.attachment.mime_type.startsWith('video')"
+      controls
+      class="rounded-lg max-w-xs border"
+    >
+      <source :src="`/storage/${r.attachment.path}`" />
+    </video>
+
+    <!-- Документ -->
+    <a
+      v-else
+      :href="`/storage/${r.attachment.path}`"
+      class="text-blue-200 underline block"
+      target="_blank"
+    >
+      📎 {{ r.attachment.original_name }}
+    </a>
+
+  </div>
+
+  <p class="text-xs text-blue-100 mt-1 text-right">
+    {{ new Date(r.created_at).toLocaleTimeString() }}
+  </p>
+</div>
+
 
     </div>
   </transition-group>
@@ -198,23 +290,32 @@ onMounted(fetchHistory)
           </div>
 
           <!-- Форма ответа -->
-          <div
-            v-if="selectedMessage.status !== 'closed'"
-            class="p-4 border-t dark:border-slate-700"
-          >
-            <textarea
-              v-model="selectedMessage.newReply"
-              placeholder="Напишите ответ..."
-              rows="2"
-              class="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
-            ></textarea>
-            <button
-              @click="sendReply"
-              class="mt-2 w-full bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700 transition"
-            >
-              Отправить
-            </button>
-          </div>
+          <div v-if="selectedMessage.status !== 'closed'" class="p-4 border-t dark:border-slate-700 space-y-2">
+  
+  <textarea
+    v-model="selectedMessage.newReply"
+    placeholder="Напишите ответ..."
+    rows="2"
+    class="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:text-slate-100"
+  ></textarea>
+
+  <!-- Выбор файла -->
+  <input
+    type="file"
+    @change="selectedMessage.newFile = $event.target.files[0]"
+    accept="image/*,.jpg,.jpeg,.png,.webp,.gif,.pdf"
+    class="text-sm text-slate-700 dark:text-slate-300"
+  />
+
+  <button
+    @click="sendReply"
+    class="w-full bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700 transition"
+  >
+    Отправить
+  </button>
+
+</div>
+
         </div>
       </transition>
     </div>

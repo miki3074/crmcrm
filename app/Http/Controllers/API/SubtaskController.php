@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Subtask;
 use App\Models\Task;
+use App\Models\SubtaskComment;
 
 use App\Models\SubtaskFile;
 use Illuminate\Support\Facades\Storage;
@@ -100,6 +101,11 @@ public function store(Request $request, Task $task)
     'executors:id,name',
     'responsibles:id,name',
     'files.user:id,name',
+
+    'checklist.responsible:id,name',
+
+    'comments.user:id,name',
+
     'children.executors:id,name', // 👈 подгружаем дочерние подзадачи
         'children.responsibles:id,name',
         'children.files.user:id,name',
@@ -406,6 +412,140 @@ public function storeChild(Request $request, Subtask $subtask)
 }
 
 
+private function canComment($user, $subtask)
+{
+    $project = $subtask->task->project;
+
+    return
+        $user->id === $subtask->creator_id ||               // автор подзадачи
+        $user->id === $project->company->user_id ||         // владелец компании
+        $project->executors->contains('id', $user->id) ||   // исполнители проекта
+        $project->managers->contains('id', $user->id) ||    // руководитель проекта
+        $subtask->executors->contains('id', $user->id) ||   // исполнитель подзадачи
+        $subtask->responsibles->contains('id', $user->id);  // ответственный подзадачи
+}
+
+
+
+public function addComment(Request $request, $subtaskId)
+{
+    $user = $request->user();
+
+    $subtask = Subtask::with([
+        'executors',
+        'responsibles',
+        'task.project.executors',
+        'task.project.managers',
+        'task.project.company'
+    ])->findOrFail($subtaskId);
+
+    abort_unless($this->canComment($user, $subtask), 403);
+
+    $data = $request->validate([
+        'comment' => 'required|string|max:2000',
+        'mentions' => 'array'
+    ]);
+
+    $comment = SubtaskComment::create([
+        'subtask_id' => $subtask->id,
+        'user_id' => $user->id,
+        'comment' => $data['comment'],
+        'mentions' => json_encode($data['mentions'] ?? [])
+    ]);
+
+    // 🔔 Оповещение в ТЕЛЕГРАМ упомянутым пользователям
+    if (!empty($data['mentions'])) {
+        foreach ($data['mentions'] as $uid) {
+            $u = \App\Models\User::find($uid);
+            if ($u && $u->telegram_chat_id) {
+                \App\Services\TelegramService::sendMessage(
+                    $u->telegram_chat_id,
+                    "🔔 Вас упомянули в комментарии подзадачи\n".
+                    "<b>{$user->name}</b>:\n{$data['comment']}"
+                );
+            }
+        }
+    }
+
+    return response()->json($comment->load('user:id,name'));
+}
+
+
+
+public function updateComment(Request $request, $id)
+{
+    $user = $request->user();
+
+    $comment = SubtaskComment::with([
+        'subtask.executors',
+        'subtask.responsibles',
+        'subtask.task.project.executors',
+        'subtask.task.project.managers',
+        'subtask.task.project.company'
+    ])->findOrFail($id);
+
+    abort_unless(
+        $comment->user_id === $user->id ||
+        $this->canComment($user, $comment->subtask),
+        403
+    );
+
+    $data = $request->validate([
+        'comment' => 'required|string|max:2000',
+    ]);
+
+    $comment->update([
+        'comment' => $data['comment'],
+        'mentions' => json_encode($request->mentions ?? [])
+    ]);
+
+    return response()->json($comment->fresh()->load('user:id,name'));
+}
+
+
+public function deleteComment(Request $request, $id)
+{
+    $user = $request->user();
+
+    $comment = SubtaskComment::with([
+        'subtask.executors',
+        'subtask.responsibles',
+        'subtask.task.project.executors',
+        'subtask.task.project.managers',
+        'subtask.task.project.company'
+    ])->findOrFail($id);
+
+    abort_unless(
+        $comment->user_id === $user->id ||
+        $this->canComment($user, $comment->subtask),
+        403
+    );
+
+    $comment->delete();
+
+    return response()->json(['status' => 'ok']);
+}
+
+
+public function updateDescription(Request $request, Subtask $subtask)
+{
+    $user = $request->user();
+
+    // Только автор подзадачи может редактировать
+    abort_unless($user->id === $subtask->creator_id, 403, 'Нет прав изменять описание');
+
+    $data = $request->validate([
+        'description' => 'nullable|string|max:5000',
+    ]);
+
+    $subtask->description = $data['description'];
+    $subtask->save();
+
+    return response()->json([
+        'status' => 'ok',
+        'description' => $subtask->description
+    ]);
+}
 
 
 

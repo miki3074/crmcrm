@@ -434,6 +434,10 @@ onMounted(async () => {
 
 
 <template>
+
+
+
+
   <Head title="Планшет" />
   <AuthenticatedLayout>
     <template #header>
@@ -476,6 +480,15 @@ onMounted(async () => {
         class="rounded bg-slate-900 text-white px-3 py-1 text-xs hover:bg-slate-700">
         Вставить ID
       </button>
+
+<a
+        href="https://t.me/TrustCrmHelper_bot"
+        target="_blank"
+        class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
+        введите команду /start
+      </a>
+     
+
     </template>
 
     <div v-if="showInput" class="flex flex-col items-end gap-2">
@@ -499,6 +512,13 @@ onMounted(async () => {
           {{ saving ? '...' : 'Сохранить' }}
         </button>
       </div>
+
+      <a
+        href="https://t.me/TrustCrmHelper_bot"
+        target="_blank"
+        class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
+        введите команду /start
+      </a>
       <button
         @click="showInput = false"
         class="text-xs text-slate-500 hover:underline">

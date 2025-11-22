@@ -35,12 +35,12 @@ axios.interceptors.response.use(
     const status = error.response.status
 
     // 403 — нет доступа
-    if (status === 403) {
-      if (window.location.pathname !== '/dashboard') {
+    // if (status === 403) {
+    //   if (window.location.pathname !== '/dashboard') {
         
-        window.location.href = '/dashboard'
-      }
-    }
+    //     window.location.href = '/dashboard'
+    //   }
+    // }
 
     // 404 — страница не найдена
     // if (status === 404) {

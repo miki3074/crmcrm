@@ -11,6 +11,10 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
+
+
+
+
         @routes
         @vite('resources/js/app.js')
         @inertiaHead
@@ -18,4 +22,14 @@
     <body class="font-sans antialiased ">
         @inertia
     </body>
+
+<!-- <script>
+  import('/anti-devtools.js')
+    .then(m => console.log(''))
+    .catch(() => {});
+</script> -->
+
+
+
+
 </html>

@@ -42,7 +42,14 @@ class CalendarController extends Controller
         });
     }
 
-    return response()->json($q->get());
+    $events = $q->get()->map(function($e){
+    if ($e->company) {
+        $e->title = "[{$e->company->name}] {$e->title}";
+    }
+    return $e;
+});
+
+return response()->json($events);
 }
 
 // ================== Проверка прав ==================

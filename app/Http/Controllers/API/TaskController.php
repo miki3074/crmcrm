@@ -132,7 +132,7 @@ public function show($id)
         'project:id,name,company_id',
         'project.managers:id,name',
         'project.company:id,name',
-        'files:id,task_id,file_path',
+        'files:id,task_id,file_path,user_id',
          'watcherstask:id,name',
         // добавили completed
         'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
@@ -170,20 +170,18 @@ public function addFiles(Request $request, Task $task)
     ]);
 
     if ($request->hasFile('files')) {
-        foreach ($request->file('files') as $file) {
-            // Получаем оригинальное имя файла
-            $originalName = $file->getClientOriginalName();
+    foreach ($request->file('files') as $file) {
+        $originalName = $file->getClientOriginalName();
+        $path = $file->storeAs('task_files', $originalName, 'public');
 
-            // Сохраняем с этим именем (в public/task_files/)
-            $path = $file->storeAs('task_files', $originalName, 'public');
-
-            // Записываем и путь, и имя в БД
-            $task->files()->create([
-                'file_path' => $path,
-                'file_name' => $originalName,
-            ]);
-        }
+        $task->files()->create([
+            'file_path' => $path,
+            'file_name' => $originalName,
+            'user_id' => auth()->id(),  // 👈 сохраняем
+        ]);
     }
+}
+
 
     return response()->json(['message' => 'Файлы успешно добавлены']);
 }
@@ -207,6 +205,57 @@ public function downloadFile($fileId)
 
     return Storage::disk('public')->download($path, $originalName);
 }
+
+
+public function deleteFile(TaskFile $file)
+{
+    $user = auth()->user();
+
+    // Сохраняем id заранее, иначе после delete оно будет null
+    $fileId = $file->id;
+
+    // Подгружаем задачу, если есть
+    $file->loadMissing('task.executors', 'task.responsibles');
+
+    // 🔓 Разрешаем удаление всем, даже если user_id = null
+    $canDelete = true;
+
+    if ($file->task) {
+        $canDelete =
+            ($file->user_id && $file->user_id === $user->id) ||
+            $file->task->executors->contains('id', $user->id) ||
+            $file->task->responsibles->contains('id', $user->id);
+    }
+
+    if (!$canDelete) {
+        return response()->json(['message' => 'Нет прав на удаление файла'], 403);
+    }
+
+    // 🗑 Удаляем сам файл, если путь есть
+    if ($file->file_path && Storage::disk('public')->exists($file->file_path)) {
+        Storage::disk('public')->delete($file->file_path);
+    }
+
+    // 🧹 Удаляем запись из БД в любом случае
+    $file->delete();
+
+    // Возвращаем корректный id
+    return response()->json([
+        'message' => 'Файл удалён',
+        'file_id' => $fileId
+    ]);
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 public function complete(Task $task)

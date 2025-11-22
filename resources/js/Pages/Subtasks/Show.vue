@@ -4,6 +4,9 @@ import { usePage, Head } from '@inertiajs/vue3'
 import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
+import  SubtaskComments from '@/Components/SubtaskComments.vue'
+import SubtaskChecklist from '@/Components/SubtaskChecklist.vue'
+
 const { props } = usePage()
 const subtaskId = props.id
 const subtask = ref(null)
@@ -378,7 +381,88 @@ const createChildSubtask = async () => {
   }
 }
 
+const onCommentsUpdated = ({ type, comment, id }) => {
+  if (!subtask.value.comments) {
+    subtask.value.comments = []
+  }
 
+  if (type === "add") {
+    subtask.value.comments.push(comment)
+  }
+
+  if (type === "update") {
+    const index = subtask.value.comments.findIndex(c => c.id === comment.id)
+    if (index !== -1) {
+      subtask.value.comments[index] = comment
+    }
+  }
+
+  if (type === "delete") {
+    subtask.value.comments = subtask.value.comments.filter(c => c.id !== id)
+  }
+}
+
+const canWriteComments = computed(() => {
+  if (!subtask.value || !user) return false
+
+  const project = subtask.value.task?.project || {}
+
+  const isCreator = subtask.value.creator_id === user.id
+  const isProjectManager = (project.managers || []).some(m => m.id === user.id)
+  const isProjectExecutor = (project.executors || []).some(e => e.id === user.id)
+  const isCompanyOwner = project.company?.user_id === user.id
+  const isSubtaskExecutor = (subtask.value.executors || []).some(e => e.id === user.id)
+  const isSubtaskResponsible = (subtask.value.responsibles || []).some(r => r.id === user.id)
+
+  return (
+    isCreator ||
+    isProjectManager ||
+    isProjectExecutor ||
+    isCompanyOwner ||
+    isSubtaskExecutor ||
+    isSubtaskResponsible
+  )
+})
+
+
+
+const onChecklistUpdated = (e) => {
+  if (!subtask.value.checklist) subtask.value.checklist = []
+
+  if (e.type === 'add') {
+    subtask.value.checklist.push(e.item)
+  }
+
+  if (e.type === 'toggle') {
+    const item = subtask.value.checklist.find(i => i.id === e.id)
+    if (item) item.completed = e.completed
+  }
+
+  if (e.type === 'delete') {
+    subtask.value.checklist = subtask.value.checklist.filter(i => i.id !== e.id)
+  }
+}
+
+const showDescriptionModal = ref(false)
+const descriptionText = ref('')
+
+const openDescriptionModal = () => {
+  descriptionText.value = subtask.value.description || ''
+  showDescriptionModal.value = true
+}
+
+const saveDescription = async () => {
+  try {
+    const { data } = await axios.patch(`/api/subtasks/${subtaskId}/description`, {
+      description: descriptionText.value
+    })
+
+    subtask.value.description = data.description
+    showDescriptionModal.value = false
+  } catch (e) {
+    alert(e?.response?.data?.message || "Ошибка сохранения")
+  }
+}
 
 
 
@@ -422,6 +506,15 @@ onMounted(fetchSubtask)
 >
   ✏️ Изменить подзадачу
 </button>
+
+<button
+    v-if="user.id === subtask.creator_id"
+    @click="openDescriptionModal"
+    class="px-3 py-1 bg-indigo-600 text-white rounded-lg mt-3"
+>
+  ✏ Описание
+</button>
+
 
 
 
@@ -506,6 +599,13 @@ onMounted(fetchSubtask)
 
           </div>
         </div>
+
+
+   <div v-if="subtask.description" class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white">Описание</h3>
+  <p class="whitespace-pre-line">{{ subtask.description }}</p>
+</div>
+     
 
         <!-- Прогресс -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
@@ -1013,6 +1113,38 @@ onMounted(fetchSubtask)
 </div>
 
 
+<div data-v-585ee726="" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+<SubtaskChecklist
+    :subtask-id="subtask.id"
+    :checklist="subtask.checklist"
+    :executors="subtask.executors"
+    :responsibles="subtask.responsibles"
+    :can-write="canWriteComments" 
+    @updated="onChecklistUpdated"
+/>
+
+
+
+<!-- <SubtaskComments
+    :subtask-id="subtask.id"
+    :comments="subtask.comments"
+    :can-write="canWriteComments"
+    @updated="onCommentsUpdated"
+/> -->
+
+<SubtaskComments
+    :subtask-id="subtask.id"
+    :comments="subtask.comments"
+    :can-write="canWriteComments"
+    :members="[...(subtask.executors ?? []), ...(subtask.responsibles ?? [])]"
+    @updated="onCommentsUpdated"
+/>
+
+
+</div>
+
+
 
 <!-- Модалка изменения подзадачи -->
 <div
@@ -1065,6 +1197,38 @@ onMounted(fetchSubtask)
       >
         <span v-if="!savingSubtask">Сохранить</span>
         <span v-else>Сохраняю...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<div
+  v-if="showDescriptionModal"
+  class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+>
+  <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-lg">
+    <h3 class="text-lg font-semibold mb-3">Описание подзадачи</h3>
+
+    <textarea
+      v-model="descriptionText"
+      class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:text-white"
+      rows="6"
+      placeholder="Введите описание..."
+    ></textarea>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        @click="showDescriptionModal = false"
+        class="px-4 py-2 bg-gray-500 text-white rounded-lg"
+      >
+        Закрыть
+      </button>
+      <button
+        @click="saveDescription"
+        class="px-4 py-2 bg-indigo-600 text-white rounded-lg"
+      >
+        Сохранить
       </button>
     </div>
   </div>

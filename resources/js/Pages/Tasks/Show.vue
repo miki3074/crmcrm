@@ -515,6 +515,32 @@ const saveDescription = async () => {
 
 
 
+const deleteFile = async (id) => {
+  if (!confirm('Удалить файл?')) return
+
+  try {
+    await axios.delete(`/api/tasks/files/${id}`)
+    task.value.files = task.value.files.filter(f => f.id !== id)
+  } catch (err) {
+    alert(err.response?.data?.message || 'Ошибка удаления файла')
+  }
+}
+
+
+const canDeleteFile = (file) => {
+  if (!user || !task.value) return false
+
+  const isUploader = file.user_id === user.id
+  const isExecutor = task.value.executors?.some(e => e.id === user.id)
+  const isResponsible = task.value.responsibles?.some(r => r.id === user.id)
+
+  return isUploader || isExecutor || isResponsible
+}
+
+
+
+
+
 
 onMounted(fetchTask)
 </script>
@@ -742,17 +768,28 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
                 Файлы не прикреплены.
               </div>
               <div v-else class="flex flex-wrap gap-2">
-                <a
+                
+
+<a
   v-for="f in task.files"
   :key="f.id"
   :href="`/api/tasks/files/${f.id}`"
   class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
 >
-  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12V8l-4-6zM6 22V4h7v5h5v13H6z"/>
-  </svg>
   {{ f.file_path.split('/').pop() }}
+
+  <!-- Кнопка удалить -->
+ <button
+  v-if="canDeleteFile(f)"
+  @click.prevent="deleteFile(f.id)"
+  class="ml-1 text-red-500 hover:text-red-700"
+>
+  ✕
+</button>
+
 </a>
+
+
 
               </div>
             </div>
@@ -870,19 +907,30 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
         </div>
 
 
-<div class="space-y-4" v-if="task">
+
+
+      </div>
+
+      <div class="space-y-4 mt-5" v-if="task">
   <div class="rounded-2xl border bg-white dark:bg-gray-800 p-5">
     <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Чат</h3>
 
     <!-- чат появится только когда task уже есть -->
-    <TaskChat :task-id="task.id" :can-chat="true" />
+    <TaskChat 
+    :task-id="task.id"
+    :can-chat="true"
+    :members="[
+        ...(task.executors ?? []),
+        ...(task.responsibles ?? []),
+        
+    ]"
+/>
+
   </div>
 </div>
 
 <!-- можно оставить запасной скелетон/лоадер -->
 <div v-else class="text-sm text-gray-500 dark:text-gray-400">Загрузка…</div>
-
-      </div>
     </div>
 
     <!-- Модалка: Новая подзадача -->

@@ -21,5 +21,11 @@ class SupportReply extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function attachment()
+{
+    return $this->hasOne(SupportReplyAttachment::class);
+}
+
 }
 

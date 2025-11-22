@@ -35,6 +35,26 @@ class TaskCommentController extends Controller
             'body'    => $data['body'],
         ]);
 
+        // ищем упоминания @username
+preg_match_all('/@([A-Za-z0-9_]+)/u', $comment->body, $matches);
+$usernames = $matches[1] ?? [];
+
+if (!empty($usernames)) {
+    $mentionedUsers = \App\Models\User::whereIn('name', $usernames)->get();
+
+    foreach ($mentionedUsers as $mentioned) {
+        if ($mentioned->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $mentioned->telegram_chat_id,
+                "📣 Вас упомянули в задаче: <b>{$task->title}</b>\n".
+                "Сообщение: {$comment->body}\n".
+                "Автор: {$comment->user->name}"
+            );
+        }
+    }
+}
+
+
         return response()->json(
             $comment->load('user:id,name'),
             201
@@ -49,4 +69,8 @@ class TaskCommentController extends Controller
         $comment->delete();
         return response()->json(['ok' => true]);
     }
+
+
+
+    
 }
