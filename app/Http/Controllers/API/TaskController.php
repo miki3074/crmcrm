@@ -207,47 +207,64 @@ public function downloadFile($fileId)
 }
 
 
-public function deleteFile(TaskFile $file)
+// public function deleteFile(TaskFile $file)
+// {
+//     $user = auth()->user();
+
+//     // Сохраняем id заранее, иначе после delete оно будет null
+//     $fileId = $file->id;
+
+//     // Подгружаем задачу, если есть
+//     $file->loadMissing('task.executors', 'task.responsibles');
+
+//     // 🔓 Разрешаем удаление всем, даже если user_id = null
+//     $canDelete = true;
+
+//     if ($file->task) {
+//         $canDelete =
+//             ($file->user_id && $file->user_id === $user->id) ||
+//             $file->task->executors->contains('id', $user->id) ||
+//             $file->task->responsibles->contains('id', $user->id);
+//     }
+
+//     if (!$canDelete) {
+//         return response()->json(['message' => 'Нет прав на удаление файла'], 403);
+//     }
+
+//     // 🗑 Удаляем сам файл, если путь есть
+//     if ($file->file_path && Storage::disk('public')->exists($file->file_path)) {
+//         Storage::disk('public')->delete($file->file_path);
+//     }
+
+//     // 🧹 Удаляем запись из БД в любом случае
+//     $file->delete();
+
+//     // Возвращаем корректный id
+//     return response()->json([
+//         'message' => 'Файл удалён',
+//         'file_id' => $fileId
+//     ]);
+// }
+
+
+
+public function deleteFile($fileId)
 {
-    $user = auth()->user();
+    $file = \App\Models\TaskFile::findOrFail($fileId);
 
-    // Сохраняем id заранее, иначе после delete оно будет null
-    $fileId = $file->id;
+    // проверяем доступ
+    $this->authorize('deleteFile', $file->task);
 
-    // Подгружаем задачу, если есть
-    $file->loadMissing('task.executors', 'task.responsibles');
+    $path = $file->file_path;
 
-    // 🔓 Разрешаем удаление всем, даже если user_id = null
-    $canDelete = true;
-
-    if ($file->task) {
-        $canDelete =
-            ($file->user_id && $file->user_id === $user->id) ||
-            $file->task->executors->contains('id', $user->id) ||
-            $file->task->responsibles->contains('id', $user->id);
+    if (Storage::disk('public')->exists($path)) {
+        Storage::disk('public')->delete($path);
     }
 
-    if (!$canDelete) {
-        return response()->json(['message' => 'Нет прав на удаление файла'], 403);
-    }
-
-    // 🗑 Удаляем сам файл, если путь есть
-    if ($file->file_path && Storage::disk('public')->exists($file->file_path)) {
-        Storage::disk('public')->delete($file->file_path);
-    }
-
-    // 🧹 Удаляем запись из БД в любом случае
     $file->delete();
 
-    // Возвращаем корректный id
-    return response()->json([
-        'message' => 'Файл удалён',
-        'file_id' => $fileId
-    ]);
+    return response()->json(['message' => 'Файл удалён']);
 }
-
-
-
 
 
 
@@ -356,6 +373,9 @@ public function destroy(\App\Models\Task $task)
 
     return response()->json(['message' => 'Задача и все связанные данные удалены.']);
 }
+
+
+
 
 
 

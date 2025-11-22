@@ -187,4 +187,17 @@ public function manageMembers(User $user, \App\Models\Task $task): bool
 }
 
 
+public function deleteFile(User $user, Task $task): bool
+{
+    return
+        $user->id === $task->creator_id || // автор задачи
+        $task->executors()->where('users.id', $user->id)->exists() ||
+        $task->responsibles()->where('users.id', $user->id)->exists() ||
+        $task->project?->managers?->contains('id', $user->id) ||
+        $task->project?->executors?->contains('id', $user->id) ||
+        $user->id === ($task->project?->company?->user_id ?? 0);
+}
+
+
+
 }

@@ -514,17 +514,17 @@ const saveDescription = async () => {
 }
 
 
-
-const deleteFile = async (id) => {
-  if (!confirm('Удалить файл?')) return
+const deleteTaskFile = async (id) => {
+  if (!confirm('Удалить файл?')) return;
 
   try {
-    await axios.delete(`/api/tasks/files/${id}`)
-    task.value.files = task.value.files.filter(f => f.id !== id)
-  } catch (err) {
-    alert(err.response?.data?.message || 'Ошибка удаления файла')
+    await axios.delete(`/api/tasks/files/${id}`);
+    task.value.files = task.value.files.filter(f => f.id !== id);
+  } catch (e) {
+    alert(e?.response?.data?.message || 'Ошибка при удалении файла');
   }
-}
+};
+
 
 
 const canDeleteFile = (file) => {
@@ -770,24 +770,25 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
               <div v-else class="flex flex-wrap gap-2">
                 
 
-<a
+<div
   v-for="f in task.files"
   :key="f.id"
-  :href="`/api/tasks/files/${f.id}`"
-  class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100"
+  class="flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-gray-100
+         dark:bg-gray-700 text-gray-800 dark:text-gray-100"
 >
-  {{ f.file_path.split('/').pop() }}
+  <a :href="`/api/tasks/files/${f.id}`" class="hover:underline">
+    {{ f.file_path.split('/').pop() }}
+  </a>
 
-  <!-- Кнопка удалить -->
- <button
-  v-if="canDeleteFile(f)"
-  @click.prevent="deleteFile(f.id)"
-  class="ml-1 text-red-500 hover:text-red-700"
->
-  ✕
-</button>
+  <button
+    v-if="canUploadFiles"
+    @click="deleteTaskFile(f.id)"
+    class="text-red-600 hover:text-red-800"
+  >
+    ✖
+  </button>
+</div>
 
-</a>
 
 
 

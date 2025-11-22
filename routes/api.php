@@ -261,8 +261,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-Route::delete('/tasks/files/{id}', [TaskController::class, 'deleteFile'])
-    ->middleware('auth:sanctum');
+// Route::delete('/tasks/files/{id}', [TaskController::class, 'deleteFile'])
+//     ->middleware('auth:sanctum');
+
+    Route::delete('/tasks/files/{id}', [TaskController::class, 'deleteFile'])
+     ->middleware('auth:sanctum');
 
 
 

@@ -100,7 +100,7 @@ const sendMessage = async () => {
         ></textarea>
 
         <!-- файловый input -->
-        <div class="mt-3">
+        <div class="mt-3" style="display: none;">
           <label class="block text-xs text-gray-500 mb-1">
             Прикрепить файлы (фото/видео)
           </label>
