@@ -29,7 +29,7 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-   public function store(Request $request): RedirectResponse
+ public function store(Request $request): RedirectResponse
 {
     $messages = [
         'name.required' => 'Введите имя.',
@@ -44,12 +44,14 @@ class RegisteredUserController extends Controller
     $request->validate([
         'name' => 'required|string|max:255',
         'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+        'phone' => 'nullable|string|max:25',
         'password' => ['required', 'confirmed', Rules\Password::defaults()],
     ], $messages);
 
     $user = User::create([
         'name' => $request->name,
         'email' => $request->email,
+        'phone' => $request->phone,   // ← добавили
         'password' => Hash::make($request->password),
     ]);
 
@@ -61,5 +63,6 @@ class RegisteredUserController extends Controller
 
     return redirect(RouteServiceProvider::HOME);
 }
+
 
 }

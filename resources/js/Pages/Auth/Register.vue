@@ -5,6 +5,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 const form = useForm({
   name: '',
   email: '',
+   phone: '',  
   password: '',
   password_confirmation: '',
 })
@@ -14,6 +15,28 @@ const submit = () => {
     onFinish: () => form.reset('password', 'password_confirmation'),
   })
 }
+
+
+const formatPhone = (e) => {
+  let value = e.target.value
+    .replace(/\D/g, "")      // удаляем всё, кроме цифр
+    .replace(/^8/, "7");     // заменяем первую 8 → 7
+
+  // ограничиваем максимум 11 цифр
+  value = value.substring(0, 11);
+
+  let formatted = "+7";
+
+  if (value.length > 1) formatted += " (" + value.substring(1, 4);
+  if (value.length >= 4) formatted += ") " + value.substring(4, 7);
+  if (value.length >= 7) formatted += "-" + value.substring(7, 9);
+  if (value.length >= 9) formatted += "-" + value.substring(9, 11);
+
+  e.target.value = formatted;
+  form.phone = formatted; // сохраняем в форму
+};
+
+
 
 const baseInput =
   'mt-1 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/50 ' +
@@ -41,6 +64,27 @@ const baseInput =
         <input id="email" type="email" v-model="form.email" required autocomplete="username" :class="baseInput" />
         <p v-if="form.errors.email" class="mt-1 text-xs text-red-600">{{ form.errors.email }}</p>
       </div>
+
+      <div>
+  <label for="phone" class="text-sm font-medium text-slate-500">Телефон</label>
+
+  <input
+    id="phone"
+    type="tel"
+    v-model="form.phone"
+    @input="formatPhone"
+    maxlength="18"
+    autocomplete="tel"
+    :class="baseInput"
+    placeholder="+7 (___) ___-__-__"
+  />
+
+  <p v-if="form.errors.phone" class="mt-1 text-xs text-red-600">
+    {{ form.errors.phone }}
+  </p>
+</div>
+
+
 
       <div>
         <label for="password" class="text-sm font-medium text-slate-500" >Пароль</label>

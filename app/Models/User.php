@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
         'created_by', 
         'company_id',
          'telegram_chat_id', 
