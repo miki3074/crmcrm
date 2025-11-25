@@ -603,7 +603,7 @@ onMounted(fetchSubtask)
 
    <div v-if="subtask.description" class="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
       <h3 class="text-base font-semibold text-gray-900 dark:text-white">Описание</h3>
-  <p class="whitespace-pre-line">{{ subtask.description }}</p>
+  <p style="word-break: break-all;" class="whitespace-pre-line">{{ subtask.description }}</p>
 </div>
      
 

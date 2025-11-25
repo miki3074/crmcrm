@@ -20,6 +20,10 @@ public function store(Request $request)
 
   $messages = [
         'title.required' => 'Введите название задачи.',
+        'title.string'   => 'Название проекта должно быть строкой.',
+        'title.max'      => 'Название проекта не может быть длиннее 255 символов.',
+
+
         'priority.required' => 'Выберите приоритет.',
         'start_date.required' => 'Укажите дату начала.',
         'due_date.required' => 'Укажите дату окончания.',

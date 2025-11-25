@@ -74,11 +74,16 @@ if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $pro
     /**
      * Создание проекта
      */
-    public function create(User $user): bool
-    {
-        // только владелец компании (или админ, если нужно)
-        return true;
-    }
+   public function create(User $user, Company $company): bool
+{
+    return 
+        $company->user_id === $user->id || 
+        $company->users()
+            ->wherePivot('role', 'manager')
+            ->where('users.id', $user->id)
+            ->exists();
+}
+
 
     /**
      * Создание задач внутри проекта

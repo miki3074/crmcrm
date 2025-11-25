@@ -993,7 +993,7 @@ onMounted(fetchProject)
 
             <div class="mt-4">
               <div class="text-xs font-semibold text-gray-500 mb-1">Описание</div>
-              <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
+              <p style="word-break: break-all;" class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
                 {{ project?.description || 'Описание не задано.' }}
               </p>
             </div>

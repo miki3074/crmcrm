@@ -51,5 +51,14 @@ public function storageFiles()
 {
     return $this->hasMany(StorageFile::class);
 }
+
+public function managers()
+{
+    return $this->belongsToMany(User::class, 'company_user')
+        ->wherePivot('role', 'manager')
+        ->select('users.id', 'users.name')
+        ->withTimestamps();
+}
+
     
 }

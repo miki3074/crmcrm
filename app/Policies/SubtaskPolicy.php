@@ -96,11 +96,25 @@ public function addFiles(User $user, Subtask $subtask): bool
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
-    {
-        $task = $subtask->task;
-    return $user->id === $task->responsible_id || $user->id === $task->project->manager_id;
-    }
+    public function create(User $user, Task $task): bool
+{
+    return
+        // Ответственные задачи (pivot)
+        $task->responsibles()->where('users.id', $user->id)->exists() ||
+
+        // Исполнители задачи (pivot)
+        $task->executors()->where('users.id', $user->id)->exists() ||
+
+        // Менеджеры проекта
+        $task->project->managers->contains('id', $user->id) ||
+
+        // Исполнители проекта
+        $task->project->executors->contains('id', $user->id) ||
+
+        // Владелец компании
+        $user->id === ($task->project->company->user_id ?? 0);
+}
+
 
     public function updateProgress(User $user, Subtask $subtask): bool
 {

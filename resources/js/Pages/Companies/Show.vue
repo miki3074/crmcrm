@@ -64,8 +64,15 @@ const resetProjectForm = () => {
 // perms
 // const isAdmin = computed(() => (props.auth?.roles || []).includes('admin'))
 const isOwner = computed(() => company.value?.user_id === props.auth?.user?.id)
-// const canCreateProject = computed(() => isAdmin.value || isOwner.value)
-const canCreateProject = computed(() => isOwner.value)
+
+// ДОБАВЛЯЕМ ПРОВЕРКУ: пользователь – менеджер компании
+const isCompanyManager = computed(() =>
+  company.value?.users?.some(u => u.id === props.auth?.user?.id && u.pivot?.role === 'manager')
+)
+
+// Теперь TRUE если владелец ИЛИ менеджер
+const canCreateProject = computed(() => isOwner.value || isCompanyManager.value)
+
 
 // helpers
 const today = new Date()
@@ -521,7 +528,7 @@ onMounted(fetchCompany)
             </p>
           </div>
 
-          <div class="ml-auto" v-if="canCreateProject">
+          <div class="ml-auto" >
             <button
               @click="openCreateModal"
               class="inline-flex items-center gap-2 rounded-xl bg-white text-gray-900 px-4 py-2.5 shadow/50 hover:shadow transition"

@@ -43,12 +43,22 @@ const editForm = ref({
 // permissions
 const canCreateSubtask = computed(() => {
   if (!task.value || !user) return false
+
   return (
+    // Ответственные задачи
     (task.value.responsibles || []).some(r => r.id === user.id) ||
-    (task.value.project?.managers || []).some(m => m.id === user.id)||
+
+    // Исполнители задачи  ✅ ДОБАВЛЕНО
+    (task.value.executors || []).some(e => e.id === user.id) ||
+
+    // Руководители проекта
+    (task.value.project?.managers || []).some(m => m.id === user.id) ||
+
+    // Исполнители проекта
     isProjectExecutor.value
   )
 })
+
 
 const priorityBadge = (p) =>
   p === 'high'
@@ -602,9 +612,9 @@ onMounted(fetchTask)
         </div>
 
         <!-- Описание -->
-        <div v-if="task?.description" class="bg-white/10 rounded-xl p-4 mt-4 backdrop-blur-sm">
+        <div v-if="task?.description" class="bg-white/10 rounded-xl p-4 mt-4 backdrop-blur-sm" style="width: 80%;">
           <h3 class="text-base font-semibold mb-1">📝 Описание</h3>
-          <p class="text-gray-100 whitespace-pre-line">{{ task.description }}</p>
+          <p style="word-break: break-all;" class="text-gray-100 whitespace-pre-line">{{ task.description }}</p>
         </div>
       </div>
 

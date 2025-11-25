@@ -61,21 +61,24 @@ public function index()
 
 public function store(Request $request)
 {
-
     $messages = [
         'name.required' => 'Введите название проекта.',
+        'name.string'   => 'Название проекта должно быть строкой.',
+        'name.max'      => 'Название проекта не может быть длиннее 255 символов.',
+
         'manager_ids.required' => 'Выберите хотя бы одного менеджера.',
-        'manager_ids.array' => 'Поле менеджеров должно быть списком.',
-        'manager_ids.min' => 'Выберите хотя бы одного менеджера.',
+        'manager_ids.array'    => 'Поле менеджеров должно быть списком.',
+        'manager_ids.min'      => 'Выберите хотя бы одного менеджера.',
         'manager_ids.*.exists' => 'Один из выбранных менеджеров не найден.',
-        'start_date.required' => 'Укажите дату начала проекта.',
-        'start_date.date' => 'Дата начала должна быть корректной.',
+        'start_date.required'  => 'Укажите дату начала проекта.',
+        'start_date.date'      => 'Дата начала должна быть корректной.',
         'duration_days.required' => 'Укажите длительность проекта.',
-        'duration_days.integer' => 'Длительность должна быть числом.',
-        'duration_days.min' => 'Минимальная длительность — 1 день.',
-        'company_id.required' => 'Компания обязательна для выбора.',
-        'company_id.exists' => 'Указанная компания не найдена.',
+        'duration_days.integer'  => 'Длительность должна быть числом.',
+        'duration_days.min'      => 'Минимальная длительность — 1 день.',
+        'company_id.required'  => 'Компания обязательна для выбора.',
+        'company_id.exists'    => 'Указанная компания не найдена.',
     ];
+
     $request->validate([
         'name' => 'required|string|max:255',
         'manager_ids' => 'required|array|min:1',
@@ -85,25 +88,45 @@ public function store(Request $request)
         'company_id' => 'required|exists:companies,id',
     ], $messages);
 
-    $company = \App\Models\Company::findOrFail($request->company_id);
+    $company = Company::findOrFail($request->company_id);
+    $user = $request->user();
 
-    if ($company->user_id !== auth()->id()) {
-        return response()->json(['message' => 'Только владелец компании может создавать проекты'], 403);
+    $isOwner = $company->user_id === $user->id;
+
+    $isManager = $company->users()
+        ->wherePivot('role', 'manager')
+        ->where('users.id', $user->id)
+        ->exists();
+
+    if (!$isOwner && !$isManager) {
+        return response()->json([
+            'message' => 'Только владелец компании или менеджер компании могут создавать проекты.',
+        ], 403);
     }
 
-    $project = Project::create([
-        'name' => $request->name,
-        'start_date' => $request->start_date,
-        'duration_days' => $request->duration_days,
-        'company_id' => $request->company_id,
-        'initiator_id' => auth()->id(),
-    ]);
+  $project = Project::create([
+    'name'           => $request->name,
+    'start_date'     => $request->start_date,
+    'duration_days'  => $request->duration_days,
+    'company_id'     => $request->company_id,
+    'initiator_id'   => $user->id,
+]);
 
-    // прикрепляем руководителей
+// Добавляем выбранных руководителей
+// $project->managers()->syncWithoutDetaching($request->manager_ids);
+
+// 📌 Если создатель — менеджер компании, тоже добавляем его
+// if ($isManager && !$isOwner) {
+//     $project->managers()->syncWithoutDetaching([$user->id]);
+// }
+
+    // ---------------
+
+    // Добавляем выбранных руководителей
     $project->managers()->attach($request->manager_ids);
 
     foreach ($request->manager_ids as $userId) {
-        $user = \App\Models\User::find($userId);
+        $user = User::find($userId);
         if ($user && $user->telegram_chat_id) {
             \App\Services\TelegramService::sendMessage(
                 $user->telegram_chat_id,

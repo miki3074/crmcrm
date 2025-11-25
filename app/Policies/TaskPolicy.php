@@ -119,12 +119,28 @@ private function participates(User $user, Task $task): bool
         return false;
     }
 
-    public function createSubtask(User $user, Task $task): bool
-    {
-        return $task->responsibles->contains('id', $user->id) ||
-               $task->project->managers->contains('id', $user->id) ||
-            $task->project->executors->contains('id', $user->id);
-    }
+  public function createSubtask(User $user, Task $task): bool
+{
+    return
+        // Автор задачи
+        $user->id === $task->creator_id ||
+
+        // Ответственные в задаче
+        $task->responsibles()->where('users.id', $user->id)->exists() ||
+
+        // Исполнители в задаче
+        $task->executors()->where('users.id', $user->id)->exists() ||
+
+        // Руководители проекта
+        $task->project->managers->contains('id', $user->id) ||
+
+        // Исполнители проекта
+        $task->project->executors->contains('id', $user->id) ||
+
+        // Владелец компании
+        $user->id === ($task->project->company->user_id ?? 0);
+}
+
 
  public function update(User $user, Task $task): bool
     {
