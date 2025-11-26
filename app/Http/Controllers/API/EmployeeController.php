@@ -275,6 +275,96 @@ public function updateRole(Request $request, $id)
 }
 
 
+public function destroy(Request $request, $id)
+{
+    $request->validate([
+        'company_id' => 'required|exists:companies,id',
+    ]);
+
+    $ownerId = auth()->id();
+
+    // Проверяем что компания принадлежит владельцу
+    $company = Company::where('id', $request->company_id)
+        ->where('user_id', $ownerId)
+        ->firstOrFail();
+
+    // Проверяем, что юзер прикреплён к этой компании
+    $exists = \DB::table('company_user')
+        ->where('user_id', $id)
+        ->where('company_id', $company->id)
+        ->exists();
+
+    if (!$exists) {
+        return response()->json(['message' => 'User not found in this company'], 404);
+    }
+
+    // 1️⃣ Удаляем связь с компанией
+    \DB::table('company_user')
+        ->where('user_id', $id)
+        ->where('company_id', $company->id)
+        ->delete();
+
+
+    // 2️⃣ Список всех проектов компании
+    $projectIds = $company->projects()->pluck('id');
+
+    // 3️⃣ Удаляем связи с проектами
+    \DB::table('project_user')
+        ->where('user_id', $id)
+        ->whereIn('project_id', $projectIds)
+        ->delete();
+
+    \DB::table('project_executors')
+        ->where('user_id', $id)
+        ->whereIn('project_id', $projectIds)
+        ->delete();
+
+    \DB::table('project_watchers')
+        ->where('user_id', $id)
+        ->whereIn('project_id', $projectIds)
+        ->delete();
+
+
+    // 4️⃣ Находим все задачи проектов
+    $taskIds = \App\Models\Task::whereIn('project_id', $projectIds)->pluck('id');
+
+    // Удаляем роли в задачах
+    \DB::table('task_executors')
+        ->where('user_id', $id)
+        ->whereIn('task_id', $taskIds)
+        ->delete();
+
+    \DB::table('task_responsibles')
+        ->where('user_id', $id)
+        ->whereIn('task_id', $taskIds)
+        ->delete();
+
+    \DB::table('task_user_watchers')
+        ->where('user_id', $id)
+        ->whereIn('task_id', $taskIds)
+        ->delete();
+
+
+    // 5️⃣ Получаем все подзадачи
+    $subtaskIds = \App\Models\Subtask::whereIn('task_id', $taskIds)->pluck('id');
+
+    // Удаляем роли в подзадачах
+    \DB::table('subtask_executors')
+        ->where('user_id', $id)
+        ->whereIn('subtask_id', $subtaskIds)
+        ->delete();
+
+    \DB::table('subtask_responsibles')
+        ->where('user_id', $id)
+        ->whereIn('subtask_id', $subtaskIds)
+        ->delete();
+
+
+    return response()->json(['message' => 'Employee fully removed from company and all related entities']);
+}
+
+
+
 
 
 }

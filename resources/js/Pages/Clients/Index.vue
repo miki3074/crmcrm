@@ -132,6 +132,41 @@ const uniqueEmployees = computed(() => {
   })
 })
 
+const loadingInn = ref(false)
+
+const fetchByInn = async () => {
+  if (!form.value.inn) return alert("Введите ИНН")
+
+  loadingInn.value = true
+
+  try {
+    const { data } = await axios.post('/api/dadata/inn', {
+      inn: form.value.inn
+    });
+
+    if (!data.suggestions?.length) {
+      alert("Не найдено");
+      return;
+    }
+
+    const item = data.suggestions[0].data;
+
+    form.value.organization_name = item.name?.full_with_opf || '';
+    form.value.name = item.management?.name || '';
+    form.value.city = item.address?.data?.city || '';
+    form.value.address = item.address?.unrestricted_value || '';
+    form.value.phone = item.phones?.[0]?.data?.source || '';
+    form.value.email = item.emails?.[0]?.data?.source || '';
+
+  } catch (err) {
+    console.error(err);
+    alert("Ошибка запроса");
+  } finally {
+    loadingInn.value = false;
+  }
+}
+
+
 
 
 
@@ -252,6 +287,24 @@ onMounted(async () => {
 
           <!-- ЮР ЛИЦО -->
           <template v-if="activeTab === 'jur'">
+            
+
+<div class="flex gap-2">
+  <input
+    v-model="form.inn"
+    placeholder="ИНН"
+    class="input flex-1"
+  />
+  <button
+    @click="fetchByInn"
+    class="px-4 py-2 bg-blue-600 text-white rounded-lg"
+  >
+    Поиск
+  </button>
+</div>
+<div v-if="loadingInn" class="text-xs text-gray-400">Поиск организации…</div>
+
+
             <input
               v-model="form.organization_name"
               placeholder="Название организации *"

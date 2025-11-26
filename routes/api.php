@@ -407,6 +407,9 @@ Route::prefix('subtask-checklist/{id}')->group(function () {
 Route::patch('/subtasks/{subtask}/description', [SubtaskController::class, 'updateDescription']);
 
 
+Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
+
+Route::post('/dadata/inn', [ClientController::class, 'findByInn']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

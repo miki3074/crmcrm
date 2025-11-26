@@ -106,6 +106,30 @@ public function destroy(Client $client)
 }
 
 
+public function findByInn(Request $request)
+{
+    $request->validate([
+        'inn' => 'required|string'
+    ]);
+
+    $token = '53128bf9c5c96c567b74e468bb2e49e4179517c9';
+
+    $response = \Illuminate\Support\Facades\Http::withHeaders([
+        'Content-Type' => 'application/json',
+        'Accept' => 'application/json',
+        'Authorization' => "Token {$token}",
+    ])->post(
+        "https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party",
+        [
+            "query" => $request->inn,
+            "branch_type" => "MAIN",
+            "type" => "LEGAL"
+        ]
+    );
+
+    return $response->json();
+}
+
 
 }
 
