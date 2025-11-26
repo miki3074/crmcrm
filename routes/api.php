@@ -44,6 +44,7 @@ use App\Http\Controllers\API\TaskCalendarController;
 
 use App\Http\Controllers\API\SubtaskChecklistController;
 
+use App\Http\Controllers\API\MeetingDocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -410,6 +411,13 @@ Route::patch('/subtasks/{subtask}/description', [SubtaskController::class, 'upda
 Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
 
 Route::post('/dadata/inn', [ClientController::class, 'findByInn']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('meeting-documents', MeetingDocumentController::class);
+});
+
+
+Route::get('/tasks-with-subtasks', [\App\Http\Controllers\API\TaskAccessController::class, 'index']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

@@ -97,6 +97,12 @@ const toggleTheme = () => {
 </NavLink>
                             </div>
 
+                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink :href="route('meeting-documents.index')" :active="route().current('meeting-documents.index')">
+                                    Повестки
+                                </NavLink>
+                            </div>
+
                              <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <NavLink :href="route('ruk')" :active="route().current('ruk')">
                                     Руководство

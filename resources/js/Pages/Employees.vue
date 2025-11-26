@@ -484,8 +484,8 @@ onMounted(async () => {
 
         <div class="">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Новый сотрудник</h3>
-          <button class="text-gray-400 hover:text-gray-600" @click="showModal=false">✕</button>
+          <!-- <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Новый сотрудник</h3> -->
+          <!-- <button class="text-gray-400 hover:text-gray-600" @click="showModal=false">✕</button> -->
         </div>
 
         <form class="mt-4 space-y-4" @submit.prevent="submit">
@@ -552,7 +552,7 @@ onMounted(async () => {
       
     <div class="">
     <!-- Заголовок -->
-    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+    <!-- <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
       <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100">
         пригласить сотрудника
       </h3>
@@ -560,7 +560,7 @@ onMounted(async () => {
               class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
         ✕
       </button>
-    </div>
+    </div> -->
 
     <!-- Форма поиска -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-4">

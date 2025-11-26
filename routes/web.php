@@ -173,4 +173,12 @@ Route::post('/reset-password', [NewPasswordController::class, 'store'])
     ->name('password.update');
 
 
+    Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/meeting-documents', function () {
+        return inertia('MeetingDocuments/Index');
+    })->name('meeting-documents.index');
+});
+
+
+
 require __DIR__.'/auth.php';

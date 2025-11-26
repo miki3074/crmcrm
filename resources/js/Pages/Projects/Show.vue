@@ -1350,6 +1350,57 @@ onMounted(fetchProject)
 
 
 
+<!-- =======================
+     МОДАЛКА УДАЛЕНИЯ ПРОЕКТА
+========================= -->
+<div
+  v-if="showDeleteModal"
+  class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+>
+  <div
+    class="bg-white dark:bg-slate-900 p-6 rounded-xl w-full max-w-md shadow-xl"
+  >
+    <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">
+      Удалить проект?
+    </h2>
+
+    <p class="text-slate-600 dark:text-slate-300 mt-3">
+      Вы действительно хотите удалить этот проект?
+      <br />
+      <span class="text-red-500 font-semibold">Это действие необратимо.</span>
+    </p>
+
+    <!-- Ошибка -->
+    <div
+      v-if="deleteError"
+      class="mt-4 bg-red-100 text-red-700 px-3 py-2 rounded border border-red-300"
+    >
+      {{ deleteError }}
+    </div>
+
+    <!-- Кнопки -->
+    <div class="mt-6 flex justify-end gap-3">
+      <button
+        class="px-4 py-2 rounded-lg bg-gray-500 text-white hover:bg-gray-600"
+        @click="showDeleteModal = false"
+        :disabled="deleting"
+      >
+        Отмена
+      </button>
+
+      <button
+        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
+        @click="confirmDeleteProject"
+        :disabled="deleting"
+      >
+        <span v-if="!deleting">Удалить</span>
+        <span v-else>Удаление...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
 
 
 

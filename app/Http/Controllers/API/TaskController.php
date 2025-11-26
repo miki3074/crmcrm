@@ -557,6 +557,27 @@ public function removeWatcher(Task $task, Request $request)
 }
 
 
+public function withSubtasks()
+{
+    // Загружаем задачи текущего пользователя
+    $tasks = \App\Models\Task::where('creator_id', auth()->id())
+        ->select('id', 'title')
+        ->get();
+
+    // Готовим таблицу подзадач
+    $subtasks = [];
+
+    foreach ($tasks as $task) {
+        $subtasks[$task->id] = \App\Models\Subtask::where('task_id', $task->id)
+            ->select('id', 'title')
+            ->get();
+    }
+
+    return response()->json([
+        'tasks' => $tasks,
+        'subtasks' => $subtasks,
+    ]);
+}
 
 
 
