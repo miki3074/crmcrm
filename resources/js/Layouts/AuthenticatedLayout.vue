@@ -1,27 +1,47 @@
 <script setup>
-import { ref, onMounted  } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+
+import ApplicationLogo from '@/Components/ApplicationLogo.vue'
+import Dropdown from '@/Components/Dropdown.vue'
+import DropdownLink from '@/Components/DropdownLink.vue'
+import NavLink from '@/Components/NavLink.vue'
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'
+import { Link } from '@inertiajs/vue3'
 
 import SupportButton from '@/Components/SupportButton.vue'
-
 import DevtoolsGuard from '@/Components/DevtoolsGuard.vue'
 
-const showingNavigationDropdown = ref(false);
+const showingNavigationDropdown = ref(false)
 
 const isDark = ref(false)
 
+/* === 🔵 Новый код для уведомлений тех.поддержки === */
+const unreadSupport = ref(0)
+
+const loadUnread = async () => {
+  try {
+    const { data } = await axios.get('/api/support/history')
+    unreadSupport.value = data.data.filter(m => m.has_unread).length
+  } catch (err) {
+    console.error('Не удалось загрузить непрочитанные сообщения:', err)
+  }
+}
+/* === конец нового кода === */
+
 onMounted(() => {
-  // Проверим localStorage при загрузке
-  if (localStorage.theme === 'dark' || 
-      (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  // Темная тема
+  if (
+    localStorage.theme === 'dark' ||
+    (!('theme' in localStorage) &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
+  ) {
     document.documentElement.classList.add('dark')
     isDark.value = true
   }
+
+  // 🔵 загрузить непрочитанные сообщения
+  loadUnread()
 })
 
 const toggleTheme = () => {
@@ -34,9 +54,8 @@ const toggleTheme = () => {
     localStorage.theme = 'light'
   }
 }
-
-
 </script>
+
 
 <template>
     <div>
@@ -63,9 +82,19 @@ const toggleTheme = () => {
                             </div>
 
                              <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('support.history')" :active="route().current('support.history')">
-                                    Техподдержка
-                                </NavLink>
+                                <NavLink
+  :href="route('support.history')"
+  :active="route().current('support.history')"
+  class="relative"
+>
+  Техподдержка
+
+  <!-- 🔵 индикатор -->
+  <span
+    v-if="unreadSupport > 0"
+    class=" ml-3 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"
+  ></span>
+</NavLink>
                             </div>
 
                              <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
@@ -182,9 +211,16 @@ const toggleTheme = () => {
                 >
                     <div class="pt-2 pb-3 space-y-1">
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                            Главаня
+                            Главаня1
                         </ResponsiveNavLink>
 
+                        <ResponsiveNavLink :href="route('support.history')" :active="route().current('support.history')">
+                                    Техподдержка
+                                </ResponsiveNavLink>
+
+                         
+                                
+                            
 
                      
 
