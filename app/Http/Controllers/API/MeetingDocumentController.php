@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Services\TelegramService;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class MeetingDocumentController extends Controller
@@ -177,6 +178,53 @@ public function destroy(MeetingDocument $meetingDocument)
 
     return response()->json(['message' => 'Документ удалён']);
 }
+
+
+public function pdf($id)
+{
+    $doc = MeetingDocument::with(['task', 'subtask', 'creator'])->findOrFail($id);
+
+    // Проверяем доступ
+    if (
+        $doc->created_by !== auth()->id() &&
+        !$this->userCanSeeDocument($doc)
+    ) {
+        return response()->json(['message' => 'Нет доступа'], 403);
+    }
+
+    $html = view('pdf.meeting_document', [
+        'doc' => $doc
+    ])->render();
+
+    $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+
+    return $pdf->download("document-{$doc->id}.pdf");
+}
+
+
+private function userCanSeeDocument(MeetingDocument $doc)
+{
+    $userId = auth()->id();
+
+    // Автор — всегда доступ
+    if ($doc->created_by == $userId) return true;
+
+    // Привязан к задаче
+    if ($doc->task_id) {
+        if (DB::table('task_responsibles')->where('task_id', $doc->task_id)->where('user_id', $userId)->exists()) return true;
+        if (DB::table('task_executors')->where('task_id', $doc->task_id)->where('user_id', $userId)->exists()) return true;
+        if (DB::table('task_user_watchers')->where('task_id', $doc->task_id)->where('user_id', $userId)->exists()) return true;
+    }
+
+    // Привязан к подзадаче
+    if ($doc->subtask_id) {
+        if (DB::table('subtask_responsibles')->where('subtask_id', $doc->subtask_id)->where('user_id', $userId)->exists()) return true;
+        if (DB::table('subtask_executors')->where('subtask_id', $doc->subtask_id)->where('user_id', $userId)->exists()) return true;
+    }
+
+    return false;
+}
+
 
 
 private function notifyUsersAboutDocument(MeetingDocument $doc)

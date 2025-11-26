@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedInteger('number');
 
             // Дата документа (по умолчанию — сегодня)
-            $table->date('document_date')->default(DB::raw('CURRENT_DATE'));
+             $table->date('document_date')->nullable();
 
             // Привязка к задаче
             $table->unsignedBigInteger('task_id')->nullable();

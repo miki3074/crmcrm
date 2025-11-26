@@ -418,6 +418,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 Route::get('/tasks-with-subtasks', [\App\Http\Controllers\API\TaskAccessController::class, 'index']);
+Route::get('/meeting-documents/{id}/pdf', [MeetingDocumentController::class, 'pdf']);
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

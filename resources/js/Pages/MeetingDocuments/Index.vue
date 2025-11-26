@@ -230,6 +230,14 @@ const resetFilters = async () => {
   await loadDocuments()
 }
 
+const downloadPdf = async (id) => {
+  const url = `/api/meeting-documents/${id}/pdf`;
+
+  // Прямая загрузка файла
+  window.open(url, '_blank');
+};
+
+
 
 
 onMounted(async () => {
@@ -277,7 +285,7 @@ onMounted(async () => {
   <!-- Дата от / до -->
   <div class="flex gap-4">
     <input type="date" v-model="filters.date_from" class="input w-48" /> 
-    <p class="mt-2"> по</p>
+    <p class="mt-2 "> по</p>
     <input type="date" v-model="filters.date_to" class="input w-48" />
 
     <button class="btn-blue" @click="applyFilters">Применить</button>
@@ -427,15 +435,22 @@ onMounted(async () => {
         <div class="flex justify-between items-center pb-4 border-b">
           <h2 class="text-2xl font-bold">
             {{ selected.type === 'agenda' ? 'Повестка' : 'Протокол' }}
-            №{{ selected.number }} от {{ selected.document_date }}
+            №{{ selected.number }} от {{ selected.document_date }} <br/>
+            Название: {{ selected.title }}
           </h2>
-
+ <!-- <button
+  class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+  @click="downloadPdf(selected.id)"
+>
+  Скачать PDF
+</button> -->
           <button class="close-btn" @click="showView = false">✕</button>
+         
         </div>
 
         <div class="mt-6">
 
-          <h3 class="text-xl font-semibold mb-4">{{ selected.title }}</h3>
+          <!-- <h3 class="text-xl font-semibold mb-4">{{ selected.title }}</h3> -->
 
           <div class="ql-editor text-lg leading-relaxed" v-html="selected.body"></div>
 
