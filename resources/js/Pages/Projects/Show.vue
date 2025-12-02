@@ -76,8 +76,9 @@ const canEditDescription = computed(() =>
 
 
 const canManageManagers = computed(() =>
-  user?.id === project.value?.company?.user_id || // ✅ только владелец компании ||
- project.value?.managers?.some(m => m.id === user?.id)
+    user?.id === project.value?.company?.user_id ||          // владелец компании
+    project.value?.managers?.some(m => m.id === user?.id) || // менеджер проекта
+    project.value?.initiator_id === user?.id                 // ⭐ инициатор проекта — ДОБАВЛЕНО
 )
 
 
@@ -692,7 +693,7 @@ onMounted(fetchProject)
 
   <!-- 🔹 Управление персоналом -->
   <div
-    v-if="canManageManagers || isProjectManager || isCompanyOwner"
+      v-if="canManageManagers"
     class="w-full sm:w-auto bg-white/10 dark:bg-white/5 rounded-2xl p-4 border border-white/20 backdrop-blur-sm shadow-sm"
   >
     <h4 class="text-sm uppercase tracking-wide text-white/70 font-semibold mb-3 flex items-center gap-1">
@@ -717,7 +718,7 @@ onMounted(fetchProject)
       </button>
 
       <button
-        v-if="isCompanyOwner || isProjectManager"
+
         @click="openAddExecutor"
         class="btn-grid bg-indigo-500 hover:bg-indigo-600 text-white"
       >
@@ -733,7 +734,7 @@ onMounted(fetchProject)
       </button>
 
       <button
-  v-if="isCompanyOwner || isProjectManager"
+
   @click="openManageMembers"
   class="btn-grid bg-teal-500 hover:bg-teal-600 text-white"
 >
