@@ -28,8 +28,8 @@ const fetchUsers = async () => {
 // открыть форму редактирования
 const openEdit = (user) => {
   editingUser.value = user
- 
-  editForm.value = { 
+
+  editForm.value = {
   name: user.name,
   email: user.email,
   password: '',
@@ -61,6 +61,7 @@ const deleteUser = async (userId) => {
     alert(e.response?.data?.message || 'Ошибка при удалении')
   }
 }
+const showPassword = ref(false)
 
 onMounted(fetchUsers)
 </script>
@@ -125,11 +126,11 @@ onMounted(fetchUsers)
             <button @click="editingUser = null" class="px-4 py-2 border rounded-lg">Отмена</button>
             <button @click="saveUser" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Сохранить</button>
           </div>
-        
-        
+
+
         </div>
-      
-      
+
+
       </div>
     </div>
   </AuthenticatedLayout>

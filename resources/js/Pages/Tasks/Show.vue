@@ -222,8 +222,8 @@ const canDeleteTask = computed(() => {
   return (
     user.id === task.value.project?.company?.user_id || // владелец компании
     (task.value.project?.managers || []).some(m => m.id === user.id) ||// менеджер проекта
-    isProjectExecutor.value  
-  
+    isProjectExecutor.value
+
   )
 })
 
@@ -234,7 +234,7 @@ const canUpdate = computed(() => {
     user.id === task.value.project?.company?.user_id || // владелец компании
     (task.value.project?.managers || []).some(m => m.id === user.id)||
     isProjectExecutor.value  // менеджер проекта
-  
+
   )
 })
 
@@ -561,7 +561,7 @@ onMounted(fetchTask)
   <Head :title="task?.title ? `Задача — ${task.title}` : 'Задача'" />
   <AuthenticatedLayout>
     <!-- HERO -->
-     
+
     <div class="relative overflow-hidden rounded-b-3xl shadow-lg">
   <!-- Фон -->
   <div class="absolute inset-0 bg-gradient-to-r from-sky-600 via-indigo-600 to-fuchsia-600"></div>
@@ -640,7 +640,7 @@ onMounted(fetchTask)
           </button>
 
 <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" > <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl"> <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2"> Удалить задачу? </h3> <p class="text-sm text-gray-600 dark:text-gray-300 mb-4"> Это действие <span class="font-semibold text-rose-600">необратимо</span>.<br> Задача и все связанные подзадачи и файлы будут безвозвратно удалены. </p> <p v-if="deleteError" class="text-sm text-rose-600 mb-3">{{ deleteError }}</p> <div class="flex justify-end gap-2"> <button style="color: gray;" @click="showDeleteModal = false" class="px-4 py-2 rounded-lg border dark:border-gray-600" > Отмена </button> <button @click="confirmDeleteTask" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white" :disabled="deleting" > <span v-if="!deleting">Удалить</span> <span v-else>Удаляю…</span> </button> </div> </div> </div>
-          
+
 
           <button
             @click="openDescriptionModal"
@@ -687,9 +687,9 @@ onMounted(fetchTask)
             👁 Добавить наблюдателя
           </button>
 
-<button v-if="canManageMembers" @click="showManageMembers = true" 
-class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" > 
-  ⚙️ Управление участниками 
+<button v-if="canManageMembers" @click="showManageMembers = true"
+class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
+  ⚙️ Управление участниками
 </button>
 
         </div>
@@ -778,7 +778,7 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
                 Файлы не прикреплены.
               </div>
               <div v-else class="flex flex-wrap gap-2">
-                
+
 
 <div
   v-for="f in task.files"
@@ -927,15 +927,19 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
     <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Чат</h3>
 
     <!-- чат появится только когда task уже есть -->
-    <TaskChat 
-    :task-id="task.id"
-    :can-chat="true"
-    :members="[
+      <TaskChat
+          :task-id="task.id"
+          :can-chat="true"
+          :members="[
         ...(task.executors ?? []),
         ...(task.responsibles ?? []),
-        
+        ...(task.watchers ?? []),        // если нужны наблюдатели
+        ...(task.subtasksExecutors ?? []), // если нужно
+        ...(task.subtasksResponsibles ?? []),
+        ...(task.creator ? [task.creator] : []), // ← вот это добавляем
     ]"
-/>
+      />
+
 
   </div>
 </div>
