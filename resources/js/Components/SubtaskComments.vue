@@ -22,20 +22,22 @@ const cursorPosition = ref(0)
 
 /* ---------------------- ЛОГИКА ПОИСКА ПО @ ---------------------- */
 const onInput = (e) => {
-  const value = e.target.value
-  const pos = e.target.selectionStart
-  cursorPosition.value = pos
+    const value = e.target.value
+    const pos = e.target.selectionStart
+    cursorPosition.value = pos
 
-  const beforeCursor = value.slice(0, pos)
-  const match = beforeCursor.match(/@([\wА-Яа-яЁё]*)$/)
+    const beforeCursor = value.slice(0, pos)
+    // Ищем @ + буквы/цифры/подчёркивание (кириллица тоже)
+    const match = beforeCursor.match(/@([\p{L}\d_]*)$/u)
 
-  if (match) {
-    mentionSearch.value = match[1].toLowerCase()
-    showMentionList.value = true
-  } else {
-    showMentionList.value = false
-  }
+    if (match) {
+        mentionSearch.value = match[1].toLowerCase()
+        showMentionList.value = true
+    } else {
+        showMentionList.value = false
+    }
 }
+
 
 const filteredMembers = computed(() => {
   if (!mentionSearch.value) return props.members
@@ -46,59 +48,72 @@ const filteredMembers = computed(() => {
 
 /* ---------------------- ВСТАВКА @ИМЕНИ В КУРСОР ---------------------- */
 const selectMention = (user) => {
-  const tag = `@${user.name}`
+    const pos = cursorPosition.value
+    const text = newComment.value
 
-  const text = newComment.value
-  const pos = cursorPosition.value
+    // Сохраняем в тексте как @Имя_Фамилия (без пробелов)
+    const safeName = user.name.replace(/\s+/g, '_')
+    const tag = `@${safeName}`
 
-  // текст до @запроса
-  const before = text.slice(0, pos).replace(/@([\wА-Яа-яЁё]*)$/, tag + ' ')
-  const after = text.slice(pos)
+    const before = text.slice(0, pos).replace(/@([\p{L}\d_]*)$/u, tag + ' ')
+    const after = text.slice(pos)
 
-  newComment.value = before + after
+    newComment.value = before + after
 
-  showMentionList.value = false
-  mentionSearch.value = ''
+    showMentionList.value = false
+    mentionSearch.value = ''
 
-  // ставим курсор после вставленного упоминания
-  setTimeout(() => {
-    const el = document.querySelector('#subtask-comment-input')
-    if (el) {
-      el.selectionStart = el.selectionEnd = before.length
-      el.focus()
-    }
-  }, 0)
+    // ставим курсор после вставленного упоминания
+    setTimeout(() => {
+        const el = document.querySelector('#subtask-comment-input')
+        if (el) {
+            el.selectionStart = el.selectionEnd = before.length
+            el.focus()
+        }
+    }, 0)
 }
+
 
 
 const highlightMentions = (text) => {
-  return text.replace(
-    /@([A-Za-z0-9_]+)/g,
-    '<span class="text-indigo-600 font-semibold">@$1</span>'
-  )
+    return text.replace(
+        /@([\p{L}\d_]+)/gu,
+        (match, p1) => {
+            const display = p1.replace(/_/g, ' ') // вернули пробелы
+            return `<span class="mention">@${display}</span>`
+        }
+    )
 }
+
 
 
 
 /* ---------------------- ДОБАВЛЕНИЕ КОММЕНТАРИЯ ---------------------- */
 const addComment = async () => {
-  if (!newComment.value.trim()) return
+    if (!newComment.value.trim()) return
 
-  const mentionMatches = newComment.value.match(/@([\wА-Яа-яЁё]+)/g) || []
+    // Ищем все @токены
+    const mentionMatches = newComment.value.match(/@([\p{L}\d_]+)/gu) || []
 
-  const mentions = mentionMatches
-    .map(m => props.members.find(u => u.name === m.substring(1)))
-    .filter(Boolean)
-    .map(u => u.id)
+    const mentions = mentionMatches
+        .map(m => {
+            // убираем @ и возвращаем пробелы
+            const raw = m.substring(1) // "Булат_Раисович_Хамзин"
+            const name = raw.replace(/_/g, ' ') // "Булат Раисович Хамзин"
+            return props.members.find(u => u.name === name)
+        })
+        .filter(Boolean)
+        .map(u => u.id)
 
-  const { data } = await axios.post(`/api/subtasks/${props.subtaskId}/comments`, {
-    comment: newComment.value,
-    mentions
-  })
+    const { data } = await axios.post(`/api/subtasks/${props.subtaskId}/comments`, {
+        comment: newComment.value,
+        mentions
+    })
 
-  emit('updated', { type: 'add', comment: data })
-  newComment.value = ''
+    emit('updated', { type: 'add', comment: data })
+    newComment.value = ''
 }
+
 
 /* ---------------------- РЕДАКТИРОВАНИЕ ---------------------- */
 const startEdit = (comment) => {
@@ -227,14 +242,18 @@ const deleteComment = async (id) => {
 
 
 
-  
+
 </template>
 <style scoped>
-.mention {
-  background: rgba(255, 200, 0, 0.25);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 600;
-  color: #d97706; /* amber-600 */
+
+:deep(.mention) {
+    background: rgba(99, 102, 241, 0.15);
+    color: #4f46e5;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: 600;
 }
+
+
+
 </style>

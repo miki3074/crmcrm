@@ -68,9 +68,9 @@ const onInput = (e) => {
 
     mentionSearch.value = match[1].toLowerCase()
 
-    mentionList.value = props.members.filter((m) =>
-      m.name.toLowerCase().includes(mentionSearch.value)
-    )
+      mentionList.value = props.members.filter((m) =>
+          m.name.toLowerCase().includes(mentionSearch.value)
+      )
   }
 }
 
@@ -79,17 +79,26 @@ const selectMention = (user) => {
   const text = body.value
 
   // заменяем паттерн @текст
-  body.value = text.replace(/@([а-яА-Яa-zA-Z0-9_]*)$/, '@' + user.name + ' ')
+    body.value = text.replace(
+        /@([а-яА-Яa-zA-Z0-9_]*)$/,
+        '@' + user.name.replace(/\s+/g, '_') + ' '
+    )
 
   mentionOpen.value = false
 }
 
 const highlightMentions = (text) => {
-  return text.replace(
-    /@([A-Za-z0-9_]+)/g,
-    '<span class="text-indigo-600 font-semibold">@$1</span>'
-  )
+    if (!text) return ''
+
+    return text.replace(
+        /@([\p{L}0-9_]+)/gu, // \p{L} = любая буква (включая кириллицу)
+        (match, nameToken) => {
+            const visibleName = nameToken.replace(/_/g, ' ') // "_" -> пробелы
+            return `<span class="text-indigo-600 font-semibold">@${visibleName}</span>`
+        }
+    )
 }
+
 
 
 

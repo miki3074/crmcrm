@@ -36,8 +36,9 @@ class TaskCommentController extends Controller
         ]);
 
         // ищем упоминания @username
-        preg_match_all('/@([A-Za-z0-9_]+)/u', $comment->body, $matches);
-        $usernames = $matches[1] ?? [];
+        preg_match_all('/@([\p{L}_]+)/u', $comment->body, $matches);
+
+        $usernames = array_map(fn($u) => str_replace('_', ' ', $u), $matches[1]);
 
         // Если есть упоминания, обрабатываем только их
         if (!empty($usernames)) {
