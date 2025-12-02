@@ -46,6 +46,10 @@ use App\Http\Controllers\API\SubtaskChecklistController;
 
 use App\Http\Controllers\API\MeetingDocumentController;
 
+use App\Http\Controllers\API\SupportChatController;
+
+use App\Http\Controllers\API\SupportAdminController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -419,6 +423,23 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/tasks-with-subtasks', [\App\Http\Controllers\API\TaskAccessController::class, 'index']);
 Route::get('/meeting-documents/{id}/pdf', [MeetingDocumentController::class, 'pdf']);
+
+
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/support/threads', [SupportChatController::class, 'threads']);
+    Route::post('/support/threads', [SupportChatController::class, 'createThread']);
+    Route::get('/support/threads/{thread}', [SupportChatController::class, 'messages']);
+    Route::post('/support/threads/{thread}/messages', [SupportChatController::class, 'sendMessage']);
+});
+
+Route::middleware(['auth:sanctum', 'support'])->prefix('support/admin')->group(function () {
+    Route::get('/threads', [SupportAdminController::class, 'threads']);
+    Route::get('/threads/{thread}', [SupportAdminController::class, 'show']);
+    Route::post('/threads/{thread}/messages', [SupportAdminController::class, 'sendMessage']);
+    Route::post('/threads/{thread}/close', [SupportAdminController::class, 'close']);
+    Route::post('/threads/{thread}/reopen', [SupportAdminController::class, 'reopen']);
+});
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

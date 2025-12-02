@@ -36,30 +36,74 @@ class TaskCommentController extends Controller
         ]);
 
         // ищем упоминания @username
-preg_match_all('/@([A-Za-z0-9_]+)/u', $comment->body, $matches);
-$usernames = $matches[1] ?? [];
+        preg_match_all('/@([A-Za-z0-9_]+)/u', $comment->body, $matches);
+        $usernames = $matches[1] ?? [];
 
-if (!empty($usernames)) {
-    $mentionedUsers = \App\Models\User::whereIn('name', $usernames)->get();
+        // Если есть упоминания, обрабатываем только их
+        if (!empty($usernames)) {
 
-    foreach ($mentionedUsers as $mentioned) {
-        if ($mentioned->telegram_chat_id) {
-            \App\Services\TelegramService::sendMessage(
-                $mentioned->telegram_chat_id,
-                "📣 Вас упомянули в задаче: <b>{$task->title}</b>\n".
-                "Сообщение: {$comment->body}\n".
-                "Автор: {$comment->user->name}"
+            $mentionedUsers = \App\Models\User::whereIn('name', $usernames)->get();
+
+            foreach ($mentionedUsers as $mentioned) {
+                if ($mentioned->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $mentioned->telegram_chat_id,
+                        "📣 Вас упомянули в задаче: <b>{$task->title}</b>\n".
+                        "Сообщение: {$comment->body}\n".
+                        "Автор: {$comment->user->name}"
+                    );
+                }
+            }
+
+        } else {
+            // ======== УВЕДОМЛЕНИЕ ВСЕМ УЧАСТНИКАМ ЗАДАЧИ ========
+
+            // получаем id всех участников задачи
+            $participants = collect([]);
+
+            // Ответственные
+            $participants = $participants->merge(
+                \DB::table('task_responsibles')->where('task_id', $task->id)->pluck('user_id')
             );
-        }
-    }
-}
 
+            // Исполнители
+            $participants = $participants->merge(
+                \DB::table('task_executors')->where('task_id', $task->id)->pluck('user_id')
+            );
+
+            // Наблюдатели
+            $participants = $participants->merge(
+                \DB::table('task_user_watchers')->where('task_id', $task->id)->pluck('user_id')
+            );
+
+            // Уникальные ID
+            $participants = $participants->unique();
+
+            // исключаем автора
+            $participants = $participants->reject(fn($id) => $id == $comment->user_id);
+
+            // загружаем пользователей
+            $users = \App\Models\User::whereIn('id', $participants)->get();
+
+            // отправляем каждому
+            foreach ($users as $user) {
+                if ($user->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $user->telegram_chat_id,
+                        "💬 Новое сообщение в задаче: <b>{$task->title}</b>\n".
+                        "Автор: {$comment->user->name}\n".
+                        "Текст: {$comment->body}"
+                    );
+                }
+            }
+        }
 
         return response()->json(
             $comment->load('user:id,name'),
             201
         );
     }
+
 
     public function destroy(TaskComment $comment)
     {
@@ -72,5 +116,5 @@ if (!empty($usernames)) {
 
 
 
-    
+
 }

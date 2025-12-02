@@ -427,48 +427,92 @@ private function canComment($user, $subtask)
 
 
 
-public function addComment(Request $request, $subtaskId)
-{
-    $user = $request->user();
+    public function addComment(Request $request, $subtaskId)
+    {
+        $user = $request->user();
 
-    $subtask = Subtask::with([
-        'executors',
-        'responsibles',
-        'task.project.executors',
-        'task.project.managers',
-        'task.project.company'
-    ])->findOrFail($subtaskId);
+        $subtask = Subtask::with([
+            'executors',
+            'responsibles',
+            'task.project.executors',
+            'task.project.managers',
+            'task.project.company'
+        ])->findOrFail($subtaskId);
 
-    abort_unless($this->canComment($user, $subtask), 403);
+        abort_unless($this->canComment($user, $subtask), 403);
 
-    $data = $request->validate([
-        'comment' => 'required|string|max:2000',
-        'mentions' => 'array'
-    ]);
+        $data = $request->validate([
+            'comment' => 'required|string|max:2000',
+            'mentions' => 'array'
+        ]);
 
-    $comment = SubtaskComment::create([
-        'subtask_id' => $subtask->id,
-        'user_id' => $user->id,
-        'comment' => $data['comment'],
-        'mentions' => json_encode($data['mentions'] ?? [])
-    ]);
+        $comment = SubtaskComment::create([
+            'subtask_id' => $subtask->id,
+            'user_id' => $user->id,
+            'comment' => $data['comment'],
+            'mentions' => json_encode($data['mentions'] ?? [])
+        ]);
 
-    // 🔔 Оповещение в ТЕЛЕГРАМ упомянутым пользователям
-    if (!empty($data['mentions'])) {
-        foreach ($data['mentions'] as $uid) {
-            $u = \App\Models\User::find($uid);
-            if ($u && $u->telegram_chat_id) {
+        // ===============================================================
+        // 🔔 1. ЕСЛИ ЕСТЬ УПОМИНАНИЯ — отправляем только им
+        // ===============================================================
+        if (!empty($data['mentions'])) {
+            foreach ($data['mentions'] as $uid) {
+                $u = \App\Models\User::find($uid);
+
+                if ($u && $u->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $u->telegram_chat_id,
+                        "🔔 Вас упомянули в подзадаче:\n".
+                        "<b>{$subtask->title}</b>\n\n".
+                        "<b>{$user->name}</b> написал:\n{$data['comment']}"
+                    );
+                }
+            }
+
+            return response()->json($comment->load('user:id,name'));
+        }
+
+        // ===============================================================
+        // 🔔 2. ЕСЛИ УПОМИНАНИЙ НЕТ — уведомляем всех участников подзадачи
+        // ===============================================================
+
+        $participants = collect([]);
+
+        // ответственные
+        $participants = $participants->merge(
+            \DB::table('subtask_responsibles')->where('subtask_id', $subtask->id)->pluck('user_id')
+        );
+
+        // исполнители
+        $participants = $participants->merge(
+            \DB::table('subtask_executors')->where('subtask_id', $subtask->id)->pluck('user_id')
+        );
+
+        // Уникальные ID
+        $participants = $participants->unique();
+
+        // Убираем автора
+        $participants = $participants->reject(fn($id) => $id == $user->id);
+
+        // Загружаем пользователей
+        $users = \App\Models\User::whereIn('id', $participants)->get();
+
+        foreach ($users as $u) {
+            if ($u->telegram_chat_id) {
                 \App\Services\TelegramService::sendMessage(
                     $u->telegram_chat_id,
-                    "🔔 Вас упомянули в комментарии подзадачи\n".
-                    "<b>{$user->name}</b>:\n{$data['comment']}"
+                    "💬 Новое сообщение в подзадаче:\n".
+                    "<b>{$subtask->title}</b>\n\n".
+                    "Автор: <b>{$user->name}</b>\n".
+                    "Комментарий:\n{$data['comment']}"
                 );
             }
         }
+
+        return response()->json($comment->load('user:id,name'));
     }
 
-    return response()->json($comment->load('user:id,name'));
-}
 
 
 

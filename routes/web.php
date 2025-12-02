@@ -127,6 +127,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+   
+    Route::get('/supportmessages', function () {
+        return Inertia::render('Supporttwo/Chat');
+    })->name('support.chat');
+});
+
+Route::middleware(['auth', 'verified', 'support'])->group(function () {
+
+    Route::get('/support/admin', function () {
+        return Inertia::render('Supporttwo/Admin');
+    })->name('support.admin');
+
+});
+
+
+
+Route::middleware(['auth', 'verified'])->group(function () {
     // Панель техподдержки (только для support — проверка через Policy)
     Route::get('/support/messages', [AdminSupportController::class, 'index'])
         ->name('support.index');

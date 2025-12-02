@@ -13,10 +13,11 @@ class Task extends Model
     protected $fillable = [
         'title','priority','start_date','due_date', 'description',
         'executor_id','responsible_id','project_id','company_id',
-        'creator_id','progress','completed','completed_at', 
+        'creator_id','progress','completed','completed_at',
     ];
 
-    
+
+
 
     public function executor() {
         return $this->belongsTo(User::class, 'executor_id');
@@ -67,6 +68,8 @@ public function subproject()
 protected $casts = [
         'completed' => 'boolean',
         'completed_at' => 'datetime',
+    'start_date' => 'date',
+    'due_date'   => 'date',
     ];
 
     // 🚀 Глобальный scope — исключает завершённые задачи
