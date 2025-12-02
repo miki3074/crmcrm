@@ -17,31 +17,48 @@ class SendTaskDueReminders extends Command
     {
         $today = Carbon::today();
 
-        $dateMinus3 = $today->copy()->addDays(3)->toDateString(); // через 3 дня истечёт
-        $dateToday  = $today->toDateString();                     // сегодня дедлайн
-        $datePlus3  = $today->copy()->subDays(3)->toDateString(); // был 3 дня назад
+        $dateMinus3 = $today->copy()->addDays(3)->toDateString();
+        $dateToday  = $today->toDateString();
+        $datePlus3  = $today->copy()->subDays(3)->toDateString();
 
-        // Загружаем задачи с нужными датами + исполнителей/ответственных
         $tasks = Task::with(['executors', 'responsibles'])
-            ->whereIn('due_date', [$dateMinus3, $dateToday, $datePlus3])
+            ->where(function ($q) use ($dateMinus3) {
+                $q->whereDate('due_date', $dateMinus3)->where('reminded_before3', false);
+            })
+            ->orWhere(function ($q) use ($dateToday) {
+                $q->whereDate('due_date', $dateToday)->where('reminded_today', false);
+            })
+            ->orWhere(function ($q) use ($datePlus3) {
+                $q->whereDate('due_date', $datePlus3)->where('reminded_after3', false);
+            })
             ->get();
 
         foreach ($tasks as $task) {
-            // Определяем тип напоминания
+
+            // --- Определяем, какая стадия ---
             if ($task->due_date->toDateString() === $dateMinus3) {
                 $type = 'before3';
-            } elseif ($task->due_date->toDateString() === $dateToday) {
+                $task->reminded_before3 = true;
+            }
+            elseif ($task->due_date->toDateString() === $dateToday) {
                 $type = 'today';
-            } else {
+                $task->reminded_today = true;
+            }
+            else {
                 $type = 'after3';
+                $task->reminded_after3 = true;
             }
 
+            // --- Отправляем ---
             $this->sendReminderForTask($task, $type);
+
+            // --- Фиксируем, что отправили ---
+            $task->save();
         }
 
-        $this->info('Напоминания по задачам отправлены.');
-        return 0;
+        $this->info('Напоминания отправлены.');
     }
+
 
     protected function sendReminderForTask(Task $task, string $type)
     {

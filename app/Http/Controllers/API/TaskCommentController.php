@@ -46,11 +46,14 @@ class TaskCommentController extends Controller
 
             foreach ($mentionedUsers as $mentioned) {
                 if ($mentioned->telegram_chat_id) {
+                    $taskUrl = url("/tasks/{$task->id}");
+
                     \App\Services\TelegramService::sendMessage(
                         $mentioned->telegram_chat_id,
                         "📣 Вас упомянули в задаче: <b>{$task->title}</b>\n".
-                        "Сообщение: {$comment->body}\n".
-                        "Автор: {$comment->user->name}"
+                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n".
+                        "Автор: {$comment->user->name}\n".
+                        "Сообщение:\n{$comment->body}"
                     );
                 }
             }
@@ -88,11 +91,14 @@ class TaskCommentController extends Controller
             // отправляем каждому
             foreach ($users as $user) {
                 if ($user->telegram_chat_id) {
+                    $taskUrl = url("/tasks/{$task->id}");
+
                     \App\Services\TelegramService::sendMessage(
                         $user->telegram_chat_id,
                         "💬 Новое сообщение в задаче: <b>{$task->title}</b>\n".
+                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n".
                         "Автор: {$comment->user->name}\n".
-                        "Текст: {$comment->body}"
+                        "Сообщение:\n{$comment->body}"
                     );
                 }
             }

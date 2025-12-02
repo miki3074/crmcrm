@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class TaskController extends Controller
 {
-    
+
 public function store(Request $request)
 {
 
@@ -87,14 +87,18 @@ public function store(Request $request)
         $validated['responsible_ids']
     ));
 
+    $taskUrl = url("/tasks/{$task->id}");
     foreach ($recipients as $userId) {
         $user = \App\Models\User::find($userId);
+
         if ($user && $user->telegram_chat_id) {
+
             \App\Services\TelegramService::sendMessage(
                 $user->telegram_chat_id,
-                "🆕 Вам назначена новая задача: <b>{$task->title}</b>\n
-                Приоритет: {$task->priority}\n
-                Срок: {$task->due_date}"
+                "🆕 Вам назначена новая задача: <b>{$task->title}</b>\n" .
+                "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n" .
+                "Приоритет: {$task->priority}\n" .
+                "Срок: {$task->due_date}"
             );
         }
     }
@@ -112,7 +116,7 @@ public function store(Request $request)
         $task->files()->create([
             'file_path' => $path,
             'file_name' => $originalName,
-            
+
         ]);
     }
 }
@@ -131,8 +135,8 @@ public function show($id)
     $task = Task::with([
         'project.company:id,name,user_id',
         'creator:id,name',
-        'executors:id,name',     
-        'responsibles:id,name',  
+        'executors:id,name',
+        'responsibles:id,name',
         'project:id,name,company_id',
         'project.managers:id,name',
         'project.company:id,name',
@@ -145,7 +149,7 @@ public function show($id)
     ])->findOrFail($id);
 
     $this->authorize('view', $task);
-    
+
     return response()->json($task);
 }
 
