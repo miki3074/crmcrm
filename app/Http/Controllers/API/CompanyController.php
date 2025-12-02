@@ -5,8 +5,8 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-use Illuminate\Support\Facades\Auth; 
-use App\Models\Company; 
+use Illuminate\Support\Facades\Auth;
+use App\Models\Company;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Subtask;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Hash;
 
 class CompanyController extends Controller
 {
-   
+
 public function index()
 {
     $userId = auth()->id();
@@ -257,7 +257,7 @@ $subtaskCompanies = $subtaskCompanies
             ->concat($executorCompanies)
             ->concat($responsibleCompanies)
             ->concat($subtaskCompanies)
-            ->concat($memberCompanies) 
+            ->concat($memberCompanies)
             ->concat($watcherCompanies)
             ->concat($projectExecutorCompanies)
             ->unique('id')
@@ -287,7 +287,7 @@ $subtaskCompanies = $subtaskCompanies
         return response()->json($company, 201);
     }
 
-  
+
 // public function show(Company $company)
 // {
 //     $this->authorize('view', $company);
@@ -342,103 +342,208 @@ $subtaskCompanies = $subtaskCompanies
 // }
 
 
-public function show(Company $company)
-{
-    $this->authorize('view', $company);
-    $userId = auth()->id();
+//public function show(Company $company)
+//{
+//    $this->authorize('view', $company);
+//    $userId = auth()->id();
+//
+//    // Загружаем проекты с нужными связями
+//    $company->load([
+//        'projects' => function ($q) {
+//            $q->with([
+//                'managers:id,name',
+//                'executors:id,name',
+//                'watchers:id,name',
+//                'tasks.executors:id,name',
+//                'tasks.responsibles:id,name',
+//                'tasks.subtasks.executors:id,name',
+//                'tasks.subtasks.responsibles:id,name',
+//            ]);
+//        }
+//    ]);
+//
+//    // Фильтрация проектов по доступу
+//    $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
+//        if ($company->user_id === $userId) return true; // владелец компании
+//        // ⭐ 2. ИНИЦИАТОР ПРОЕКТА — ДОБАВЛЕНО!
+//        if ($project->initiator_id === $userId) return true;
+//        if ($project->managers->contains('id', $userId)) return true;
+//        if ($project->executors->contains('id', $userId)) return true;
+//        if ($project->watchers->contains('id', $userId)) return true;
+//
+//        // участник задач / подзадач
+//        if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
+//        if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
+//        if ($project->tasks->contains(fn($t) =>
+//            $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
+//        )) return true;
+//        if ($project->tasks->contains(fn($t) =>
+//            $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
+//        )) return true;
+//
+//        return false;
+//    })->values();
+//
+//    // ✅ Формируем ответ
+//    return response()->json([
+//        'id' => $company->id,
+//        'name' => $company->name,
+//        'logo' => $company->logo,
+//        'user_id' => $company->user_id,
+//
+//        // 📊 Список проектов + данные для графика
+//        'projects' => $company->projects->map(function ($project) use ($userId) {
+//
+//            // 👉 Вычисляем дату окончания
+//            $endDate = null;
+//            if ($project->start_date && $project->duration_days) {
+//                $endDate = \Carbon\Carbon::parse($project->start_date)
+//                    ->addDays($project->duration_days)
+//                    ->format('Y-m-d');
+//            }
+//
+//            return [
+//                'id' => $project->id,
+//                'name' => $project->name,
+//                'start_date' => $project->start_date,
+//                'duration_days' => $project->duration_days,
+//                'end_date' => $endDate, // ✅ добавлено
+//
+//                // 🔹 данные для графика
+//                'chart' => [
+//                    'name' => $project->name,
+//                    'start' => $project->start_date,
+//                    'end' => $endDate,
+//                    'duration' => $project->duration_days,
+//                ],
+//
+//                // 🔹 участники
+//                'managers' => $project->managers->map(fn($m) => [
+//                    'id' => $m->id,
+//                    'name' => $m->name,
+//                ]),
+//                'executors' => $project->executors->map(fn($e) => [
+//                    'id' => $e->id,
+//                    'name' => $e->name,
+//                ]),
+//
+//                // 🔹 роли текущего пользователя
+//                'is_manager' => $project->managers->contains('id', $userId),
+//                'is_executor' => $project->executors->contains('id', $userId),
+//                'is_watcher' => $project->watchers->contains('id', $userId),
+//            ];
+//        }),
+//    ]);
+//}
 
-    // Загружаем проекты с нужными связями
-    $company->load([
-        'projects' => function ($q) {
-            $q->with([
-                'managers:id,name',
-                'executors:id,name',
-                'watchers:id,name',
-                'tasks.executors:id,name',
-                'tasks.responsibles:id,name',
-                'tasks.subtasks.executors:id,name',
-                'tasks.subtasks.responsibles:id,name',
-            ]);
-        }
-    ]);
+    public function show(Company $company)
+    {
+        $this->authorize('view', $company);
+        $userId = auth()->id();
 
-    // Фильтрация проектов по доступу
-    $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-        if ($company->user_id === $userId) return true; // владелец компании
-        if ($project->managers->contains('id', $userId)) return true;
-        if ($project->executors->contains('id', $userId)) return true;
-        if ($project->watchers->contains('id', $userId)) return true;
-
-        // участник задач / подзадач
-        if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
-        if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
-        if ($project->tasks->contains(fn($t) =>
-            $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
-        )) return true;
-        if ($project->tasks->contains(fn($t) =>
-            $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
-        )) return true;
-
-        return false;
-    })->values();
-
-    // ✅ Формируем ответ
-    return response()->json([
-        'id' => $company->id,
-        'name' => $company->name,
-        'logo' => $company->logo,
-        'user_id' => $company->user_id,
-
-        // 📊 Список проектов + данные для графика
-        'projects' => $company->projects->map(function ($project) use ($userId) {
-
-            // 👉 Вычисляем дату окончания
-            $endDate = null;
-            if ($project->start_date && $project->duration_days) {
-                $endDate = \Carbon\Carbon::parse($project->start_date)
-                    ->addDays($project->duration_days)
-                    ->format('Y-m-d');
+        // Загружаем проекты с нужными связями
+        $company->load([
+            'projects' => function ($q) {
+                $q->with([
+                    'managers:id,name',
+                    'executors:id,name',
+                    'watchers:id,name',
+                    'tasks.executors:id,name',
+                    'tasks.responsibles:id,name',
+                    'tasks.subtasks.executors:id,name',
+                    'tasks.subtasks.responsibles:id,name',
+                ]);
             }
+        ]);
 
-            return [
-                'id' => $project->id,
-                'name' => $project->name,
-                'start_date' => $project->start_date,
-                'duration_days' => $project->duration_days,
-                'end_date' => $endDate, // ✅ добавлено
+        // Фильтрация проектов по доступу
+        $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
 
-                // 🔹 данные для графика
-                'chart' => [
+            // 👑 1. Владелец компании
+            if ($company->user_id === $userId) return true;
+
+            // ⭐ 2. ИНИЦИАТОР ПРОЕКТА — ДОБАВЛЕНО!
+            if ($project->initiator_id === $userId) return true;
+
+            // 👔 3. Менеджер проекта
+            if ($project->managers->contains('id', $userId)) return true;
+
+            // 🔧 4. Исполнитель проекта
+            if ($project->executors->contains('id', $userId)) return true;
+
+            // 👁 5. Наблюдатель
+            if ($project->watchers->contains('id', $userId)) return true;
+
+            // 📝 6. Участник задач / подзадач
+            if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
+            if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
+
+            // Подзадачи
+            if ($project->tasks->contains(fn($t) =>
+            $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
+            )) return true;
+
+            if ($project->tasks->contains(fn($t) =>
+            $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
+            )) return true;
+
+            return false;
+        })->values();
+
+
+        // Формируем ответ
+        return response()->json([
+            'id' => $company->id,
+            'name' => $company->name,
+            'logo' => $company->logo,
+            'user_id' => $company->user_id,
+
+            'projects' => $company->projects->map(function ($project) use ($userId) {
+
+                $endDate = null;
+                if ($project->start_date && $project->duration_days) {
+                    $endDate = \Carbon\Carbon::parse($project->start_date)
+                        ->addDays($project->duration_days)
+                        ->format('Y-m-d');
+                }
+
+                return [
+                    'id' => $project->id,
                     'name' => $project->name,
-                    'start' => $project->start_date,
-                    'end' => $endDate,
-                    'duration' => $project->duration_days,
-                ],
+                    'start_date' => $project->start_date,
+                    'duration_days' => $project->duration_days,
+                    'end_date' => $endDate,
 
-                // 🔹 участники
-                'managers' => $project->managers->map(fn($m) => [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                ]),
-                'executors' => $project->executors->map(fn($e) => [
-                    'id' => $e->id,
-                    'name' => $e->name,
-                ]),
+                    'chart' => [
+                        'name' => $project->name,
+                        'start' => $project->start_date,
+                        'end' => $endDate,
+                        'duration' => $project->duration_days,
+                    ],
 
-                // 🔹 роли текущего пользователя
-                'is_manager' => $project->managers->contains('id', $userId),
-                'is_executor' => $project->executors->contains('id', $userId),
-                'is_watcher' => $project->watchers->contains('id', $userId),
-            ];
-        }),
-    ]);
-}
+                    'managers' => $project->managers->map(fn($m) => [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                    ]),
+
+                    'executors' => $project->executors->map(fn($e) => [
+                        'id' => $e->id,
+                        'name' => $e->name,
+                    ]),
+
+                    'is_manager' => $project->managers->contains('id', $userId),
+                    'is_executor' => $project->executors->contains('id', $userId),
+                    'is_watcher' => $project->watchers->contains('id', $userId),
+                ];
+            }),
+        ]);
+    }
 
 
 
 
 
-    
+
     public function companiesWhereUserIsManager()
     {
         $userId = auth()->id();
@@ -664,9 +769,9 @@ foreach ($allSubtasks as $sub) {
 
     return response()->json([
         'managing_projects'       => $managingProjects,
-        'all_tasks'               => $allTasks,      
-        'all_subtasks'            => $groupedSubtasks,  
-        // 'all_subtasks'            => $allSubtasks,     
+        'all_tasks'               => $allTasks,
+        'all_subtasks'            => $groupedSubtasks,
+        // 'all_subtasks'            => $allSubtasks,
         'responsible_subprojects' => $responsibleSubprojects,
         'due_today'               => $dueToday,
         'overdue'                 => $overdue,

@@ -28,7 +28,9 @@ public function view(User $user, Company $company): bool
         return true;
     }
 
-    
+    if ($company->projects()->where('initiator_id', $user->id)->exists()) {
+        return true;
+    }
 
     // Менеджер хотя бы одного проекта в этой компании
     if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {

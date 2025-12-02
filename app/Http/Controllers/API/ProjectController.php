@@ -147,30 +147,28 @@ public function store(Request $request)
 public function show($id)
 {
 
-   
+
 
     $project = Project::with([
-       
         'managers:id,name',
         'company:id,name,user_id',
         'watchers:id,name',
         'executors:id,name',
         'initiator:id,name',
         'subprojects.responsibles:id,name',
-
-         'clients' => fn($q) => $q->with('responsible:id,name'),
-
+        'clients' => fn($q) => $q->with('responsible:id,name'),
         'tasks' => function ($q) {
-    $q->select('id', 'project_id', 'title', 'creator_id', 'start_date', 'due_date', 'priority', 'progress', 'completed') // ✅
-      ->with([
-          'creator:id,name',
-          'executors:id,name',
-          'responsibles:id,name',
-          'files:id,task_id,file_path',
-          
-      ]);
-}
-    ])->findOrFail($id);
+            $q->select('id','project_id','title','creator_id','start_date','due_date','priority','progress','completed')
+                ->with([
+                    'creator:id,name',
+                    'executors:id,name',
+                    'responsibles:id,name',
+                    'files:id,task_id,file_path',
+                ]);
+        }
+    ])
+        ->select('id','company_id','initiator_id','name','start_date','duration_days') // ← добавили initiator_id!!
+        ->findOrFail($id);
 
 
  $this->authorize('view', $project);
@@ -252,7 +250,7 @@ public function updateName(Request $request, Project $project)
 
      $messages = [
         'name.required' => 'Введите название.',
-        
+
     ];
 
     $validated = $request->validate([
@@ -590,7 +588,7 @@ public function remove(Request $request, Project $project)
 
     if ($role === 'executor') {
         // $project->executors()
-        
+
         $project->executors()->detach($userId);
     }
 

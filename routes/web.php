@@ -120,14 +120,14 @@ Route::middleware(['auth','verified'])->group(function () {
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
-   
+
     Route::get('/mapdiagram', function () {
         return Inertia::render('CompanyDiagram');
     })->name('mapdiagram');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-   
+
     Route::get('/supportmessages', function () {
         return Inertia::render('Supporttwo/Chat');
     })->name('support.chat');
@@ -166,12 +166,18 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-   
+
     Route::get('/ruk', function () {
         return Inertia::render('Ruk');
     })->name('ruk');
 });
 
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/contracts', function () {
+        return Inertia::render('Contracts/Index');
+    })->name('contracts.index');
+});
 
 
 Route::middleware(['auth', 'verified'])->get('/users', function () {

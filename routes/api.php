@@ -50,6 +50,8 @@ use App\Http\Controllers\API\SupportChatController;
 
 use App\Http\Controllers\API\SupportAdminController;
 
+use App\Http\Controllers\API\ContractController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -74,7 +76,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 //     Route::middleware('role:admin')->group(function () {
 //         Route::post('/companies', [CompanyController::class, 'store']);
-    
+
 //     });
 // });
 
@@ -82,7 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/companies', [CompanyController::class, 'index']);
     Route::post('/companies', [CompanyController::class, 'store']);
     Route::get('/companies/{company}', [CompanyController::class, 'show']);
-    
+
 });
 
 
@@ -124,7 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/subtasks', [SubtaskController::class, 'index']);
     Route::post('/tasks/{task}/subtasks', [SubtaskController::class, 'store']);
     Route::get('/subtasks/{subtask}', [SubtaskController::class, 'show']);
-    
+
 });
 
 
@@ -148,7 +150,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])
     ->middleware(['auth:sanctum']);
-    
+
 
     Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])
     ->middleware('auth:sanctum');
@@ -440,6 +442,21 @@ Route::middleware(['auth:sanctum', 'support'])->prefix('support/admin')->group(f
     Route::post('/threads/{thread}/close', [SupportAdminController::class, 'close']);
     Route::post('/threads/{thread}/reopen', [SupportAdminController::class, 'reopen']);
 });
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/contracts', [ContractController::class, 'index']);
+    Route::post('/contracts', [ContractController::class, 'store']);
+    Route::put('/contracts/{contract}', [ContractController::class, 'update']);
+    Route::delete('/contracts/{contract}', [ContractController::class, 'destroy']);
+    Route::delete('/contracts/files/{file}', [ContractController::class, 'deleteFile']);
+    Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
+    Route::get('/contracts/files/{file}/download', [ContractController::class, 'downloadFile']);
+
+
+});
+
+//Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
+
 
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {

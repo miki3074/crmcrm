@@ -36,6 +36,7 @@
         "echarts": "^6.0.0",
         "recharts": "^3.3.0",
         "vue-echarts": "^8.0.1",
+        "vuedraggable": "^4.1.0",
         "ziggy-js": "^2.5.3"
     }
 }

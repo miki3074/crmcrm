@@ -40,8 +40,10 @@ const taskForm = ref({
 const roles = props.auth?.roles || []
 const user = props.auth?.user
 const isAdmin = computed(() => roles.includes('admin'))
-const isCompanyOwner = computed(() => project.value?.company?.user_id === user?.id)
-
+const canDeleteProject = computed(() => {
+    return project.value?.company?.user_id === user?.id
+        || project.value?.initiator_id === user?.id
+})
 const isProjectManager = computed(() =>
   project.value?.managers?.some(m => m.id === user?.id)
 )
@@ -445,7 +447,7 @@ const removeMember = async (role, userId) => {
   if (role === 'manager' && project.value.managers.length <= 1) {
     return alert("В проекте должен быть хотя бы 1 руководитель!")
   }
-  
+
 
   try {
     await axios.delete(`/api/projects/${projectId}/members`, {
@@ -473,7 +475,7 @@ onMounted(fetchProject)
   <!-- Контент -->
   <div class="relative max-w-7xl mx-auto px-6 py-10 text-white">
     <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
-      
+
       <!-- ==== Левая часть ==== -->
       <div class="flex-1 space-y-4">
         <div>
@@ -486,7 +488,7 @@ onMounted(fetchProject)
           </h1>
         </div>
 
-       
+
 
 
         <!-- Бейджи -->
@@ -565,7 +567,7 @@ onMounted(fetchProject)
         >
           {{ c.type === 'jur' ? 'Юр. лицо' : 'Физ. лицо' }}
         </span>
-       
+
       </div>
       <div class="font-semibold text-slate-700 dark:text-slate-100 truncate">
         {{ c.type === 'jur' && c.organization_name ? c.organization_name : c.name }}
@@ -606,7 +608,7 @@ onMounted(fetchProject)
       <div v-if="activeClient?.phone"><b>Телефон:</b> {{ activeClient.phone }}</div>
       <div v-if="activeClient?.city"><b>Город:</b> {{ activeClient.city }}</div>
       <div v-if="activeClient?.address"><b>Адрес:</b> {{ activeClient.address }}</div>
-      
+
       <div v-if="activeClient?.notes" class="pt-2">
         <b>Заметки:</b>
         <p class="whitespace-pre-line text-slate-500 dark:text-slate-400 mt-1">
@@ -660,16 +662,17 @@ onMounted(fetchProject)
       📝 Описание
     </button>
 
-    <button
-      v-if="isCompanyOwner"
-      @click="showDeleteModal = true"
-      class="btn-main bg-rose-500 hover:bg-rose-600 text-white"
-    >
-      🗑 Удалить проект
-    </button>
+      <button
+          v-if="canDeleteProject"
+          @click="showDeleteModal = true"
+          class="btn-main bg-rose-500 hover:bg-rose-600 text-white"
+      >
+          🗑 Удалить проект
+      </button>
 
 
-    <button
+
+      <button
   v-if="project?.company"
   @click="goBackToCompany"
   class="btn-main bg-white/90 hover:bg-white text-gray-900"
@@ -684,7 +687,7 @@ onMounted(fetchProject)
           >
             🔙 К проекту
           </a>
-    
+
   </div>
 
   <!-- 🔹 Управление персоналом -->
@@ -891,8 +894,8 @@ onMounted(fetchProject)
           <path d="M12 12c2.2 0 4-1.79 4-4s-1.8-4-4-4-4 1.79-4 4 1.8 4 4 4zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
         </svg>
         <span>
-          От: <b>{{ t.creator?.name ?? '—' }}</b> → 
-          Кому: 
+          От: <b>{{ t.creator?.name ?? '—' }}</b> →
+          Кому:
           <b v-if="t.executors?.length">
             {{ t.executors.map(e => e.name).join(', ') }}
           </b>
@@ -911,7 +914,7 @@ onMounted(fetchProject)
           </b>
           <b v-else>—</b>
         </span> <br/>
-        
+
       </div>
       <span>выполнено: {{ t.progress }}%</span>
     </div>
@@ -965,7 +968,7 @@ onMounted(fetchProject)
   <p v-else class="text-gray-500">Задачи пока не созданы</p>
 </div> -->
 
-    
+
 
 
 
@@ -1007,7 +1010,7 @@ onMounted(fetchProject)
 <!-- <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-10">
   <h2 class="text-lg font-bold mb-4 text-slate-500">Подпроекты <span style="color: red;">(доработка) </span></h2>
 
- 
+
   <div
     v-if="isAdmin || isCompanyOwner || isProjectManager"
     class="flex gap-2 items-center mb-6"

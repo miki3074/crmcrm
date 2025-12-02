@@ -21,63 +21,80 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        // Владелец компании или инициатор
-        if ($user->id === $project->company->user_id || $user->id === $project->initiator_id) {
+        $userId = $user->id;
+
+        // 1️⃣ Владелец компании
+        if ($userId === $project->company->user_id) {
             return true;
         }
 
-        // Один из руководителей
-        if ($project->managers->contains('id', $user->id)) {
+        // 2️⃣ Инициатор проекта
+        if ($userId === $project->initiator_id) {
             return true;
         }
 
-        if ($project->executors->contains('id', $user->id)) {
-        return true;
-    }
+        // 3️⃣ Менеджер проекта
+        if ($project->managers->contains('id', $userId)) {
+            return true;
+        }
 
-        // Исполнитель хотя бы одной задачи
-if ($project->tasks()
-    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
+        // 4️⃣ Исполнитель проекта
+        if ($project->executors->contains('id', $userId)) {
+            return true;
+        }
 
-// Ответственный хотя бы одной задачи
-if ($project->tasks()
-    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
+        // 5️⃣ Наблюдатель проекта
+        if ($project->watchers->contains('id', $userId)) {
+            return true;
+        }
 
-// Исполнитель подзадачи
-if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
-    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
+        // 6️⃣ Исполнитель хотя бы одной задачи
+        if (
+            $project->tasks()
+                ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+                ->exists()
+        ) {
+            return true;
+        }
 
-// Ответственный подзадачи
-if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
-    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
+        // 7️⃣ Ответственный хотя бы одной задачи
+        if (
+            $project->tasks()
+                ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
+                ->exists()
+        ) {
+            return true;
+        }
 
-        // 👁 Наблюдатель проекта
-    if ($project->watchers->contains('id', $user->id)) {
-        return true;
-    }
+        // 8️⃣ Исполнитель подзадачи
+        if (
+            \App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+                ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+                ->exists()
+        ) {
+            return true;
+        }
+
+        // 9️⃣ Ответственный подзадачи
+        if (
+            \App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+                ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
+                ->exists()
+        ) {
+            return true;
+        }
 
         return false;
     }
+
 
     /**
      * Создание проекта
      */
    public function create(User $user, Company $company): bool
 {
-    return 
-        $company->user_id === $user->id || 
+    return
+        $company->user_id === $user->id ||
         $company->users()
             ->wherePivot('role', 'manager')
             ->where('users.id', $user->id)
@@ -108,7 +125,15 @@ if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $pro
 
      public function updateman(User $user, Project $project): bool
     {
-        return $user->id === $project->company->user_id;
+        return
+            // владелец компании
+            $user->id === $project->company->user_id
+
+            // менеджер проекта
+            || $project->managers->contains('id', $user->id)
+
+            // исполнитель проекта
+            || $project->executors->contains('id', $user->id);
     }
     /**
      * Обновление бюджета
@@ -132,8 +157,11 @@ if (\App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $pro
 
     public function delete(User $user, Project $project): bool
     {
-        return $user->id === $project->company->user_id;
+        return
+            $user->id === $project->company->user_id ||
+            $user->id === $project->initiator_id;
     }
+
 
     public function deletepr(User $user, Project $project): bool
 {
