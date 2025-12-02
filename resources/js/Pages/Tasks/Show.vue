@@ -199,12 +199,19 @@ const finishTask = async () => {
 }
 
 const canManageTask = computed(() => {
-  const userId = props.auth?.user?.id
-  if (!userId || !task.value) return false
-  return (
-    (task.value.executors || []).some(e => e.id === userId) ||
-    (task.value.responsibles || []).some(r => r.id === userId)
-  )
+    const userId = props.auth?.user?.id
+    if (!userId || !task.value) return false
+
+    return (
+        // 🔥 создатель задачи
+        (task.value.creator && task.value.creator.id === userId) ||
+
+        // исполнитель задачи
+        (task.value.executors || []).some(e => e.id === userId) ||
+
+        // ответственный задачи
+        (task.value.responsibles || []).some(r => r.id === userId)
+    )
 })
 
 const canUploadFiles = computed(() => {
@@ -915,6 +922,7 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
 </div>
 
 
+
         </div>
 
 
@@ -934,8 +942,8 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
         ...(task.executors ?? []),
         ...(task.responsibles ?? []),
         ...(task.watchers ?? []),        // если нужны наблюдатели
-        ...(task.subtasksExecutors ?? []), // если нужно
-        ...(task.subtasksResponsibles ?? []),
+        // ...(task.subtasksExecutors ?? []), // если нужно
+        // ...(task.subtasksResponsibles ?? []),
         ...(task.creator ? [task.creator] : []), // ← вот это добавляем
     ]"
       />
