@@ -44,19 +44,25 @@ const editForm = ref({
 const canCreateSubtask = computed(() => {
   if (!task.value || !user) return false
 
-  return (
-    // Ответственные задачи
-    (task.value.responsibles || []).some(r => r.id === user.id) ||
+    return (
+        // 🔥 Владелец компании
+        user.id === task.value.project?.company?.user_id ||
 
-    // Исполнители задачи  ✅ ДОБАВЛЕНО
-    (task.value.executors || []).some(e => e.id === user.id) ||
+        // 🔥 Создатель задачи
+        user.id === task.value.creator?.id ||
 
-    // Руководители проекта
-    (task.value.project?.managers || []).some(m => m.id === user.id) ||
+        // Ответственные задачи
+        (task.value.responsibles || []).some(r => r.id === user.id) ||
 
-    // Исполнители проекта
-    isProjectExecutor.value
-  )
+        // Исполнители задачи
+        (task.value.executors || []).some(e => e.id === user.id) ||
+
+        // Руководители проекта
+        (task.value.project?.managers || []).some(m => m.id === user.id) ||
+
+        // Исполнители проекта
+        isProjectExecutor.value
+    )
 })
 
 
