@@ -250,256 +250,258 @@ onMounted(async () => {
   <AuthenticatedLayout>
     <Head title="Документы встреч" />
 
-    <template #header>
-      <h2 class="font-semibold text-2xl text-slate-800 dark:text-slate-100">
-        📄 Документы встреч
-      </h2>
-    </template>
+      <h1 style="text-align: center" class="mt-10">Доработка</h1>
 
-    <div class="max-w-6xl mx-auto p-6">
-      <button
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
-        @click="showCreate = true"
-      >
-        + Создать документ
-      </button>
+<!--    <template #header>-->
+<!--      <h2 class="font-semibold text-2xl text-slate-800 dark:text-slate-100">-->
+<!--        📄 Документы встреч-->
+<!--      </h2>-->
+<!--    </template>-->
 
-      <div class="mt-4 p-4 bg-white dark:bg-slate-900 border rounded-xl shadow space-y-4">
+<!--    <div class="max-w-6xl mx-auto p-6">-->
+<!--      <button-->
+<!--        class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"-->
+<!--        @click="showCreate = true"-->
+<!--      >-->
+<!--        + Создать документ-->
+<!--      </button>-->
 
-  <!-- Фильтр "Мой / Чужой / Все" -->
-  <div class="flex gap-4">
-    <select v-model="filters.filter" class="input w-48">
-      <option value="all">Все документы</option>
-      <option value="my">Мои документы</option>
-      <option value="others">Чужие документы</option>
-    </select>
+<!--      <div class="mt-4 p-4 bg-white dark:bg-slate-900 border rounded-xl shadow space-y-4">-->
 
-    <!-- Поиск -->
-    <input
-      v-model="filters.search"
-      placeholder="Поиск по названию..."
-      class="input w-80"
-    />
-  </div>
+<!--  &lt;!&ndash; Фильтр "Мой / Чужой / Все" &ndash;&gt;-->
+<!--  <div class="flex gap-4">-->
+<!--    <select v-model="filters.filter" class="input w-48">-->
+<!--      <option value="all">Все документы</option>-->
+<!--      <option value="my">Мои документы</option>-->
+<!--      <option value="others">Чужие документы</option>-->
+<!--    </select>-->
 
-  <!-- Дата от / до -->
-  <div class="flex gap-4">
-    <input type="date" v-model="filters.date_from" class="input w-48" /> 
-    <p class="mt-2 "> по</p>
-    <input type="date" v-model="filters.date_to" class="input w-48" />
+<!--    &lt;!&ndash; Поиск &ndash;&gt;-->
+<!--    <input-->
+<!--      v-model="filters.search"-->
+<!--      placeholder="Поиск по названию..."-->
+<!--      class="input w-80"-->
+<!--    />-->
+<!--  </div>-->
 
-    <button class="btn-blue" @click="applyFilters">Применить</button>
-    <button class="btn-gray" @click="resetFilters">Сбросить</button>
-  </div>
+<!--  &lt;!&ndash; Дата от / до &ndash;&gt;-->
+<!--  <div class="flex gap-4">-->
+<!--    <input type="date" v-model="filters.date_from" class="input w-48" /> -->
+<!--    <p class="mt-2 "> по</p>-->
+<!--    <input type="date" v-model="filters.date_to" class="input w-48" />-->
 
-</div>
+<!--    <button class="btn-blue" @click="applyFilters">Применить</button>-->
+<!--    <button class="btn-gray" @click="resetFilters">Сбросить</button>-->
+<!--  </div>-->
 
-
-      <!-- Список документов -->
-      <div class="mt-6">
-        <div v-if="loading" class="text-slate-500">Загрузка...</div>
-
-        <div
-          v-for="doc in documents"
-          :key="doc.id"
-          class="p-4 bg-white dark:bg-slate-900 border rounded-xl shadow mt-4"
-        >
-          <div class="flex justify-between items-center">
-            <div>
-              <div class="font-semibold">
-                {{ doc.type === 'agenda' ? 'Повестка дня' : 'Протокол' }} №{{ doc.number }}
-              </div>
-              <div class="text-sm text-slate-500">от {{ doc.document_date }}</div>
-              <div class="text-sm mt-1">Автор: {{ doc.creator?.name }}</div>
-
-              <div class="text-sm mt-1 text-slate-500" v-if="doc.task">
-                📌 Задача: {{ doc.task.title }}
-              </div>
-
-              <div class="text-sm mt-1 text-slate-500" v-if="doc.subtask">
-                ↳ Подзадача: {{ doc.subtask.title }}
-              </div>
-            </div>
-
-            <div class="flex gap-2">
-              <button class="px-3 py-1 bg-blue-500 text-white rounded" @click="openView(doc)">
-                Просмотр
-              </button>
-              <!-- Только если документ мой -->
-<button
-  v-if="doc.created_by === $page.props.auth.user.id"
-  class="px-3 py-1 bg-amber-500 text-white rounded"
-  @click="openEdit(doc)"
->
-  Редактировать
-</button>
-
-<button
-  v-if="doc.created_by === $page.props.auth.user.id"
-  class="px-3 py-1 bg-red-600 text-white rounded"
-  @click="deleteDoc(doc.id)"
->
-  Удалить
-</button>
-
-            </div>
-          </div>
-
-          <p class="mt-3 text-slate-700 dark:text-slate-300 line-clamp-3">
-            {{ doc.title }}
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==========================================
-      FULLSCREEN — СОЗДАНИЕ
-    =========================================== -->
-    <div v-if="showCreate" class="fullscreen-modal">
-      <div class="fullscreen-content">
-
-        <div class="flex justify-between items-center pb-4 border-b">
-          <h2 class="text-2xl font-bold">Создать документ</h2>
-          <button class="close-btn" @click="showCreate = false">✕</button>
-        </div>
-
-        <div class="mt-6 space-y-4">
-
-          <select v-model="form.type" class="input">
-            <option value="agenda">Повестка</option>
-            <option value="protocol">Протокол</option>
-          </select>
-
-          <input v-model="form.title" placeholder="Название" class="input" />
-
-         <div class="space-y-2">
-  <label class="flex gap-2 items-center">
-    <input type="radio" value="none" v-model="form.link_type">
-    <span>Не привязывать</span>
-  </label>
-
-  <label class="flex gap-2 items-center">
-    <input type="radio" value="task" v-model="form.link_type">
-    <span>Привязать к задаче</span>
-  </label>
-
-  <label class="flex gap-2 items-center">
-    <input type="radio" value="subtask" v-model="form.link_type">
-    <span>Привязать к подзадаче</span>
-  </label>
-</div>
-
-<select
-  v-if="form.link_type === 'task' || form.link_type === 'subtask'"
-  v-model="form.task_id"
-  class="input mt-4"
->
-  <option value="">Выберите задачу</option>
-
-  <option v-for="t in tasks" :value="t.id" :key="t.id">
-    {{ t.title }}
-  </option>
-</select>
-
-<select
-  v-if="form.link_type === 'subtask' && subtasks[form.task_id]"
-  v-model="form.subtask_id"
-  class="input"
->
-  <option value="">Выберите подзадачу</option>
-
-  <option v-for="s in subtasks[form.task_id]" :key="s.id" :value="s.id">
-    {{ s.title }}
-  </option>
-</select>
+<!--</div>-->
 
 
+<!--      &lt;!&ndash; Список документов &ndash;&gt;-->
+<!--      <div class="mt-6">-->
+<!--        <div v-if="loading" class="text-slate-500">Загрузка...</div>-->
 
-          <RichEditor v-model="form.body" />
+<!--        <div-->
+<!--          v-for="doc in documents"-->
+<!--          :key="doc.id"-->
+<!--          class="p-4 bg-white dark:bg-slate-900 border rounded-xl shadow mt-4"-->
+<!--        >-->
+<!--          <div class="flex justify-between items-center">-->
+<!--            <div>-->
+<!--              <div class="font-semibold">-->
+<!--                {{ doc.type === 'agenda' ? 'Повестка дня' : 'Протокол' }} №{{ doc.number }}-->
+<!--              </div>-->
+<!--              <div class="text-sm text-slate-500">от {{ doc.document_date }}</div>-->
+<!--              <div class="text-sm mt-1">Автор: {{ doc.creator?.name }}</div>-->
 
-          <div class="flex justify-end gap-2 pt-4">
-            <button class="btn-gray" @click="showCreate = false">Отмена</button>
-            <button class="btn-blue" @click="createDoc">Создать</button>
-          </div>
-        </div>
+<!--              <div class="text-sm mt-1 text-slate-500" v-if="doc.task">-->
+<!--                📌 Задача: {{ doc.task.title }}-->
+<!--              </div>-->
 
-      </div>
-    </div>
+<!--              <div class="text-sm mt-1 text-slate-500" v-if="doc.subtask">-->
+<!--                ↳ Подзадача: {{ doc.subtask.title }}-->
+<!--              </div>-->
+<!--            </div>-->
+
+<!--            <div class="flex gap-2">-->
+<!--              <button class="px-3 py-1 bg-blue-500 text-white rounded" @click="openView(doc)">-->
+<!--                Просмотр-->
+<!--              </button>-->
+<!--              &lt;!&ndash; Только если документ мой &ndash;&gt;-->
+<!--<button-->
+<!--  v-if="doc.created_by === $page.props.auth.user.id"-->
+<!--  class="px-3 py-1 bg-amber-500 text-white rounded"-->
+<!--  @click="openEdit(doc)"-->
+<!--&gt;-->
+<!--  Редактировать-->
+<!--</button>-->
+
+<!--<button-->
+<!--  v-if="doc.created_by === $page.props.auth.user.id"-->
+<!--  class="px-3 py-1 bg-red-600 text-white rounded"-->
+<!--  @click="deleteDoc(doc.id)"-->
+<!--&gt;-->
+<!--  Удалить-->
+<!--</button>-->
+
+<!--            </div>-->
+<!--          </div>-->
+
+<!--          <p class="mt-3 text-slate-700 dark:text-slate-300 line-clamp-3">-->
+<!--            {{ doc.title }}-->
+<!--          </p>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
+
+<!--    &lt;!&ndash; ==========================================-->
+<!--      FULLSCREEN — СОЗДАНИЕ-->
+<!--    =========================================== &ndash;&gt;-->
+<!--    <div v-if="showCreate" class="fullscreen-modal">-->
+<!--      <div class="fullscreen-content">-->
+
+<!--        <div class="flex justify-between items-center pb-4 border-b">-->
+<!--          <h2 class="text-2xl font-bold">Создать документ</h2>-->
+<!--          <button class="close-btn" @click="showCreate = false">✕</button>-->
+<!--        </div>-->
+
+<!--        <div class="mt-6 space-y-4">-->
+
+<!--          <select v-model="form.type" class="input">-->
+<!--            <option value="agenda">Повестка</option>-->
+<!--            <option value="protocol">Протокол</option>-->
+<!--          </select>-->
+
+<!--          <input v-model="form.title" placeholder="Название" class="input" />-->
+
+<!--         <div class="space-y-2">-->
+<!--  <label class="flex gap-2 items-center">-->
+<!--    <input type="radio" value="none" v-model="form.link_type">-->
+<!--    <span>Не привязывать</span>-->
+<!--  </label>-->
+
+<!--  <label class="flex gap-2 items-center">-->
+<!--    <input type="radio" value="task" v-model="form.link_type">-->
+<!--    <span>Привязать к задаче</span>-->
+<!--  </label>-->
+
+<!--  <label class="flex gap-2 items-center">-->
+<!--    <input type="radio" value="subtask" v-model="form.link_type">-->
+<!--    <span>Привязать к подзадаче</span>-->
+<!--  </label>-->
+<!--</div>-->
+
+<!--<select-->
+<!--  v-if="form.link_type === 'task' || form.link_type === 'subtask'"-->
+<!--  v-model="form.task_id"-->
+<!--  class="input mt-4"-->
+<!--&gt;-->
+<!--  <option value="">Выберите задачу</option>-->
+
+<!--  <option v-for="t in tasks" :value="t.id" :key="t.id">-->
+<!--    {{ t.title }}-->
+<!--  </option>-->
+<!--</select>-->
+
+<!--<select-->
+<!--  v-if="form.link_type === 'subtask' && subtasks[form.task_id]"-->
+<!--  v-model="form.subtask_id"-->
+<!--  class="input"-->
+<!--&gt;-->
+<!--  <option value="">Выберите подзадачу</option>-->
+
+<!--  <option v-for="s in subtasks[form.task_id]" :key="s.id" :value="s.id">-->
+<!--    {{ s.title }}-->
+<!--  </option>-->
+<!--</select>-->
 
 
-    <!-- ==========================================
-      FULLSCREEN — ПРОСМОТР
-    =========================================== -->
-    <div v-if="showView" class="fullscreen-modal">
-      <div class="fullscreen-content">
-        <div class="flex justify-between items-center pb-4 border-b">
-          <h2 class="text-2xl font-bold">
-            {{ selected.type === 'agenda' ? 'Повестка' : 'Протокол' }}
-            №{{ selected.number }} от {{ selected.document_date }} <br/>
-            Название: {{ selected.title }}
-          </h2>
- <!-- <button
-  class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-  @click="downloadPdf(selected.id)"
->
-  Скачать PDF
-</button> -->
-          <button class="close-btn" @click="showView = false">✕</button>
-         
-        </div>
 
-        <div class="mt-6">
+<!--          <RichEditor v-model="form.body" />-->
 
-          <!-- <h3 class="text-xl font-semibold mb-4">{{ selected.title }}</h3> -->
+<!--          <div class="flex justify-end gap-2 pt-4">-->
+<!--            <button class="btn-gray" @click="showCreate = false">Отмена</button>-->
+<!--            <button class="btn-blue" @click="createDoc">Создать</button>-->
+<!--          </div>-->
+<!--        </div>-->
 
-          <div class="ql-editor text-lg leading-relaxed" v-html="selected.body"></div>
+<!--      </div>-->
+<!--    </div>-->
 
-        </div>
-      </div>
-    </div>
 
-    <!-- ==========================================
-      FULLSCREEN — РЕДАКТИРОВАНИЕ
-    =========================================== -->
-    <div v-if="showEdit" class="fullscreen-modal">
-      <div class="fullscreen-content">
-        <div class="flex justify-between items-center pb-4 border-b">
-          <h2 class="text-2xl font-bold">Редактировать документ</h2>
-          <button class="close-btn" @click="showEdit = false">✕</button>
-        </div>
+<!--    &lt;!&ndash; ==========================================-->
+<!--      FULLSCREEN — ПРОСМОТР-->
+<!--    =========================================== &ndash;&gt;-->
+<!--    <div v-if="showView" class="fullscreen-modal">-->
+<!--      <div class="fullscreen-content">-->
+<!--        <div class="flex justify-between items-center pb-4 border-b">-->
+<!--          <h2 class="text-2xl font-bold">-->
+<!--            {{ selected.type === 'agenda' ? 'Повестка' : 'Протокол' }}-->
+<!--            №{{ selected.number }} от {{ selected.document_date }} <br/>-->
+<!--            Название: {{ selected.title }}-->
+<!--          </h2>-->
+<!-- &lt;!&ndash; <button-->
+<!--  class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"-->
+<!--  @click="downloadPdf(selected.id)"-->
+<!--&gt;-->
+<!--  Скачать PDF-->
+<!--</button> &ndash;&gt;-->
+<!--          <button class="close-btn" @click="showView = false">✕</button>-->
+<!--         -->
+<!--        </div>-->
 
-        <div class="mt-6 space-y-4">
+<!--        <div class="mt-6">-->
 
-          <input v-model="editForm.title" class="input" />
+<!--          &lt;!&ndash; <h3 class="text-xl font-semibold mb-4">{{ selected.title }}</h3> &ndash;&gt;-->
 
-          <select v-model="editForm.task_id" class="input">
-            <option value="">Не привязывать к задаче</option>
-            <option v-for="t in tasks" :key="t.id" :value="t.id">
-              {{ t.title }}
-            </option>
-          </select>
+<!--          <div class="ql-editor text-lg leading-relaxed" v-html="selected.body"></div>-->
 
-          <select v-if="subtasks[editForm.task_id]" v-model="editForm.subtask_id" class="input">
-            <option value="">Не привязывать к подзадаче</option>
-            <option
-              v-for="s in subtasks[editForm.task_id]"
-              :key="s.id"
-              :value="s.id"
-            >
-              {{ s.title }}
-            </option>
-          </select>
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
 
-          <RichEditor v-model="editForm.body" />
+<!--    &lt;!&ndash; ==========================================-->
+<!--      FULLSCREEN — РЕДАКТИРОВАНИЕ-->
+<!--    =========================================== &ndash;&gt;-->
+<!--    <div v-if="showEdit" class="fullscreen-modal">-->
+<!--      <div class="fullscreen-content">-->
+<!--        <div class="flex justify-between items-center pb-4 border-b">-->
+<!--          <h2 class="text-2xl font-bold">Редактировать документ</h2>-->
+<!--          <button class="close-btn" @click="showEdit = false">✕</button>-->
+<!--        </div>-->
 
-          <div class="flex justify-end gap-2 pt-4">
-            <button class="btn-gray" @click="showEdit = false">Отмена</button>
-            <button class="btn-blue" @click="updateDoc">Сохранить</button>
-          </div>
+<!--        <div class="mt-6 space-y-4">-->
 
-        </div>
-      </div>
-    </div>
+<!--          <input v-model="editForm.title" class="input" />-->
+
+<!--          <select v-model="editForm.task_id" class="input">-->
+<!--            <option value="">Не привязывать к задаче</option>-->
+<!--            <option v-for="t in tasks" :key="t.id" :value="t.id">-->
+<!--              {{ t.title }}-->
+<!--            </option>-->
+<!--          </select>-->
+
+<!--          <select v-if="subtasks[editForm.task_id]" v-model="editForm.subtask_id" class="input">-->
+<!--            <option value="">Не привязывать к подзадаче</option>-->
+<!--            <option-->
+<!--              v-for="s in subtasks[editForm.task_id]"-->
+<!--              :key="s.id"-->
+<!--              :value="s.id"-->
+<!--            >-->
+<!--              {{ s.title }}-->
+<!--            </option>-->
+<!--          </select>-->
+
+<!--          <RichEditor v-model="editForm.body" />-->
+
+<!--          <div class="flex justify-end gap-2 pt-4">-->
+<!--            <button class="btn-gray" @click="showEdit = false">Отмена</button>-->
+<!--            <button class="btn-blue" @click="updateDoc">Сохранить</button>-->
+<!--          </div>-->
+
+<!--        </div>-->
+<!--      </div>-->
+<!--    </div>-->
 
   </AuthenticatedLayout>
 </template>
