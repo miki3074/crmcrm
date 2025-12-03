@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\API\ProducerBuyerController;
+use App\Http\Controllers\API\TaskTemplateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -84,7 +86,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/companies', [CompanyController::class, 'index']);
     Route::post('/companies', [CompanyController::class, 'store']);
     Route::get('/companies/{company}', [CompanyController::class, 'show']);
-
 });
 
 
@@ -451,9 +452,59 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/contracts/files/{file}', [ContractController::class, 'deleteFile']);
     Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
     Route::get('/contracts/files/{file}/download', [ContractController::class, 'downloadFile']);
+});
 
+Route::middleware('auth:sanctum')->group(function () {
+
+    // список шаблонов
+    Route::get('/task-templates', [TaskTemplateController::class, 'index']);
+
+    // справочники (компании, проекты, сотрудники)
+    Route::get('/task-templates/companies', [TaskTemplateController::class, 'companiesForUser']);
+    Route::get('/task-templates/companies/{company}/projects', [TaskTemplateController::class, 'projectsByCompany']);
+    Route::get('/task-templates/companies/{company}/employees', [TaskTemplateController::class, 'employeesByCompany']);
+
+    // CRUD по шаблонам
+    Route::post('/task-templates', [TaskTemplateController::class, 'store']);
+    Route::put('/task-templates/{template}', [TaskTemplateController::class, 'update']);
+    Route::delete('/task-templates/{template}', [TaskTemplateController::class, 'destroy']);
+
+    // файлы шаблонов
+    Route::delete('/task-template-files/{file}', [TaskTemplateController::class, 'deleteFile']);
+
+    // создать задачу по шаблону
+    Route::post('/task-templates/{template}/create-task', [TaskTemplateController::class, 'createTaskFromTemplate']);
+
+    Route::post('/task-templates/{template}/duplicate',
+        [TaskTemplateController::class, 'duplicate']);
+
+    Route::delete('/task-template-files/{file}',
+        [TaskTemplateController::class, 'deleteFile']);
+
+    // Фильтрация производителей/покупателей по компании
+    Route::get('/task-templates/companies/{company}/producers', [ProducerBuyerController::class, 'producersByCompany']);
+    Route::get('/task-templates/companies/{company}/buyers',    [ProducerBuyerController::class, 'buyersByCompany']);
 
 });
+
+// === ПРОИЗВОДИТЕЛИ / ПОКУПАТЕЛИ ===
+Route::get('/producers', [ProducerBuyerController::class, 'producers']);
+Route::get('/buyers', [ProducerBuyerController::class, 'buyers']);
+
+Route::post('/producers', [ProducerBuyerController::class, 'storeProducer']);
+Route::post('/buyers', [ProducerBuyerController::class, 'storeBuyer']);
+
+Route::put('/producers/{producer}', [ProducerBuyerController::class, 'updateProducer']);
+Route::put('/buyers/{buyer}', [ProducerBuyerController::class, 'updateBuyer']);
+
+Route::delete('/producers/{producer}', [ProducerBuyerController::class, 'deleteProducer']);
+Route::delete('/buyers/{buyer}', [ProducerBuyerController::class, 'deleteBuyer']);
+
+// Привязка к задаче
+Route::post('/tasks/{task}/producers/{producer}', [ProducerBuyerController::class, 'attachProducerToTask']);
+Route::post('/tasks/{task}/buyers/{buyer}', [ProducerBuyerController::class, 'attachBuyerToTask']);
+
+
 
 //Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
 

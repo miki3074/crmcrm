@@ -106,6 +106,17 @@ public function watchers()
         ->select('users.id', 'users.name');
 }
 
+    public function producers()
+    {
+        return $this->belongsToMany(Producer::class, 'task_producer');
+    }
+
+    public function buyers()
+    {
+        return $this->belongsToMany(Buyer::class, 'task_buyer');
+    }
+
+
 
 
 

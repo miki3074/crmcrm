@@ -909,12 +909,51 @@ class="btn-grid bg-gray-500 hover:bg-purple-600 col-span-2" >
               </dd></div>
               <div class="flex justify-between"><dt>Проект</dt><dd class="font-medium">{{ task?.project?.name ?? '—' }}</dd></div>
               <div class="flex justify-between"><dt>Компания</dt><dd class="font-medium">{{ task?.project?.company?.name ?? '—' }}</dd></div>
-              <div class="flex justify-between"><dt>Приоритет</dt><dd>
+
+
+
+                <div class="flex justify-between"><dt>Приоритет</dt><dd>
                 <span v-if="task" class="px-2 py-1 text-xs rounded-full ring-1" :class="priorityBadge(task.priority)">
                   {{ priorityLabel(task.priority) }}
                 </span>
               </dd></div>
             </dl>
+
+              <div v-if="task" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+
+                  <!-- Производители -->
+                  <div v-if="task.producers && task.producers.length"
+                       class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border">
+                      <h3 class="text-sm font-bold mb-3">Производители</h3>
+                      <div class="space-y-2">
+                          <div
+                              v-for="p in task.producers"
+                              :key="p.id"
+                              class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+                          >
+                              {{ p.name }}
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Покупатели -->
+                  <div v-if="task.buyers && task.buyers.length"
+                       class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow border">
+                      <h3 class="text-sm font-bold mb-3">Покупатели</h3>
+                      <div class="space-y-2">
+                          <div
+                              v-for="b in task.buyers"
+                              :key="b.id"
+                              class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+                          >
+                              {{ b.name }}
+                          </div>
+                      </div>
+                  </div>
+
+              </div>
+
+
           </div>
 
 <div v-if="task" class="rounded-2xl border bg-white dark:bg-gray-800 p-5">

@@ -146,6 +146,8 @@ public function show($id)
         'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
         'subtasks.executors:id,name',
         'subtasks.creator:id,name',
+        'producers:id,name,company_id',
+        'buyers:id,name,company_id',
     ])->findOrFail($id);
 
     $this->authorize('view', $task);

@@ -186,6 +186,12 @@ Route::middleware(['auth', 'verified'])->get('/users', function () {
 })->name('users.index');
 
 
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/task-templates', function () {
+        return Inertia::render('TaskTemplates/Indexs');
+    })->name('task-templates.index');
+});
+
 
 Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
     ->middleware('guest')
