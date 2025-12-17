@@ -487,7 +487,7 @@ onMounted(async () => {
         class="rounded bg-sky-600 text-white px-3 py-1 text-xs hover:bg-sky-700">
         введите команду /start
       </a>
-     
+
 
     </template>
 
@@ -529,7 +529,7 @@ onMounted(async () => {
 </div>
 
     <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
-     
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           class="group rounded-2xl border bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 px-5 py-4 text-left hover:shadow transition"
@@ -585,7 +585,7 @@ onMounted(async () => {
             </div>
             <div>
               <div class="font-semibold text-slate-500">Клиенты</div>
-              
+
             </div>
           </div>
         </button>
@@ -618,7 +618,7 @@ onMounted(async () => {
         Визуальная схема
       </div>
       <div class="text-xs text-slate-500 ">
-        
+
       </div>
     </div>
   </div>
@@ -627,7 +627,7 @@ onMounted(async () => {
 
       </div>
 
-     
+
       <div class="flex items-center gap-3">
         <div class="relative flex-1">
   <input
@@ -1173,7 +1173,7 @@ onMounted(async () => {
   class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 backdrop-blur-sm transition"
 >
   <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-5xl max-h-[85vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-2xl relative">
-    
+
     <!-- Кнопка закрытия -->
     <button
       @click="showAllProjectsModal = false"
@@ -1276,19 +1276,33 @@ onMounted(async () => {
             <div
               v-for="t in tasks.slice(0, 6)"
               :key="t.id"
-              class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-3 hover:shadow-md transition cursor-pointer"
+              class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/70 p-3 hover:shadow-md transition cursor-pointer group relative"
               @click="$inertia.visit(`/tasks/${t.id}`)"
             >
-              <div class="font-semibold text-sm truncate text-slate-700 dark:text-slate-100">
-                {{ t.title }}
-              </div>
-              <div class="text-[11px] text-slate-400 mt-1">
+                <div class="relative">
+                    <div class="font-semibold text-sm truncate text-slate-700 dark:text-slate-100">
+                        {{ t.title }}
+                    </div>
+                    <!-- Тултип, который появляется при наведении -->
+                    <div
+                        class="absolute invisible opacity-0 group-hover:visible group-hover:opacity-100 bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg z-50 transition-all duration-200 whitespace-normal break-words max-w-xs w-max shadow-lg"
+                        style="word-break: break-word;"
+                    >
+                        {{ t.title }}
+                        <!-- Стрелка тултипа -->
+                        <div class="absolute top-full left-3 border-4 border-transparent border-t-slate-900"></div>
+                    </div>
+                </div>
+              <div class="text-[11px] text-slate-400 mt-1 f truncate text-slate-700 dark:text-slate-100">
                 {{ t.start_date }} → {{ t.due_date || 'без срока' }}
               </div>
               <div class="mt-1 h-1.5 rounded bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div class="h-full bg-slate-900 dark:bg-white" :style="{width: ((t.progress ?? 0) + '%')}"/>
               </div>
             </div>
+
+
+
           </div>
         </div>
       </div>
@@ -1392,43 +1406,65 @@ onMounted(async () => {
           </h5>
 
           <!-- === Задачи внутри проекта === -->
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
-            <div
-              v-for="(subtasks, taskTitle) in tasks"
-              :key="taskTitle"
-              class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white/90 dark:bg-slate-900/70"
-            >
-              <div class="flex items-center justify-between mb-2">
-                <div class="font-semibold text-slate-700 dark:text-slate-100 truncate">
-                  ✅ {{ taskTitle }}
-                </div>
-
-                <button
-                  v-if="subtasks.length > 4"
-                  @click="openAllSubtasks(companyName, projectName, taskTitle, subtasks)"
-                  class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition">
-                  Показать все
-                </button>
-              </div>
-
-              <!-- Сетка подзадач -->
-              <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
                 <div
-                  v-for="st in subtasks.slice(0, 4)"
-                  :key="st.id"
-                  class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 hover:shadow-md transition cursor-pointer"
-                  @click="$inertia.visit(`/tasks/${st.task_id}`)"
+                    v-for="(subtasks, taskTitle) in tasks"
+                    :key="taskTitle"
+                    class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white/90 dark:bg-slate-900/70"
                 >
-                  <div class="font-medium text-sm text-slate-700 dark:text-slate-100 truncate">
-                    🧩 {{ st.title }}
-                  </div>
-                  <div class="text-[11px] text-slate-400 mt-1">
-                    {{ st.start_date }} → {{ st.due_date || 'без срока' }}
-                  </div>
+                    <div class="flex items-center justify-between mb-2">
+                        <!-- Заголовок задачи с тултипом -->
+                        <div class="relative group inline-block max-w-[70%]">
+                            <div class="font-semibold text-slate-700 dark:text-slate-100 truncate">
+                                ✅ {{ taskTitle }}
+                            </div>
+
+                            <!-- Тултип для заголовка задачи -->
+                            <div class="absolute invisible opacity-0 group-hover:visible group-hover:opacity-100 bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg z-50 transition-all duration-200 whitespace-normal break-words max-w-xs w-max shadow-lg">
+                                ✅ {{ taskTitle }}
+                                <!-- Стрелка -->
+                                <div class="absolute top-full left-3 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                        </div>
+
+                        <button
+                            v-if="subtasks.length > 4"
+                            @click="openAllSubtasks(companyName, projectName, taskTitle, subtasks)"
+                            class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition"
+                        >
+                            Показать все
+                        </button>
+                    </div>
+
+                    <!-- Сетка подзадач -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div
+                            v-for="st in subtasks.slice(0, 4)"
+                            :key="st.id"
+                            class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 hover:shadow-md transition cursor-pointer group/subtask"
+                            @click="$inertia.visit(`/tasks/${st.task_id}`)"
+                        >
+                            <!-- Подзадача с тултипом -->
+                            <div class="relative">
+                                <div class="font-medium text-sm text-slate-700 dark:text-slate-100 truncate">
+                                    🧩 {{ st.title }}
+                                </div>
+
+                                <!-- Тултип для подзадачи -->
+                                <div class="absolute invisible opacity-0 group-hover/subtask:visible group-hover/subtask:opacity-100 bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg z-50 transition-all duration-200 whitespace-normal break-words max-w-xs w-max shadow-lg">
+                                    🧩 {{ st.title }}
+                                    <!-- Стрелка -->
+                                    <div class="absolute top-full left-3 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                            </div>
+
+                            <div class="text-[11px] text-slate-400 mt-1">
+                                {{ st.start_date }} → {{ st.due_date || 'без срока' }}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1524,7 +1560,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    
+
 
   </div>
 </div>
@@ -1568,7 +1604,7 @@ onMounted(async () => {
     </div>
 
     <div v-else class="text-sm text-slate-400 italic">
-      
+
     </div>
   </div>
 </div>
@@ -1617,6 +1653,6 @@ onMounted(async () => {
     </div>
 
 
-    
+
   </AuthenticatedLayout>
 </template>
