@@ -13,6 +13,7 @@ class SubtaskComment extends Model
         'subtask_id',
         'user_id',
         'comment',
+         'parent_id'
     ];
 
     public function subtask()
@@ -23,6 +24,11 @@ class SubtaskComment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(SubtaskComment::class, 'parent_id');
     }
 
     protected $casts = [

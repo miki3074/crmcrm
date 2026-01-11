@@ -16,243 +16,280 @@ use App\Models\Subproject;
 use Carbon\Carbon;
 
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class CompanyController extends Controller
 {
 
-public function index()
-{
-    $userId = auth()->id();
 
-    // 1. Компании, созданные пользователем
-   $createdCompanies = Company::with([
-    'projects' => function ($q) {
-        $q->with('manager:id,name'); // просто грузим все проекты этой компании
-    }
-])->where('user_id', $userId)->get();
+    public function index()
+    {
+        $userId = auth()->id();
 
-    // 2. Компании, где он руководитель проектов
-   $managedProjects = Project::with('company', 'managers')
-    ->whereHas('managers', function ($q) use ($userId) {
-        $q->where('users.id', $userId);
-    })
-    ->get()
-    ->groupBy('company_id');
+        // Оптимизация: выбираем только нужные поля задач, чтобы не грузить лишнее
+        $taskSelect = function ($q) {
+            $q->select('id', 'project_id', 'title', 'description', 'priority', 'status', 'due_date', 'start_date');
+        };
 
-    $managedCompanies = collect();
-    foreach ($managedProjects as $companyId => $projects) {
-        $company = $projects->first()->company;
-        $company->projects = $projects->map(function ($project) {
-            return [
-                'id' => $project->id,
-                'name' => $project->name,
-                 'managers' => $project->managers->map(fn($m) => [
-            'id' => $m->id,
-            'name' => $m->name,
-        ]),
-            ];
-        });
-        if (!$createdCompanies->contains('id', $company->id)) {
-            $managedCompanies->push($company);
+        // 1. Компании, созданные пользователем
+        $createdCompanies = Company::with([
+            'projects' => function ($q) use ($taskSelect) {
+                $q->with(['manager:id,name', 'tasks' => $taskSelect]);
+            }
+        ])->where('user_id', $userId)->get();
+
+        // 2. Компании, где он руководитель проектов
+        $managedProjects = Project::with(['company', 'managers', 'tasks' => $taskSelect])
+            ->whereHas('managers', function ($q) use ($userId) {
+                $q->where('users.id', $userId);
+            })
+            ->get()
+            ->groupBy('company_id');
+
+        $managedCompanies = collect();
+        foreach ($managedProjects as $companyId => $projects) {
+            $company = $projects->first()->company;
+            $company->projects = $projects->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'start_date' => $project->start_date, // Нужно для Vue (daysLeft)
+                    'duration_days' => $project->duration_days ?? 30, // Нужно для Vue
+                    'managers' => $project->managers->map(fn($m) => [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                    ]),
+                    'tasks' => $project->tasks // <-- ДОБАВЛЕНО
+                ];
+            });
+            if (!$createdCompanies->contains('id', $company->id)) {
+                $managedCompanies->push($company);
+            }
         }
-    }
 
-    // 3. Компании, где он исполнитель задач
-    $executorTasks = Task::with(['project.company', 'project.manager'])
-        ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
-    ->get();
+        // 3. Компании, где он исполнитель задач
+        // Здесь мы показываем ТОЛЬКО те задачи, где он исполнитель, или весь проект?
+        // Обычно в списке задач проекта показывают все, но если логика строгая, оставляем как есть, но формируем структуру.
+        $executorTasks = Task::with(['project.company', 'project.manager'])
+            ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+            ->get();
 
-    $groupedByCompany = $executorTasks->groupBy(fn($task) => $task->project->company->id);
-    $executorCompanies = $groupedByCompany->map(function ($tasks, $companyId) {
-        $company = $tasks->first()->project->company;
-        $projects = $tasks->groupBy('project_id')->map(function ($tasks) {
-            $project = $tasks->first()->project;
+        $groupedByCompany = $executorTasks->groupBy(fn($task) => $task->project->company->id);
+        $executorCompanies = $groupedByCompany->map(function ($tasks, $companyId) {
+            $company = $tasks->first()->project->company;
+            $projects = $tasks->groupBy('project_id')->map(function ($projectTasks) {
+                $project = $projectTasks->first()->project;
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'start_date' => $project->start_date,
+                    'duration_days' => $project->duration_days,
+                    'manager' => [
+                        'id' => $project->manager->id ?? null,
+                        'name' => $project->manager->name ?? '—',
+                    ],
+                    // ВАЖНО: Превращаем коллекцию задач в массив для Vue
+                    'tasks' => $projectTasks->map(fn($t) => [
+                        'id' => $t->id,
+                        'title' => $t->title,
+                        'description' => $t->description,
+                        'priority' => $t->priority,
+                        'status' => $t->status,
+                        'due_date' => $t->due_date,
+                    ])->values()
+                ];
+            })->values();
             return [
-                'id' => $project->id,
-                'name' => $project->name,
-                'manager' => [
-                    'id' => $project->manager->id ?? null,
-                    'name' => $project->manager->name ?? '—',
-                ],
+                'id' => $company->id,
+                'name' => $company->name,
+                'logo' => $company->logo,
+                'projects' => $projects
             ];
         })->values();
-        return [
-            'id' => $company->id,
-            'name' => $company->name,
-            'logo' => $company->logo,
-            'projects' => $projects
-        ];
-    })->values();
 
-    // 4. Компании, где он ответственный по задачам
-$responsibleTasks = Task::with(['project.company', 'project.managers'])
-    ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
-    ->get();
+        // 4. Компании, где он ответственный по задачам
+        $responsibleTasks = Task::with(['project.company', 'project.managers'])
+            ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
+            ->get();
 
-$responsibleGrouped = $responsibleTasks->groupBy(fn($task) => $task->project->company->id);
-$responsibleCompanies = $responsibleGrouped->map(function ($tasks, $companyId) {
-    $company = $tasks->first()->project->company;
-    $projects = $tasks->groupBy('project_id')->map(function ($tasks) {
-        $project = $tasks->first()->project;
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'manager' => [
-                'id' => $project->manager->id ?? null,
-                'name' => $project->manager->name ?? '—',
-            ],
-        ];
-    })->values();
+        $responsibleGrouped = $responsibleTasks->groupBy(fn($task) => $task->project->company->id);
+        $responsibleCompanies = $responsibleGrouped->map(function ($tasks, $companyId) {
+            $company = $tasks->first()->project->company;
+            $projects = $tasks->groupBy('project_id')->map(function ($projectTasks) {
+                $project = $projectTasks->first()->project;
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'start_date' => $project->start_date,
+                    'duration_days' => $project->duration_days,
+                    'manager' => [
+                        'id' => $project->manager->id ?? null,
+                        'name' => $project->manager->name ?? '—',
+                    ],
+                    'tasks' => $projectTasks->map(fn($t) => [
+                        'id' => $t->id,
+                        'title' => $t->title,
+                        'description' => $t->description,
+                        'priority' => $t->priority,
+                        'status' => $t->status,
+                        'due_date' => $t->due_date,
+                    ])->values()
+                ];
+            })->values();
 
-    return [
-        'id' => $company->id,
-        'name' => $company->name,
-        'logo' => $company->logo,
-        'projects' => $projects
-    ];
-})->values();
-
-
-// 6. Компании, где пользователь наблюдатель проекта
-$watcherProjects = Project::with(['company', 'managers', 'watchers'])
-    ->whereHas('watchers', function ($q) use ($userId) {
-        $q->where('project_watchers.user_id', $userId);
-    })
-    ->get()
-    ->groupBy('company_id');
-
-$watcherCompanies = collect();
-
-foreach ($watcherProjects as $companyId => $projects) {
-    $company = $projects->first()->company;
-
-    $company->projects = $projects->map(function ($project) {
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'managers' => $project->managers->map(fn($m) => [
-                'id' => $m->id,
-                'name' => $m->name,
-            ]),
-            'is_watcher' => true, // 👁 можно отметить, что он наблюдатель
-        ];
-    });
-
-    $watcherCompanies->push($company);
-}
-
-
-// 7. Компании, где пользователь исполнитель проекта
-$executorProjects = Project::with(['company', 'managers', 'executors'])
-    ->whereHas('executors', function ($q) use ($userId) {
-        $q->where('project_executors.user_id', $userId);
-    })
-    ->get()
-    ->groupBy('company_id');
-
-$projectExecutorCompanies = collect();
-
-foreach ($executorProjects as $companyId => $projects) {
-    $company = $projects->first()->company;
-
-    $company->projects = $projects->map(function ($project) {
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'managers' => $project->managers->map(fn($m) => [
-                'id' => $m->id,
-                'name' => $m->name,
-            ]),
-            'is_project_executor' => true, // 🧰 можно помечать, что пользователь — исполнитель проекта
-        ];
-    });
-
-    $projectExecutorCompanies->push($company);
-}
-
-
-
-
-// 5. Компании, где он исполнитель подзадач
-
-
-// $subtaskCompanies = Subtask::with(['task.project.company', 'task.project.manager'])
-//     ->where('executor_id', $userId)
-//     ->get()
-//     ->groupBy(fn($subtask) => $subtask->task->project->company->id);
-
-$subtaskCompanies = Subtask::query()
-    // Берём только те подзадачи, у которых есть НЕ завершённая родительская задача
-    ->whereHas('task') // этого достаточно, т.к. на Task висит глобальный скоуп not_completed
-    ->with([
-        // Важно: грузим те же связи через task
-        'task.project.company',
-        'task.project.managers',
-    ])
-    ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
-    ->get();
-
-   $memberCompanies = Company::with('projects')
-    ->whereHas('users', fn($q) => $q->where('user_id', $userId))
-    ->get();
-
-
-$subtaskCompanies = $subtaskCompanies
-    ->filter(fn($s) => $s->task && $s->task->project && $s->task->project->company) // защита
-    ->groupBy(fn($s) => $s->task->project->company->id)
-    ->map(function ($subtasks, $companyId) {
-    $company = $subtasks->first()->task->project->company;
-    $projects = $subtasks->groupBy(fn($s) => $s->task->project_id)->map(function ($subtasks) {
-        $project = $subtasks->first()->task->project;
-        $tasks = $subtasks->groupBy('task_id')->map(function ($subs) {
-            $task = $subs->first()->task;
             return [
-                'id' => $task->id,
-                'title' => $task->title,
-                'subtasks' => $subs->map(function ($s) {
+                'id' => $company->id,
+                'name' => $company->name,
+                'logo' => $company->logo,
+                'projects' => $projects
+            ];
+        })->values();
+
+
+        // 6. Компании, где пользователь наблюдатель проекта
+        $watcherProjects = Project::with(['company', 'managers', 'watchers', 'tasks' => $taskSelect]) // <-- Added tasks
+        ->whereHas('watchers', function ($q) use ($userId) {
+            $q->where('project_watchers.user_id', $userId);
+        })
+            ->get()
+            ->groupBy('company_id');
+
+        $watcherCompanies = collect();
+
+        foreach ($watcherProjects as $companyId => $projects) {
+            $company = $projects->first()->company;
+
+            $company->projects = $projects->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'start_date' => $project->start_date,
+                    'duration_days' => $project->duration_days,
+                    'managers' => $project->managers->map(fn($m) => [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                    ]),
+                    'is_watcher' => true,
+                    'tasks' => $project->tasks // <-- ДОБАВЛЕНО
+                ];
+            });
+
+            $watcherCompanies->push($company);
+        }
+
+
+        // 7. Компании, где пользователь исполнитель проекта
+        $executorProjects = Project::with(['company', 'managers', 'executors', 'tasks' => $taskSelect]) // <-- Added tasks
+        ->whereHas('executors', function ($q) use ($userId) {
+            $q->where('project_executors.user_id', $userId);
+        })
+            ->get()
+            ->groupBy('company_id');
+
+        $projectExecutorCompanies = collect();
+
+        foreach ($executorProjects as $companyId => $projects) {
+            $company = $projects->first()->company;
+
+            $company->projects = $projects->map(function ($project) {
+                return [
+                    'id' => $project->id,
+                    'name' => $project->name,
+                    'start_date' => $project->start_date,
+                    'duration_days' => $project->duration_days,
+                    'managers' => $project->managers->map(fn($m) => [
+                        'id' => $m->id,
+                        'name' => $m->name,
+                    ]),
+                    'is_project_executor' => true,
+                    'tasks' => $project->tasks // <-- ДОБАВЛЕНО
+                ];
+            });
+
+            $projectExecutorCompanies->push($company);
+        }
+
+
+        // 5. Компании, где он исполнитель подзадач
+        $subtaskCompanies = Subtask::query()
+            ->whereHas('task')
+            ->with([
+                'task.project.company',
+                'task.project.managers',
+            ])
+            ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+            ->get();
+
+        $memberCompanies = Company::with('projects.tasks') // <-- Added tasks if needed here too
+        ->whereHas('users', fn($q) => $q->where('user_id', $userId))
+            ->get();
+
+
+        $subtaskCompanies = $subtaskCompanies
+            ->filter(fn($s) => $s->task && $s->task->project && $s->task->project->company)
+            ->groupBy(fn($s) => $s->task->project->company->id)
+            ->map(function ($subtasks, $companyId) {
+                $company = $subtasks->first()->task->project->company;
+                $projects = $subtasks->groupBy(fn($s) => $s->task->project_id)->map(function ($subtasks) {
+                    $project = $subtasks->first()->task->project;
+
+                    // Группируем подзадачи по родительской задаче
+                    $tasks = $subtasks->groupBy('task_id')->map(function ($subs) {
+                        $task = $subs->first()->task;
+                        return [
+                            'id' => $task->id,
+                            'title' => $task->title,
+                            'description' => $task->description,
+                            // ВАЖНО: Добавляем поля статуса для таблицы
+                            'priority' => $task->priority,
+                            'status' => $task->status,
+                            'due_date' => $task->due_date,
+
+                            'subtasks' => $subs->map(function ($s) {
+                                return [
+                                    'id' => $s->id,
+                                    'title' => $s->title,
+                                    'start_date' => $s->start_date,
+                                    'due_date' => $s->due_date,
+                                    'executors' => $s->executors->map(fn($u) => [
+                                        'id' => $u->id,
+                                        'name' => $u->name,
+                                    ]),
+                                    'responsibles' => $s->responsibles->map(fn($u) => [
+                                        'id' => $u->id,
+                                        'name' => $u->name,
+                                    ]),
+                                    'creator' => [
+                                        'id' => $s->creator->id,
+                                        'name' => $s->creator->name,
+                                    ]
+                                ];
+                            })->values()
+                        ];
+                    })->values();
+
                     return [
-                        'id' => $s->id,
-                        'title' => $s->title,
-                        'start_date' => $s->start_date,
-                        'due_date' => $s->due_date,
-                        'executors' => $s->executors->map(fn($u) => [
-            'id' => $u->id,
-            'name' => $u->name,
-        ]),
-         'responsibles' => $s->responsibles->map(fn($u) => [
-            'id' => $u->id,
-            'name' => $u->name,
-        ]),
-                        'creator' => [
-                            'id' => $s->creator->id,
-                            'name' => $s->creator->name,
-                        ]
+                        'id' => $project->id,
+                        'name' => $project->name,
+                        'start_date' => $project->start_date,
+                        'duration_days' => $project->duration_days,
+                        'manager' => [
+                            'id' => $project->manager->id ?? null,
+                            'name' => $project->manager->name ?? '—',
+                        ],
+                        'tasks' => $tasks,
                     ];
-                })->values()
-            ];
-        })->values();
+                })->values();
 
-        return [
-            'id' => $project->id,
-            'name' => $project->name,
-            'manager' => [
-                'id' => $project->manager->id ?? null,
-                'name' => $project->manager->name ?? '—',
-            ],
-            'tasks' => $tasks,
-        ];
-    })->values();
+                return [
+                    'id' => $company->id,
+                    'name' => $company->name,
+                    'logo' => $company->logo,
+                    'projects' => $projects,
+                ];
+            })->values();
 
-    return [
-        'id' => $company->id,
-        'name' => $company->name,
-        'logo' => $company->logo,
-        'projects' => $projects,
-    ];
-})->values();
-
-    return response()->json(
-        $createdCompanies
+        $allCompanies = $createdCompanies
             ->concat($managedCompanies)
             ->concat($executorCompanies)
             ->concat($responsibleCompanies)
@@ -261,25 +298,299 @@ $subtaskCompanies = $subtaskCompanies
             ->concat($watcherCompanies)
             ->concat($projectExecutorCompanies)
             ->unique('id')
-            ->values()
-    );
-}
+            ->values();
+
+        // !ВАЖНО:
+        // Если ваш Vue компонент ждет массив ПРОЕКТОВ (projects), а не компаний,
+        // нужно раскомментировать код ниже.
+        // Если компонент умеет доставать проекты из компаний сам - оставьте как есть.
+
+        /*
+        $flatProjects = $allCompanies->flatMap(function($company) {
+            return $company['projects'] ?? $company->projects;
+        })->unique('id')->values();
+
+        return response()->json($flatProjects);
+        */
+
+        return response()->json($allCompanies);
+    }
+
+
+//public function index()
+//{
+//    $userId = auth()->id();
+//
+//    // 1. Компании, созданные пользователем
+//   $createdCompanies = Company::with([
+//    'projects' => function ($q) {
+//        $q->with('manager:id,name'); // просто грузим все проекты этой компании
+//    }
+//])->where('user_id', $userId)->get();
+//
+//    // 2. Компании, где он руководитель проектов
+//   $managedProjects = Project::with('company', 'managers')
+//    ->whereHas('managers', function ($q) use ($userId) {
+//        $q->where('users.id', $userId);
+//    })
+//    ->get()
+//    ->groupBy('company_id');
+//
+//    $managedCompanies = collect();
+//    foreach ($managedProjects as $companyId => $projects) {
+//        $company = $projects->first()->company;
+//        $company->projects = $projects->map(function ($project) {
+//            return [
+//                'id' => $project->id,
+//                'name' => $project->name,
+//                 'managers' => $project->managers->map(fn($m) => [
+//            'id' => $m->id,
+//            'name' => $m->name,
+//        ]),
+//            ];
+//        });
+//        if (!$createdCompanies->contains('id', $company->id)) {
+//            $managedCompanies->push($company);
+//        }
+//    }
+//
+//    // 3. Компании, где он исполнитель задач
+//    $executorTasks = Task::with(['project.company', 'project.manager'])
+//        ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+//    ->get();
+//
+//    $groupedByCompany = $executorTasks->groupBy(fn($task) => $task->project->company->id);
+//    $executorCompanies = $groupedByCompany->map(function ($tasks, $companyId) {
+//        $company = $tasks->first()->project->company;
+//        $projects = $tasks->groupBy('project_id')->map(function ($tasks) {
+//            $project = $tasks->first()->project;
+//            return [
+//                'id' => $project->id,
+//                'name' => $project->name,
+//                'manager' => [
+//                    'id' => $project->manager->id ?? null,
+//                    'name' => $project->manager->name ?? '—',
+//                ],
+//            ];
+//        })->values();
+//        return [
+//            'id' => $company->id,
+//            'name' => $company->name,
+//            'logo' => $company->logo,
+//            'projects' => $projects
+//        ];
+//    })->values();
+//
+//    // 4. Компании, где он ответственный по задачам
+//$responsibleTasks = Task::with(['project.company', 'project.managers'])
+//    ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
+//    ->get();
+//
+//$responsibleGrouped = $responsibleTasks->groupBy(fn($task) => $task->project->company->id);
+//$responsibleCompanies = $responsibleGrouped->map(function ($tasks, $companyId) {
+//    $company = $tasks->first()->project->company;
+//    $projects = $tasks->groupBy('project_id')->map(function ($tasks) {
+//        $project = $tasks->first()->project;
+//        return [
+//            'id' => $project->id,
+//            'name' => $project->name,
+//            'manager' => [
+//                'id' => $project->manager->id ?? null,
+//                'name' => $project->manager->name ?? '—',
+//            ],
+//        ];
+//    })->values();
+//
+//    return [
+//        'id' => $company->id,
+//        'name' => $company->name,
+//        'logo' => $company->logo,
+//        'projects' => $projects
+//    ];
+//})->values();
+//
+//
+//// 6. Компании, где пользователь наблюдатель проекта
+//$watcherProjects = Project::with(['company', 'managers', 'watchers'])
+//    ->whereHas('watchers', function ($q) use ($userId) {
+//        $q->where('project_watchers.user_id', $userId);
+//    })
+//    ->get()
+//    ->groupBy('company_id');
+//
+//$watcherCompanies = collect();
+//
+//foreach ($watcherProjects as $companyId => $projects) {
+//    $company = $projects->first()->company;
+//
+//    $company->projects = $projects->map(function ($project) {
+//        return [
+//            'id' => $project->id,
+//            'name' => $project->name,
+//            'managers' => $project->managers->map(fn($m) => [
+//                'id' => $m->id,
+//                'name' => $m->name,
+//            ]),
+//            'is_watcher' => true, // 👁 можно отметить, что он наблюдатель
+//        ];
+//    });
+//
+//    $watcherCompanies->push($company);
+//}
+//
+//
+//// 7. Компании, где пользователь исполнитель проекта
+//$executorProjects = Project::with(['company', 'managers', 'executors'])
+//    ->whereHas('executors', function ($q) use ($userId) {
+//        $q->where('project_executors.user_id', $userId);
+//    })
+//    ->get()
+//    ->groupBy('company_id');
+//
+//$projectExecutorCompanies = collect();
+//
+//foreach ($executorProjects as $companyId => $projects) {
+//    $company = $projects->first()->company;
+//
+//    $company->projects = $projects->map(function ($project) {
+//        return [
+//            'id' => $project->id,
+//            'name' => $project->name,
+//            'managers' => $project->managers->map(fn($m) => [
+//                'id' => $m->id,
+//                'name' => $m->name,
+//            ]),
+//            'is_project_executor' => true, // 🧰 можно помечать, что пользователь — исполнитель проекта
+//        ];
+//    });
+//
+//    $projectExecutorCompanies->push($company);
+//}
+//
+//
+//
+//
+//// 5. Компании, где он исполнитель подзадач
+//
+//
+//// $subtaskCompanies = Subtask::with(['task.project.company', 'task.project.manager'])
+////     ->where('executor_id', $userId)
+////     ->get()
+////     ->groupBy(fn($subtask) => $subtask->task->project->company->id);
+//
+//$subtaskCompanies = Subtask::query()
+//    // Берём только те подзадачи, у которых есть НЕ завершённая родительская задача
+//    ->whereHas('task') // этого достаточно, т.к. на Task висит глобальный скоуп not_completed
+//    ->with([
+//        // Важно: грузим те же связи через task
+//        'task.project.company',
+//        'task.project.managers',
+//    ])
+//    ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
+//    ->get();
+//
+//   $memberCompanies = Company::with('projects')
+//    ->whereHas('users', fn($q) => $q->where('user_id', $userId))
+//    ->get();
+//
+//
+//$subtaskCompanies = $subtaskCompanies
+//    ->filter(fn($s) => $s->task && $s->task->project && $s->task->project->company) // защита
+//    ->groupBy(fn($s) => $s->task->project->company->id)
+//    ->map(function ($subtasks, $companyId) {
+//    $company = $subtasks->first()->task->project->company;
+//    $projects = $subtasks->groupBy(fn($s) => $s->task->project_id)->map(function ($subtasks) {
+//        $project = $subtasks->first()->task->project;
+//        $tasks = $subtasks->groupBy('task_id')->map(function ($subs) {
+//            $task = $subs->first()->task;
+//            return [
+//                'id' => $task->id,
+//                'title' => $task->title,
+//                'subtasks' => $subs->map(function ($s) {
+//                    return [
+//                        'id' => $s->id,
+//                        'title' => $s->title,
+//                        'start_date' => $s->start_date,
+//                        'due_date' => $s->due_date,
+//                        'executors' => $s->executors->map(fn($u) => [
+//            'id' => $u->id,
+//            'name' => $u->name,
+//        ]),
+//         'responsibles' => $s->responsibles->map(fn($u) => [
+//            'id' => $u->id,
+//            'name' => $u->name,
+//        ]),
+//                        'creator' => [
+//                            'id' => $s->creator->id,
+//                            'name' => $s->creator->name,
+//                        ]
+//                    ];
+//                })->values()
+//            ];
+//        })->values();
+//
+//        return [
+//            'id' => $project->id,
+//            'name' => $project->name,
+//            'manager' => [
+//                'id' => $project->manager->id ?? null,
+//                'name' => $project->manager->name ?? '—',
+//            ],
+//            'tasks' => $tasks,
+//        ];
+//    })->values();
+//
+//    return [
+//        'id' => $company->id,
+//        'name' => $company->name,
+//        'logo' => $company->logo,
+//        'projects' => $projects,
+//    ];
+//})->values();
+//
+//    return response()->json(
+//        $createdCompanies
+//            ->concat($managedCompanies)
+//            ->concat($executorCompanies)
+//            ->concat($responsibleCompanies)
+//            ->concat($subtaskCompanies)
+//            ->concat($memberCompanies)
+//            ->concat($watcherCompanies)
+//            ->concat($projectExecutorCompanies)
+//            ->unique('id')
+//            ->values()
+//    );
+//}
 
 
     public function store(Request $request)
     {
+        $userId = Auth::id();
+
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                // 👇 Правило уникальности с условием
+                Rule::unique('companies', 'name')->where(function ($query) use ($userId) {
+                    return $query->where('user_id', $userId);
+                }),
+            ],
             'logo' => 'nullable|image|max:2048',
+        ], [
+            // 👇 Кастомное сообщение об ошибке
+            'name.unique' => 'У вас уже создана компания с таким названием.',
         ]);
 
+        // ... Ваш код сохранения дальше без изменений
         $path = null;
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
         }
 
         $company = Company::create([
-            'user_id' => Auth::id(),
+            'user_id' => $userId,
             'name' => $request->name,
             'logo' => $path,
         ]);
@@ -441,48 +752,40 @@ $subtaskCompanies = $subtaskCompanies
         $this->authorize('view', $company);
         $userId = auth()->id();
 
-        // Загружаем проекты с нужными связями
+        // 1. Загрузка данных
         $company->load([
             'projects' => function ($q) {
                 $q->with([
                     'managers:id,name',
                     'executors:id,name',
                     'watchers:id,name',
+                    // Грузим задачи
+                    'tasks' => function($t) {
+                        $t->orderBy('created_at', 'desc');
+                    },
+                    // Важно: грузим связи, нужные для проверки прав доступа к задаче
                     'tasks.executors:id,name',
                     'tasks.responsibles:id,name',
                     'tasks.subtasks.executors:id,name',
                     'tasks.subtasks.responsibles:id,name',
+                    // Если есть creator, лучше подгрузить, но обычно id есть в самой таблице tasks
                 ]);
             }
         ]);
 
-        // Фильтрация проектов по доступу
+        // 2. Фильтрация списка ПРОЕКТОВ (оставляем как было, чтобы скрыть лишние проекты)
         $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-
-            // 👑 1. Владелец компании
+            // ... (Ваша логика фильтрации проектов остается без изменений) ...
             if ($company->user_id === $userId) return true;
-
-            // ⭐ 2. ИНИЦИАТОР ПРОЕКТА — ДОБАВЛЕНО!
             if ($project->initiator_id === $userId) return true;
-
-            // 👔 3. Менеджер проекта
             if ($project->managers->contains('id', $userId)) return true;
-
-            // 🔧 4. Исполнитель проекта
             if ($project->executors->contains('id', $userId)) return true;
-
-            // 👁 5. Наблюдатель
             if ($project->watchers->contains('id', $userId)) return true;
-
-            // 📝 6. Участник задач / подзадач
             if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
             if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
-
-            // Подзадачи
             if ($project->tasks->contains(fn($t) =>
             $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
             )) return true;
-
             if ($project->tasks->contains(fn($t) =>
             $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
             )) return true;
@@ -490,15 +793,45 @@ $subtaskCompanies = $subtaskCompanies
             return false;
         })->values();
 
-
-        // Формируем ответ
+        // 3. Формируем ответ и ФИЛЬТРУЕМ ЗАДАЧИ
         return response()->json([
             'id' => $company->id,
             'name' => $company->name,
             'logo' => $company->logo,
             'user_id' => $company->user_id,
 
-            'projects' => $company->projects->map(function ($project) use ($userId) {
+            'projects' => $company->projects->map(function ($project) use ($userId, $company) {
+
+                // --- ЛОГИКА ДОСТУПА К ЗАДАЧАМ (как в ProjectController) ---
+
+                // Пользователь имеет ПОЛНЫЙ доступ, если он:
+                // 1. Владелец компании
+                // 2. Инициатор проекта
+                // 3. Менеджер проекта
+                $hasFullAccess = (
+                    $company->user_id === $userId ||
+                    $project->initiator_id === $userId ||
+                    $project->managers->contains('id', $userId)
+                );
+
+                // Фильтруем коллекцию задач
+                $filteredTasks = $project->tasks->filter(function ($task) use ($userId, $hasFullAccess) {
+                    // Если босс/менеджер — видит всё
+                    if ($hasFullAccess) return true;
+
+                    // Иначе проверяем участие в конкретной задаче
+                    $isCreator = $task->creator_id === $userId; // Убедитесь, что поле creator_id есть в модели
+                    $isExecutor = $task->executors->contains('id', $userId);
+                    $isResponsible = $task->responsibles->contains('id', $userId);
+
+                    // (Опционально) Если вы хотите, чтобы наблюдатели проекта видели все задачи,
+                    // добавьте проверку $project->watchers->contains(...) в $hasFullAccess.
+                    // Но судя по ProjectController, вы хотите строгую фильтрацию.
+
+                    return $isCreator || $isExecutor || $isResponsible;
+                });
+
+                // -----------------------------------------------------------
 
                 $endDate = null;
                 if ($project->start_date && $project->duration_days) {
@@ -529,6 +862,18 @@ $subtaskCompanies = $subtaskCompanies
                     'executors' => $project->executors->map(fn($e) => [
                         'id' => $e->id,
                         'name' => $e->name,
+                    ]),
+
+                    // Используем отфильтрованные задачи ($filteredTasks) вместо всех ($project->tasks)
+                    'tasks' => $filteredTasks->values()->map(fn($t) => [
+                        'id' => $t->id,
+                        'title' => $t->title,
+                        'description' => $t->description,
+                        'priority' => $t->priority,
+                        'status' => $t->status,
+                        'due_date' => $t->due_date,
+                        // Добавляем ответственных для отображения аватарок в списке
+                        'responsibles' => $t->responsibles->map(fn($r) => ['id' => $r->id, 'name' => $r->name]),
                     ]),
 
                     'is_manager' => $project->managers->contains('id', $userId),

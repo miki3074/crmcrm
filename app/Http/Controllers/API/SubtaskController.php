@@ -9,7 +9,10 @@ use App\Models\Task;
 use App\Models\SubtaskComment;
 
 use App\Models\SubtaskFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+
+use App\Models\User;
 
 class SubtaskController extends Controller
 {
@@ -442,24 +445,33 @@ private function canComment($user, $subtask)
         abort_unless($this->canComment($user, $subtask), 403);
 
         $data = $request->validate([
-            'comment' => 'required|string|max:2000',
-            'mentions' => 'array'
+            'comment'   => 'required|string|max:2000',
+            'mentions'  => 'array',
+            'parent_id' => 'nullable|exists:subtask_comments,id' // Валидация родителя
         ]);
 
         $comment = SubtaskComment::create([
             'subtask_id' => $subtask->id,
-            'user_id' => $user->id,
-            'comment' => $data['comment'],
-            'mentions' => json_encode($data['mentions'] ?? [])
+            'user_id'    => $user->id,
+            'comment'    => $data['comment'],
+            'mentions'   => json_encode($data['mentions'] ?? []),
+            'parent_id'  => $data['parent_id'] ?? null,
         ]);
 
+        // Загружаем связи для ответа фронтенду и для уведомлений
+        $comment->load(['user:id,name', 'parent.user']);
+
+        // Списки ID для исключения повторных уведомлений
+        $notifiedUserIds = [];
+
         // ===============================================================
-        // 🔔 1. ЕСЛИ ЕСТЬ УПОМИНАНИЯ — отправляем только им
+        // 🔔 1. УПОМИНАНИЯ (@username)
         // ===============================================================
         if (!empty($data['mentions'])) {
             foreach ($data['mentions'] as $uid) {
-                $u = \App\Models\User::find($uid);
+                if ($uid == $user->id) continue; // Себя не уведомляем
 
+                $u = User::find($uid);
                 if ($u && $u->telegram_chat_id) {
                     \App\Services\TelegramService::sendMessage(
                         $u->telegram_chat_id,
@@ -467,50 +479,73 @@ private function canComment($user, $subtask)
                         "<b>{$subtask->title}</b>\n\n".
                         "<b>{$user->name}</b> написал:\n{$data['comment']}"
                     );
+                    $notifiedUserIds[] = $u->id;
                 }
             }
-
-            return response()->json($comment->load('user:id,name'));
         }
 
         // ===============================================================
-        // 🔔 2. ЕСЛИ УПОМИНАНИЙ НЕТ — уведомляем всех участников подзадачи
+        // 🔔 2. ОТВЕТ НА СООБЩЕНИЕ (REPLY)
         // ===============================================================
+        // Если это ответ, и автор родительского коммента не я, и его еще не уведомили через @mention
+        if ($comment->parent && $comment->parent->user_id !== $user->id) {
+            $parentAuthor = $comment->parent->user;
 
-        $participants = collect([]);
-
-        // ответственные
-        $participants = $participants->merge(
-            \DB::table('subtask_responsibles')->where('subtask_id', $subtask->id)->pluck('user_id')
-        );
-
-        // исполнители
-        $participants = $participants->merge(
-            \DB::table('subtask_executors')->where('subtask_id', $subtask->id)->pluck('user_id')
-        );
-
-        // Уникальные ID
-        $participants = $participants->unique();
-
-        // Убираем автора
-        $participants = $participants->reject(fn($id) => $id == $user->id);
-
-        // Загружаем пользователей
-        $users = \App\Models\User::whereIn('id', $participants)->get();
-
-        foreach ($users as $u) {
-            if ($u->telegram_chat_id) {
-                \App\Services\TelegramService::sendMessage(
-                    $u->telegram_chat_id,
-                    "💬 Новое сообщение в подзадаче:\n".
-                    "<b>{$subtask->title}</b>\n\n".
-                    "Автор: <b>{$user->name}</b>\n".
-                    "Комментарий:\n{$data['comment']}"
-                );
+            if ($parentAuthor && !in_array($parentAuthor->id, $notifiedUserIds)) {
+                if ($parentAuthor->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $parentAuthor->telegram_chat_id,
+                        "↩️ <b>Ответ на ваш комментарий</b> в подзадаче:\n".
+                        "<b>{$subtask->title}</b>\n\n".
+                        "<b>{$user->name}</b>: {$comment->comment}"
+                    );
+                }
+                $notifiedUserIds[] = $parentAuthor->id;
             }
         }
 
-        return response()->json($comment->load('user:id,name'));
+        // ===============================================================
+        // 🔔 3. ОБЩЕЕ УВЕДОМЛЕНИЕ (если не было личных тегов и ответов)
+        // ===============================================================
+        // Логика: если мы ответили кому-то лично или тегнули кого-то,
+        // часто не нужно спамить всем остальным. Но если хотите уведомлять всегда,
+        // уберите условие if (empty($notifiedUserIds)).
+
+        if (empty($notifiedUserIds)) {
+            $participants = collect([]);
+
+            // Ответственные
+            $participants = $participants->merge(
+                DB::table('subtask_responsibles')->where('subtask_id', $subtask->id)->pluck('user_id')
+            );
+
+            // Исполнители
+            $participants = $participants->merge(
+                DB::table('subtask_executors')->where('subtask_id', $subtask->id)->pluck('user_id')
+            );
+
+            // Уникальные ID
+            $participants = $participants->unique();
+
+            // Исключаем автора и тех, кого уже уведомили (если бы мы убрали if выше)
+            $participants = $participants->reject(fn($id) => $id == $user->id || in_array($id, $notifiedUserIds));
+
+            $users = User::whereIn('id', $participants)->get();
+
+            foreach ($users as $u) {
+                if ($u->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $u->telegram_chat_id,
+                        "💬 Новое сообщение в подзадаче:\n".
+                        "<b>{$subtask->title}</b>\n\n".
+                        "Автор: <b>{$user->name}</b>\n".
+                        "Комментарий:\n{$data['comment']}"
+                    );
+                }
+            }
+        }
+
+        return response()->json($comment);
     }
 
 
@@ -590,6 +625,51 @@ public function updateDescription(Request $request, Subtask $subtask)
         'description' => $subtask->description
     ]);
 }
+
+    public function startWork(Request $request, Subtask $subtask)
+    {
+        $user = $request->user();
+
+        // Проверяем, является ли пользователь исполнителем (или имеет права на управление)
+        $isExecutor = $subtask->executors->contains('id', $user->id);
+
+        // Если хотите разрешить брать в работу и менеджерам, добавьте $this->authorize('update', $subtask)
+        abort_unless($isExecutor || $subtask->creator_id == $user->id, 403, 'Только исполнитель может взять подзадачу в работу.');
+
+        if ($subtask->status === 'in_work') {
+            return response()->json(['message' => 'Подзадача уже в работе.'], 422);
+        }
+
+        $subtask->update([
+            'status' => 'in_work',
+        ]);
+
+        // УВЕДОМЛЕНИЕ ОТВЕТСТВЕННЫМ И АВТОРУ
+        // Собираем получателей: Ответственные + Автор (исключая себя)
+        $recipients = collect([]);
+        $recipients = $recipients->merge($subtask->responsibles);
+        if ($subtask->creator && $subtask->creator_id !== $user->id) {
+            $recipients->push($subtask->creator);
+        }
+
+        $recipients = $recipients->unique('id')->reject(fn($u) => $u->id === $user->id);
+
+        foreach ($recipients as $recipient) {
+            if ($recipient->telegram_chat_id) {
+                \App\Services\TelegramService::sendMessage(
+                    $recipient->telegram_chat_id,
+                    "🚀 <b>Подзадача взята в работу!</b>\n".
+                    "Подзадача: <b>{$subtask->title}</b>\n".
+                    "Исполнитель: {$user->name}\n"
+                );
+            }
+        }
+
+        return response()->json([
+            'message' => 'Статус подзадачи изменен на "В работе"',
+            'subtask' => $subtask->fresh(['executors:id,name', 'responsibles:id,name']),
+        ]);
+    }
 
 
 

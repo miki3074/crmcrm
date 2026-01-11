@@ -33,6 +33,7 @@
         "@vue-flow/minimap": "^1.5.4",
         "@vueup/vue-quill": "^1.2.0",
         "dagre": "^0.8.5",
+        "dayjs": "^1.11.19",
         "echarts": "^6.0.0",
         "recharts": "^3.3.0",
         "vue-echarts": "^8.0.1",

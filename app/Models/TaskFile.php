@@ -9,15 +9,22 @@ class TaskFile extends Model
 {
     use HasFactory;
 
-      protected $fillable = ['task_id', 
-      'file_path', 
-      // 'file_name', 
-      'user_id'];
+      protected $fillable = [
+          'task_id',
+      'file_path',
+      'user_id',
+    'file_name',
+    'status',
+    'rejection_reason'
+      ];
+
+
+
 
     public function task()
     {
         return $this->belongsTo(Task::class);
     }
 
-    
+
 }

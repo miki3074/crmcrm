@@ -140,8 +140,11 @@ public function show($id)
         'project:id,name,company_id',
         'project.managers:id,name',
         'project.company:id,name',
-        'files:id,task_id,file_path,user_id',
-         'watcherstask:id,name',
+
+        'files:id,task_id,file_path,user_id,file_name,status,rejection_reason,created_at',
+
+
+        'watcherstask:id,name',
         // добавили completed
         'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
         'subtasks.executors:id,name',
@@ -177,7 +180,10 @@ public function addFiles(Request $request, Task $task)
 
     $request->validate([
         'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
+        'requires_approval' => 'nullable|boolean', // 👈 Новое поле
     ]);
+
+    $initialStatus = $request->boolean('requires_approval') ? 'pending' : 'none';
 
     if ($request->hasFile('files')) {
     foreach ($request->file('files') as $file) {
@@ -188,6 +194,7 @@ public function addFiles(Request $request, Task $task)
             'file_path' => $path,
             'file_name' => $originalName,
             'user_id' => auth()->id(),  // 👈 сохраняем
+            'status' => $initialStatus,
         ]);
     }
 }
@@ -585,7 +592,129 @@ public function withSubtasks()
     ]);
 }
 
+    public function startWork(Request $request, Task $task)
+    {
+        // Проверка: брать в работу может только исполнитель или админ
+        // Можно создать отдельный gate 'startWork' или использовать существующую логику
+        // Обычно allow, если user существует в executors
+        $user = $request->user();
 
+        $isExecutor = $task->executors()->where('user_id', $user->id)->exists();
+
+        // Если у вас нет отдельной политики, проверяем тут:
+        abort_unless($isExecutor || $this->authorize('update', $task), 403, 'Вы не являетесь исполнителем этой задачи.');
+
+        if ($task->status === 'in_work') {
+            return response()->json(['message' => 'Задача уже в работе.'], 422);
+        }
+
+        $task->update([
+            'status' => 'in_work',
+            // 'started_at' => now(), // если добавите такое поле в БД, будет полезно для аналитики
+        ]);
+
+        // УВЕДОМЛЕНИЕ ОТВЕТСТВЕННЫМ (Менеджерам)
+        // Собираем всех ответственных
+        $responsibles = $task->responsibles;
+
+        $taskUrl = url("/tasks/{$task->id}");
+
+        foreach ($responsibles as $resp) {
+            if ($resp->telegram_chat_id && $resp->id !== $user->id) {
+                \App\Services\TelegramService::sendMessage(
+                    $resp->telegram_chat_id,
+                    "🚀 <b>Задача взята в работу!</b>\n".
+                    "Задача: <b>{$task->title}</b>\n".
+                    "Исполнитель: {$user->name}\n".
+                    "🔗 <a href=\"{$taskUrl}\">Перейти к задаче</a>"
+                );
+            }
+        }
+
+        return response()->json([
+            'message' => 'Статус задачи изменен на "В работе"',
+            'task' => $task->fresh(), // возвращаем обновленную задачу
+        ]);
+    }
+
+    // Одобрить файл
+    public function approve(Request $request, TaskFile $file)
+    {
+        // 1. Проверяем права: только "Ответственные" (responsibles) могут согласовывать
+        $this->checkReviewerPermissions($file);
+
+        $file->update([
+            'status' => 'approved',
+            'rejection_reason' => null // Очищаем причину отказа, если была
+        ]);
+
+        return response()->json(['message' => 'Документ согласован', 'file' => $file]);
+    }
+
+    // Отправить на доработку
+    public function reject(Request $request, TaskFile $file)
+    {
+        $this->checkReviewerPermissions($file);
+
+        $request->validate([
+            'reason' => 'required|string|max:1000', // Причина обязательна
+        ]);
+
+        $file->update([
+            'status' => 'rejected',
+            'rejection_reason' => $request->reason
+        ]);
+
+        return response()->json(['message' => 'Документ отправлен на доработку', 'file' => $file]);
+    }
+
+    // Вспомогательный метод проверки прав
+    private function checkReviewerPermissions(TaskFile $file)
+    {
+        $user = auth()->user();
+        $task = $file->task;
+
+        // Проверяем, есть ли текущий юзер в списке ответственных задачи
+        // (Предполагается связь task -> belongsToMany -> responsibles)
+        $isResponsible = $task->responsibles()->where('users.id', $user->id)->exists();
+
+        if (!$isResponsible) {
+            abort(403, 'Только ответственные за задачу могут согласовывать документы.');
+        }
+    }
+
+    public function replace(Request $request, TaskFile $file)
+    {
+        // Проверка прав: менять может только тот, кто загрузил, или исполнитель задачи
+        if (auth()->id() !== $file->user_id) {
+            // Можно добавить проверку на роль исполнителя, если нужно
+            // abort(403, 'Вы не можете заменить этот файл');
+        }
+
+        $request->validate([
+            'file' => 'required|file|max:20480', // до 20МБ
+        ]);
+
+        // 1. Удаляем старый файл с диска
+        if (Storage::disk('public')->exists($file->file_path)) {
+            Storage::disk('public')->delete($file->file_path);
+        }
+
+        // 2. Загружаем новый
+        $newFile = $request->file('file');
+        $originalName = $newFile->getClientOriginalName();
+        $path = $newFile->store('task_files', 'public');
+
+        // 3. Обновляем запись в БД
+        $file->update([
+            'file_path' => $path,
+            'file_name' => $originalName, // Обновляем имя на новое
+            'status' => 'pending',        // 👈 Сбрасываем статус на "На проверке"
+            'rejection_reason' => null,   // Очищаем причину отказа
+        ]);
+
+        return response()->json(['message' => 'Файл обновлен', 'file' => $file]);
+    }
 
 
 }

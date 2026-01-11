@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -37,8 +38,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/dashboardold', function () {
-    return Inertia::render('Dashboardold');
-})->middleware(['auth', 'verified'])->name('dashboardold');
+    return Inertia::render('Dashboard22');
+})->middleware(['auth', 'verified'])->name('dashboard2');
 
 
 
@@ -57,6 +58,12 @@ Route::get('/companies/{id}', function ($id) {
     ]);
 })->middleware(['auth', 'verified']);
 
+Route::get('/companies2/{id}', function ($id) {
+    return Inertia::render('Companies/Show22', [
+        'id' => $id,
+    ]);
+})->middleware(['auth', 'verified']);
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/employees', function () {
@@ -70,6 +77,11 @@ Route::middleware(['auth'])->get('/projects/{id}', function ($id) {
     ]);
 });
 
+Route::middleware(['auth'])->get('/projects2/{id}', function ($id) {
+    return Inertia::render('Projects/Show22', [
+        'id' => $id,
+    ]);
+});
 
 
 Route::middleware(['auth'])->get('/subprojects/{id}', function ($id) {
@@ -94,12 +106,28 @@ Route::get('/tasks/{id}', function ($id) {
     return Inertia::render('Tasks/Show', ['id' => (int)$id]);
 })->middleware(['auth']);
 
+Route::get('/tasks2/{id}', function ($id) {
+    return Inertia::render('Tasks/Show22', ['id' => (int)$id]);
+})->middleware(['auth']);
+
 Route::get('/subtasks/{id}', function ($id) {
     return Inertia::render('Subtasks/Show', ['id' => (int)$id]);
 })->middleware(['auth']);
 
+Route::get('/subtasks2/{id}', function ($id) {
+    return Inertia::render('Subtasks/Show22', ['id' => (int)$id]);
+})->middleware(['auth']);
+
 Route::middleware(['auth', 'verified'])->get('/calendar', function () {
     return Inertia::render('Calendar/Index');
+});
+
+Route::middleware(['auth', 'verified'])->get('/taskpull', function () {
+    return Inertia::render('Taskspull/TaskSummary');
+})->name('tasks.summary');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/completed', [CompletedTasksController::class, 'index'])->name('tasks.completed');
 });
 
 

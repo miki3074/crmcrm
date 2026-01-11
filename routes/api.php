@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\ProducerBuyerController;
+use App\Http\Controllers\API\TaskSummaryController;
 use App\Http\Controllers\API\TaskTemplateController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -108,11 +111,15 @@ Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyControlle
 
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/tasks/summary', [TaskSummaryController::class, 'index']);
+
     Route::post('/tasks', [TaskController::class, 'store']);
     Route::get('/tasks', [TaskController::class, 'index']); // если нужна страница всех задач
     Route::patch('/tasks/{task}/progress', [TaskController::class, 'updateProgress']);
 Route::post('/tasks/{task}/files', [TaskController::class, 'addFiles']);
 Route::get('/tasks/{task}', [TaskController::class, 'show']);
+
+    Route::post('/tasks/{task}/start', [TaskController::class, 'startWork']);
 });
 
 Route::get('/tasks/files/{file}', [TaskController::class, 'downloadFile'])
@@ -127,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/subtasks', [SubtaskController::class, 'index']);
     Route::post('/tasks/{task}/subtasks', [SubtaskController::class, 'store']);
     Route::get('/subtasks/{subtask}', [SubtaskController::class, 'show']);
+    Route::post('/subtasks/{subtask}/start', [App\Http\Controllers\API\SubtaskController::class, 'startWork']);
 
 });
 
@@ -172,6 +180,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('deals/{deal}/status', [DealController::class, 'updateStatus']);
 });
 
+//Route::middleware(['auth', 'verified'])->group(function () {
+//    Route::get('/tasks/completed', [CompletedTasksController::class, 'index']);
+//
+//});
+
 
 Route::middleware('auth:sanctum')->prefix('storage')->group(function () {
     Route::get('/companies', [\App\Http\Controllers\API\StorageController::class, 'companies']);
@@ -182,6 +195,8 @@ Route::middleware('auth:sanctum')->prefix('storage')->group(function () {
     Route::post('/companies/{company}/files', [\App\Http\Controllers\API\StorageController::class, 'upload']);
     Route::get('/files/{file}/download', [\App\Http\Controllers\API\StorageController::class, 'download']);
     Route::delete('/files/{file}', [\App\Http\Controllers\API\StorageController::class, 'destroy']);
+
+
 });
 
 // routes/api.php
@@ -192,6 +207,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/comments', [TaskCommentController::class, 'index']);
     Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store']);
     Route::delete('/task-comments/{comment}', [TaskCommentController::class, 'destroy']);
+
+    Route::put('/files/{file}/approve', [TaskController::class, 'approve']);
+    Route::put('/files/{file}/reject', [TaskController::class, 'reject']);
+    Route::post('/files/{file}/replace', [TaskController::class, 'replace']);
 });
 
 

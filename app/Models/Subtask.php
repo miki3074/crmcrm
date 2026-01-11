@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class Subtask extends Model
 {
@@ -21,6 +22,7 @@ class Subtask extends Model
         'creator_id',
         'completed',
         'completed_at',
+        'status'
     ];
 
     protected $casts = [
@@ -84,7 +86,12 @@ public function checklist()
     return $this->hasMany(SubtaskChecklist::class);
 }
 
-
+    protected static function booted()
+    {
+        static::addGlobalScope('not_completed', function (Builder $builder) {
+            $builder->where('completed', false);
+        });
+    }
 
 
 

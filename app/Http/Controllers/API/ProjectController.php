@@ -144,54 +144,59 @@ public function store(Request $request)
 
 
 
-public function show($id)
-{
+    public function show($id)
+    {
+        $user = auth()->user();
 
+        // 1. Загружаем сам ПРОЕКТ и глобальные роли (менеджеры, компания)
+        // Задачи здесь пока НЕ грузим (убрали 'tasks' отсюда)
+        $project = Project::with([
+            'managers:id,name',
+            'company:id,name,user_id',
+            'watchers:id,name',
+            'executors:id,name',
+            'initiator:id,name',
+            'subprojects.responsibles:id,name',
+            'clients' => fn($q) => $q->with('responsible:id,name'),
+        ])
+            ->select('id', 'company_id', 'initiator_id', 'name', 'start_date', 'duration_days', 'budget', 'description')
+            ->findOrFail($id);
 
+        $this->authorize('view', $project);
 
-    $project = Project::with([
-        'managers:id,name',
-        'company:id,name,user_id',
-        'watchers:id,name',
-        'executors:id,name',
-        'initiator:id,name',
-        'subprojects.responsibles:id,name',
-        'clients' => fn($q) => $q->with('responsible:id,name'),
-        'tasks' => function ($q) {
-            $q->select('id','project_id','title','creator_id','start_date','due_date','priority','progress','completed')
+        // 2. Определяем, есть ли у пользователя ПОЛНЫЙ доступ
+        // (Владелец компании ИЛИ Менеджер проекта)
+        $hasFullAccess = (
+            $project->company->user_id === $user->id ||
+            $project->managers->contains('id', $user->id)
+        );
+
+        // 3. Догружаем (load) задачи с условием
+        $project->load(['tasks' => function ($query) use ($user, $hasFullAccess) {
+
+            // Выбираем поля и грузим связи для задач
+            $query->select('id','project_id','title','creator_id','start_date','due_date','priority','progress','completed')
                 ->with([
                     'creator:id,name',
                     'executors:id,name',
                     'responsibles:id,name',
                     'files:id,task_id,file_path',
                 ]);
-        }
-    ])
-        ->select('id','company_id','initiator_id','name','start_date','duration_days') // ← добавили initiator_id!!
-        ->findOrFail($id);
 
+            // 🔥 САМОЕ ГЛАВНОЕ: Фильтрация
+            // Если это не босс, то показываем только те задачи, где он участвует
+            if (!$hasFullAccess) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('creator_id', $user->id) // Создатель
+                    ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $user->id)) // Исполнитель
+                    ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $user->id)); // Ответственный
+                    // ->orWhereHas('watcherstask', ...) // Если есть наблюдатели
+                });
+            }
+        }]);
 
- $this->authorize('view', $project);
-
-    $user = auth()->user();
-
-   foreach ($project->tasks as $task) {
-        if (
-            $user->id === $project->company->user_id || // владелец компании
-            $user->id === $task->creator_id ||          // создатель задачи
-            $task->executors->contains('id', $user->id) ||
-            $task->responsibles->contains('id', $user->id)
-        ) {
-            continue;
-        }
-
-        // ❌ иначе скрываем файлы
-        $task->setRelation('files', collect([]));
+        return response()->json($project);
     }
-
-    // 5️⃣ Возвращаем проект
-    return response()->json($project);
-}
 
 
 
@@ -267,36 +272,38 @@ public function updateName(Request $request, Project $project)
 
 
 // Добавить нового руководителя в проект
-public function addManager(Request $request, Project $project)
-{
-    $this->authorize('updateman', $project);
+    public function addManager(Request $request, Project $project)
+    {
+        $this->authorize('updateman', $project);
 
-    $validated = $request->validate([
-        'user_id' => 'required|exists:users,id',
-    ]);
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
 
-    // Проверим, не добавлен ли уже этот руководитель
-    if ($project->managers()->where('user_id', $validated['user_id'])->exists()) {
-        return response()->json(['message' => 'Этот пользователь уже является руководителем проекта'], 422);
+        // Проверим, не добавлен ли уже этот руководитель
+        // Здесь тоже лучше уточнить, чтобы избежать будущих ошибок, хотя exists() обычно умный
+        if ($project->managers()->where('users.id', $validated['user_id'])->exists()) {
+            return response()->json(['message' => 'Этот пользователь уже является руководителем проекта'], 422);
+        }
+
+        $project->managers()->attach($validated['user_id']);
+
+        $user = \App\Models\User::find($validated['user_id']);
+        $company = $project->company;
+
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "👋 Вы добавлены в качестве руководителя проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
+            );
+        }
+
+        return response()->json([
+            'message' => 'Руководитель успешно добавлен',
+            // 👇 Явно указываем таблицу users
+            'managers' => $project->managers()->get(['users.id', 'users.name']),
+        ]);
     }
-
-    $project->managers()->attach($validated['user_id']);
-
-    $user = \App\Models\User::find($validated['user_id']);
-    $company = $project->company;
-
-    if ($user && $user->telegram_chat_id) {
-        \App\Services\TelegramService::sendMessage(
-            $user->telegram_chat_id,
-            "👋 Вы добавлены в качестве руководителя проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
-        );
-    }
-
-    return response()->json([
-        'message' => 'Руководитель успешно добавлен',
-        'managers' => $project->managers()->get(['id', 'name']),
-    ]);
-}
 
 // Заменить (изменить) руководителя
 public function replaceManager(Request $request, Project $project)
