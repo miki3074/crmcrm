@@ -41,6 +41,10 @@ Route::get('/dashboardold', function () {
     return Inertia::render('Dashboard22');
 })->middleware(['auth', 'verified'])->name('dashboard2');
 
+Route::get('/chatai', function () {
+    return Inertia::render('Chat');
+})->middleware(['auth', 'verified'])->name('chat');
+
 
 
 

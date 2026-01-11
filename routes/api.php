@@ -57,6 +57,8 @@ use App\Http\Controllers\API\SupportAdminController;
 
 use App\Http\Controllers\API\ContractController;
 
+use App\Http\Controllers\ChatListController;
+use App\Http\Controllers\ChatStreamController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -68,10 +70,24 @@ use App\Http\Controllers\API\ContractController;
 |
 */
 
+
+
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+
+
+
+Route::middleware('throttle:chat')->group(function () {
+    Route::get('/chats', [ChatListController::class, 'index']);
+    Route::post('/chats', [ChatListController::class, 'store']);
+    Route::get('/chats/{chat}', [ChatListController::class, 'show']);
+    Route::post('/chat/stream', [ChatStreamController::class, 'stream']);
+    Route::delete('/chats/{chat}', [ChatListController::class, 'destroy']);
+
+});
 
 
 // Route::middleware(['auth:sanctum'])->group(function () {
