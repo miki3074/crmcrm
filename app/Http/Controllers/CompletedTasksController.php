@@ -15,7 +15,7 @@ class CompletedTasksController extends Controller
     {
         $user = Auth::user();
 
-        // Получаем ID компаний, которыми владеет текущий пользователь
+
         $ownedCompanyIds = Company::where('user_id', $user->id)->pluck('id');
 
         // --- 1. ЗАВЕРШЕННЫЕ ЗАДАЧИ ---

@@ -21,14 +21,14 @@ class ChatStreamController extends Controller
                 ->orWhere('session_id', session()->getId())
             )->firstOrFail();
 
-        // Сохраняем сообщение пользователя
+
         ChatMessage::create([
             'chat_id' => $chat->id,
             'role' => 'user',
             'content' => $request->message,
         ]);
 
-        // История сообщений
+
         $history = $chat->messages()
             ->orderBy('id')
             ->get()
@@ -38,12 +38,12 @@ class ChatStreamController extends Controller
             ])
             ->toArray();
 
-        // Если история пуста, добавляем текущее сообщение
+
         if (empty($history)) {
             $history[] = ['role' => 'user', 'content' => $request->message];
         }
 
-        // Подготавливаем payload
+
         $payload = [
             'model' => 'gpt-4.1-mini',
             'messages' => $history,
@@ -71,10 +71,10 @@ class ChatStreamController extends Controller
 
         $json = json_decode($result, true);
 
-        // Проверяем, что есть ответ
+
         $assistantText = $json['choices'][0]['message']['content'] ?? '(Нет ответа от GPT)';
 
-        // Сохраняем ответ ассистента
+
         ChatMessage::create([
             'chat_id' => $chat->id,
             'role' => 'assistant',

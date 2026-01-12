@@ -8,10 +8,10 @@ use App\Models\Chat;
 
 class ChatListController extends Controller
 {
-    // Пароль, который вы указали
+
     private $accessPassword = '1123581321';
 
-    // Вспомогательный метод для проверки доступа
+
     private function checkAccess()
     {
         if (!session('chat_access_granted')) {
@@ -19,11 +19,11 @@ class ChatListController extends Controller
         }
     }
 
-    // НОВЫЙ МЕТОД: Проверка пароля
+
     public function auth(Request $request)
     {
         if ($request->password === $this->accessPassword) {
-            // Запоминаем в сессии, что доступ открыт
+
             session(['chat_access_granted' => true]);
             return response()->json(['message' => 'Access granted']);
         }
@@ -33,7 +33,7 @@ class ChatListController extends Controller
 
     public function index(Request $request)
     {
-        $this->checkAccess(); // Проверяем доступ
+        $this->checkAccess();
 
         return Chat::where('user_id', auth()->id())
             ->orWhere('session_id', session()->getId())
@@ -43,7 +43,7 @@ class ChatListController extends Controller
 
     public function store()
     {
-        $this->checkAccess(); // Проверяем доступ
+        $this->checkAccess();
 
         $userId = auth()->id();
         $sessionId = session()->getId();
@@ -63,7 +63,7 @@ class ChatListController extends Controller
 
     public function show(Chat $chat)
     {
-        $this->checkAccess(); // Проверяем доступ
+        $this->checkAccess();
         $this->authorizeChat($chat);
 
         return $chat->messages()->orderBy('id')->get();
@@ -81,7 +81,7 @@ class ChatListController extends Controller
 
     public function destroy(Chat $chat)
     {
-        $this->checkAccess(); // Проверяем доступ
+        $this->checkAccess();
         $this->authorizeChat($chat);
 
         $chat->messages()->delete();
