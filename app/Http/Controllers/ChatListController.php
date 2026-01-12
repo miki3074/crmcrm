@@ -5,10 +5,36 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Chat;
+
 class ChatListController extends Controller
 {
+    // Пароль, который вы указали
+    private $accessPassword = '1123581321';
+
+    // Вспомогательный метод для проверки доступа
+    private function checkAccess()
+    {
+        if (!session('chat_access_granted')) {
+            abort(403, 'Password required');
+        }
+    }
+
+    // НОВЫЙ МЕТОД: Проверка пароля
+    public function auth(Request $request)
+    {
+        if ($request->password === $this->accessPassword) {
+            // Запоминаем в сессии, что доступ открыт
+            session(['chat_access_granted' => true]);
+            return response()->json(['message' => 'Access granted']);
+        }
+
+        return response()->json(['message' => 'Invalid password'], 401);
+    }
+
     public function index(Request $request)
     {
+        $this->checkAccess(); // Проверяем доступ
+
         return Chat::where('user_id', auth()->id())
             ->orWhere('session_id', session()->getId())
             ->orderByDesc('updated_at')
@@ -17,10 +43,11 @@ class ChatListController extends Controller
 
     public function store()
     {
+        $this->checkAccess(); // Проверяем доступ
+
         $userId = auth()->id();
         $sessionId = session()->getId();
 
-        // Считаем сколько чатов уже у пользователя
         $count = Chat::where('user_id', $userId)
             ->orWhere('session_id', $sessionId)
             ->count();
@@ -28,15 +55,15 @@ class ChatListController extends Controller
         $chat = Chat::create([
             'user_id' => $userId,
             'session_id' => auth()->check() ? null : $sessionId,
-            'title' => 'Чат ' . ($count + 1), // Автоматически нумеруем
+            'title' => 'Чат ' . ($count + 1),
         ]);
 
         return $chat;
     }
 
-
     public function show(Chat $chat)
     {
+        $this->checkAccess(); // Проверяем доступ
         $this->authorizeChat($chat);
 
         return $chat->messages()->orderBy('id')->get();
@@ -54,14 +81,12 @@ class ChatListController extends Controller
 
     public function destroy(Chat $chat)
     {
-        $this->authorizeChat($chat); // Проверяем, что пользователь имеет доступ
+        $this->checkAccess(); // Проверяем доступ
+        $this->authorizeChat($chat);
 
-        $chat->messages()->delete(); // Удаляем все сообщения
-        $chat->delete();             // Удаляем сам чат
+        $chat->messages()->delete();
+        $chat->delete();
 
         return response()->json(['message' => 'Чат удалён']);
     }
-
-
-
 }

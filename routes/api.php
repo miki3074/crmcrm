@@ -81,6 +81,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 
 Route::middleware('throttle:chat')->group(function () {
+
+    Route::post('/chat/auth', [ChatListController::class, 'auth']);
     Route::get('/chats', [ChatListController::class, 'index']);
     Route::post('/chats', [ChatListController::class, 'store']);
     Route::get('/chats/{chat}', [ChatListController::class, 'show']);
