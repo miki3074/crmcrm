@@ -49,7 +49,7 @@ onMounted(fetchData)
 
         <!-- HERO SECTION -->
         <div v-if="project"
-             className="relative overflow-hidden rounded-b-3xl shadow-lg bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600">
+             class="rounded-3xl border border-slate-100 bg-white dark:bg-slate-800 dark:border-slate-700 p-6 shadow-sm  top-6">
             <div className="relative max-w-7xl mx-auto px-6 py-10 text-white">
                 <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
 

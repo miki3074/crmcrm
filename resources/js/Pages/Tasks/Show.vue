@@ -205,14 +205,14 @@ onMounted(fetchTask)
                         />
 
                         <!-- Chat -->
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-                            <h3 class="font-bold mb-4 dark:text-white">💬 Чат</h3>
-                            <TaskChat
-                                :task-id="task.id"
-                                :can-chat="true"
-                                :members="[...(task.executors||[]), ...(task.responsibles||[]), task.creator]"
-                            />
-                        </div>
+<!--                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">-->
+<!--                            <h3 class="font-bold mb-4 dark:text-white">💬 Чат</h3>-->
+<!--                            <TaskChat-->
+<!--                                :task-id="task.id"-->
+<!--                                :can-chat="true"-->
+<!--                                :members="[...(task.executors||[]), ...(task.responsibles||[]), task.creator]"-->
+<!--                            />-->
+<!--                        </div>-->
                     </div>
 
                     <!-- SIDEBAR -->
