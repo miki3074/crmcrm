@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Head } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps({
     auth: Object
@@ -179,13 +180,15 @@ const getPriorityClass = (p) => {
                                         class="bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-100 dark:border-blue-800 text-xs"
                                     >
                                         <!-- Ссылка task.link берется с бэкенда -->
-                                        <a :href="task.link" class="font-semibold text-blue-800 dark:text-blue-300 hover:underline block truncate">
-                                            <!-- Бейдж для подзадачи -->
-                                            <span v-if="task.is_subtask" class="text-[10px] bg-white/50 dark:bg-gray-600 px-1 rounded mr-1 border border-blue-200 dark:border-gray-500">
-                                                ↳ Подзадача
-                                            </span>
+                                        <Link
+                                            :href="(task.task_id || task.is_subtask) ? `/subtasks/${task.id}` : `/tasks/${task.id}`"
+                                            class="font-semibold text-emerald-800 dark:text-emerald-300 hover:underline block truncate decoration-emerald-800/30"
+                                        >
+    <span v-if="task.task_id || task.is_subtask" class="text-[10px] bg-white/50 dark:bg-gray-600 px-1 rounded mr-1 border border-emerald-200 dark:border-gray-500">
+        ↳ Подзадача
+    </span>
                                             {{ task.title }}
-                                        </a>
+                                        </Link>
                                         <div class="text-gray-500 mt-1 flex flex-col gap-0.5">
                                             <span>📅 Срок: {{ formatDate(task.due_date) }}</span>
                                             <span class="opacity-75">👤 Роль: {{ task.roles }}</span>

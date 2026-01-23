@@ -130,33 +130,38 @@ public function store(Request $request)
 
 
 
-public function show($id)
-{
-    $task = Task::with([
-        'project.company:id,name,user_id',
-        'creator:id,name',
-        'executors:id,name',
-        'responsibles:id,name',
-        'project:id,name,company_id',
-        'project.managers:id,name',
-        'project.company:id,name',
+    public function show($id)
+    {
+        // Добавляем withoutGlobalScope, чтобы найти задачу, даже если она завершена
+        $task = Task::withoutGlobalScope('not_completed')
+            ->with([
+                'project.company:id,name,user_id',
+                'creator:id,name',
+                'executors:id,name',
+                'responsibles:id,name',
+                'project:id,name,company_id',
+                'project.managers:id,name',
+                'project.company:id,name',
+                'files:id,task_id,file_path,user_id,file_name,status,rejection_reason,created_at',
+                'watcherstask:id,name',
+                'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
+                'subtasks.executors:id,name',
+                'subtasks.creator:id,name',
+                'producers:id,name,company_id',
+                'buyers:id,name,company_id',
+            ])->findOrFail($id);
 
-        'files:id,task_id,file_path,user_id,file_name,status,rejection_reason,created_at',
+        $this->authorize('view', $task);
 
+        // ВАЖНО: Если это переход на страницу в браузере (Inertia),
+        // то возвращать JSON нельзя, нужно возвращать Inertia::render.
+        // Если у вас SPA и это API запрос, то оставьте response()->json($task).
 
-        'watcherstask:id,name',
-        // добавили completed
-        'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
-        'subtasks.executors:id,name',
-        'subtasks.creator:id,name',
-        'producers:id,name,company_id',
-        'buyers:id,name,company_id',
-    ])->findOrFail($id);
+        // Пример для Inertia (если это отдельная страница):
+        // return Inertia::render('Tasks/Show', ['task' => $task]);
 
-    $this->authorize('view', $task);
-
-    return response()->json($task);
-}
+        return response()->json($task);
+    }
 
 
 public function updateProgress(Request $request, Task $task)

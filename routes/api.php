@@ -5,6 +5,7 @@ use App\Http\Controllers\API\ProducerBuyerController;
 use App\Http\Controllers\API\TaskSummaryController;
 use App\Http\Controllers\API\TaskTemplateController;
 
+use App\Http\Controllers\MeetingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -77,7 +78,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
+Route::get('/tasks/search', [ContractController::class, 'searchTasks']);
 
 
 Route::middleware('throttle:chat')->group(function () {
@@ -154,6 +155,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/subtasks/{subtask}', [SubtaskController::class, 'show']);
     Route::post('/subtasks/{subtask}/start', [App\Http\Controllers\API\SubtaskController::class, 'startWork']);
 
+    Route::post('/subtask-files/{file}/revision', [SubtaskController::class, 'sendForRevision']);
+    Route::post('/subtask-files/{file}/replace', [SubtaskController::class, 'replaceFile']);
 });
 
 
@@ -544,6 +547,8 @@ Route::post('/tasks/{task}/buyers/{buyer}', [ProducerBuyerController::class, 'at
 
 
 //Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
+
+Route::middleware('auth')->get('/company/{id}/users', [MeetingController::class, 'getCompanyUsers']);
 
 
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\CompletedTasksController;
+use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,10 @@ use App\Http\Controllers\Support\AdminSupportController;
 |
 */
 
+
+
+
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -31,6 +36,23 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/meetings/create', [MeetingController::class, 'create'])->name('meetings.create');
+
+    Route::post('/meetings', [MeetingController::class, 'store'])->name('meetings.store');
+
+    Route::get('/meetings', [App\Http\Controllers\MeetingController::class, 'index'])->name('meetings.index');
+
+    Route::get('/meetings/{meeting}', [App\Http\Controllers\MeetingController::class, 'show'])
+        ->name('meetings.show');
+
+    Route::put('/meetings/{meeting}/participation', [App\Http\Controllers\MeetingController::class, 'updateParticipation'])
+        ->name('meetings.participation.update');
+
+    Route::put('/meetings/{meeting}/status', [App\Http\Controllers\MeetingController::class, 'updateStatus'])
+        ->name('meetings.status.update');
 });
 
 Route::get('/dashboard', function () {

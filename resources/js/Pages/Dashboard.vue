@@ -93,66 +93,66 @@ onMounted(() => {
 
 
         <!-- WELCOME MODAL -->
-        <div
-            v-if="showWelcomeModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-800">
+<!--        <div-->
+<!--            v-if="showWelcomeModal"-->
+<!--            class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"-->
+<!--        >-->
+<!--            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-800">-->
 
-                <!-- Header -->
-                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <h2 class="text-lg font-bold" >
-                        ⚠️ Важная информация
-                    </h2>
-                    <button
-                        @click="showWelcomeModal = false"
-                        class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl"
-                    >
-                        ✕
-                    </button>
-                </div>
+<!--                &lt;!&ndash; Header &ndash;&gt;-->
+<!--                <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">-->
+<!--                    <h2 class="text-lg font-bold" >-->
+<!--                        ⚠️ Важная информация-->
+<!--                    </h2>-->
+<!--                    <button-->
+<!--                        @click="showWelcomeModal = false"-->
+<!--                        class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-xl"-->
+<!--                    >-->
+<!--                        ✕-->
+<!--                    </button>-->
+<!--                </div>-->
 
-                <!-- Content -->
-                <div class="px-6 py-5 space-y-4 text-sm text-slate-600 dark:text-slate-300">
-                    <p>
-                         Обновлен интерфейс рабочего стола.
-                    </p>
+<!--                &lt;!&ndash; Content &ndash;&gt;-->
+<!--                <div class="px-6 py-5 space-y-4 text-sm text-slate-600 dark:text-slate-300">-->
+<!--                    <p>-->
+<!--                         Обновлен интерфейс рабочего стола.-->
+<!--                    </p>-->
 
-                    <p>
-                        Если у вас возникнут трудности в работе с новой версией, вы всегда можете
-                        временно вернуться к прежнему интерфейсу.
-                    </p>
+<!--                    <p>-->
+<!--                        Если у вас возникнут трудности в работе с новой версией, вы всегда можете-->
+<!--                        временно вернуться к прежнему интерфейсу.-->
+<!--                    </p>-->
 
-                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                        Мы будем рады вашей обратной связи — она поможет нам сделать систему лучше.
-                    </p>
-                </div>
+<!--                    <p class="text-xs text-slate-500 dark:text-slate-400">-->
+<!--                        Мы будем рады вашей обратной связи — она поможет нам сделать систему лучше.-->
+<!--                    </p>-->
+<!--                </div>-->
 
-                <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                    <button
-                        @click="router.visit('/dashboardold')"
-                        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700
-               text-white font-semibold text-sm"
-                    >
-                        Перейти на старую версию
-                    </button>
+<!--                <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">-->
+<!--                    <button-->
+<!--                        @click="router.visit('/dashboardold')"-->
+<!--                        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700-->
+<!--               text-white font-semibold text-sm"-->
+<!--                    >-->
+<!--                        Перейти на старую версию-->
+<!--                    </button>-->
 
-                    <button
-                        @click="showWelcomeModal = false"
-                        class="
-px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200
-               dark:bg-slate-800 dark:hover:bg-slate-700
-               text-slate-700 dark:text-slate-200 text-sm font-semibold
-"
-                    >
-                        Понятно
-                    </button>
-                </div>
+<!--                    <button-->
+<!--                        @click="showWelcomeModal = false"-->
+<!--                        class="-->
+<!--px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200-->
+<!--               dark:bg-slate-800 dark:hover:bg-slate-700-->
+<!--               text-slate-700 dark:text-slate-200 text-sm font-semibold-->
+<!--"-->
+<!--                    >-->
+<!--                        Понятно-->
+<!--                    </button>-->
+<!--                </div>-->
 
 
 
-            </div>
-        </div>
+<!--            </div>-->
+<!--        </div>-->
 
 
 

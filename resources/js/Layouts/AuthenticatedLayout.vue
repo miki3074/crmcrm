@@ -136,9 +136,9 @@ const toggleTheme = () => {
                 </Link>
 
                 <Link
-                    :href="route('support.history')"
+                    :href="route('support.chat')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 relative whitespace-nowrap"
-                    :class="route().current('support.history')
+                    :class="route().current('support.chat')
                     ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
                 >
@@ -348,6 +348,6 @@ const toggleTheme = () => {
             </main>
 
         </div>
-        <SupportButton />
+        <SupportButton v-if="!route().current('support.chat')" />
     </div>
 </template>

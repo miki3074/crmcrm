@@ -41,6 +41,7 @@ const saveChatId = async () => {
             <template v-if="!showInput">
                 <a href="https://t.me/TrustCrmHelper_bot" target="_blank" class="px-4 py-2 text-xs font-bold text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition shadow-lg shadow-sky-500/20">Запустить бота</a>
                 <button @click="showInput = true" class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition">{{ localTelegramId ? 'Изменить ID' : 'Ввести ID' }}</button>
+                <a  href="https://t.me/UserInfeBot" target="_blank" class="px-4 py-2 text-xs font-bold text-white bg-sky-500 hover:bg-sky-600 rounded-xl transition shadow-lg shadow-sky-500/20">Узнать свой id</a>
             </template>
             <div v-else class="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
                 <input v-model="chatId" type="text" placeholder="Chat ID" class="w-32 px-3 py-2 text-xs border rounded-xl dark:bg-slate-900 dark:border-slate-700 outline-none focus:ring-2 focus:ring-sky-500" />
@@ -48,5 +49,7 @@ const saveChatId = async () => {
                 <button @click="showInput = false" class="text-xs text-slate-400">✕</button>
             </div>
         </div>
+
+
     </div>
 </template>

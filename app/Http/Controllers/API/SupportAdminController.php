@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SupportThread;
 use App\Models\SupportMessagetwo;
 use Illuminate\Http\Request;
+use App\Services\TelegramService;
 
 class SupportAdminController extends Controller
 {
@@ -52,12 +53,14 @@ class SupportAdminController extends Controller
             'files.*' => 'nullable|file|max:20480'
         ]);
 
+        // Сохраняем сообщение
         $msg = $thread->messages()->create([
             'user_id'    => auth()->id(),
             'body'       => $data['message'] ?? null,
             'is_support' => true,
         ]);
 
+        // Сохраняем файлы
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
                 $path = $file->store('support', 'public');
@@ -70,6 +73,34 @@ class SupportAdminController extends Controller
                 ]);
             }
         }
+
+        // ========================================================
+        // НАЧАЛО: Отправка уведомления в Telegram
+        // ========================================================
+
+        // Получаем владельца тикета (пользователя)
+        $client = $thread->user;
+
+        // Проверяем, есть ли пользователь и заполнен ли у него telegram_chat_id
+        // (Предполагается, что поле в БД называется telegram_chat_id)
+        if ($client && $client->telegram_chat_id) {
+
+            // Формируем текст ответа
+            // htmlspecialchars нужен, чтобы спецсимволы в сообщении не сломали HTML-разметку Телеграма
+            $replyBody = !empty($data['message'])
+                ? htmlspecialchars($data['message'])
+                : '<i>(Отправлен файл)</i>';
+
+            $text = "🔔 <b>Ответ от техподдержки</b>\n";
+            $text .= "Тикет: #{$thread->id} - " . htmlspecialchars($thread->subject) . "\n\n";
+            $text .= "💬 <b>Ответ:</b>\n{$replyBody}";
+
+            // Отправляем через ваш сервис
+            TelegramService::sendMessage($client->telegram_chat_id, $text);
+        }
+        // ========================================================
+        // КОНЕЦ: Отправка уведомления
+        // ========================================================
 
         $thread->touch();
 

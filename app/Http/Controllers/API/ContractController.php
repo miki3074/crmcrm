@@ -8,8 +8,54 @@ use Illuminate\Http\Request;
 use App\Models\ContractFile;
 use Illuminate\Support\Facades\Storage;
 
+use App\Models\Task;
+use App\Models\Subtask;
+
 class ContractController extends Controller
 {
+
+    public function searchTasks(Request $request)
+    {
+        $query = $request->get('query');
+        $userId = auth()->id();
+
+        // 1. Ищем задачи (Tasks)
+        $tasks = Task::forUser($userId)
+            ->when($query, fn($q) => $q->where('title', 'like', "%{$query}%"))
+            ->select('id', 'title', 'project_id')
+            ->with('project:id,name')
+            ->limit(10)
+            ->get()
+            ->map(fn($t) => [
+                'id' => $t->id,
+                'label' => "Задача #{$t->id}: {$t->title}",
+                'project' => $t->project->name ?? 'Без проекта',
+                'type' => 'task'
+            ]);
+
+        // 2. Ищем подзадачи (Subtasks)
+        $subtasks = Subtask::forUser($userId)
+            ->when($query, fn($q) => $q->where('title', 'like', "%{$query}%"))
+            ->select('id', 'title', 'task_id')
+            ->with('task:id,title')
+            ->limit(10)
+            ->get()
+            ->map(fn($st) => [
+                'id' => $st->id,
+                'label' => "Подзадача #{$st->id}: {$st->title} (в {$st->task->title})",
+                'project' => 'Подзадача',
+                'type' => 'subtask'
+            ]);
+
+        // 3. Слияние
+        // 👇 ВАЖНО: Добавлено ->toBase(), чтобы избежать ошибки getKey() on array
+        $results = $tasks->toBase()->merge($subtasks);
+
+        return response()->json([
+            'results' => $results
+        ]);
+    }
+
     public function index(Request $request)
     {
         // Можно сделать только свои: ->where('created_by', auth()->id())
@@ -29,6 +75,9 @@ class ContractController extends Controller
             'amount'       => 'nullable|numeric',
             'signed_at'    => 'nullable|date',
             'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
+
+            'task_id'      => 'nullable|integer|exists:tasks,id',
+            'subtask_id'   => 'nullable|integer|exists:subtasks,id',
 
         ]);
         // статус не приходит из формы — задаём вручную
@@ -75,6 +124,8 @@ class ContractController extends Controller
             'status'       => 'required|in:new,negotiation,signed,rejected',
             'signed_at'    => 'nullable|date',
 
+            'task_id'      => 'nullable|integer|exists:tasks,id',
+            'subtask_id'   => 'nullable|integer|exists:subtasks,id',
             // несколько файлов
             'files.*'      => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
         ]);
@@ -159,8 +210,5 @@ class ContractController extends Controller
 
         return response()->download($path, $file->file_name);
     }
-
-
-
 
 }

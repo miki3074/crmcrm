@@ -116,7 +116,28 @@ public function watchers()
         return $this->belongsToMany(Buyer::class, 'task_buyer');
     }
 
+    // 17.01.2026
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            // 1. Создатель
+            $q->where('creator_id', $userId)
 
+                // 2. Исполнители или Ответственные (прямое участие)
+                ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $userId))
+                ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $userId))
+                ->orWhereHas('watcherstask', fn($sq) => $sq->where('users.id', $userId))
+
+                // 3. Через Проект (Менеджеры, Исполнители, Наблюдатели проекта)
+                ->orWhereHas('project', function ($pq) use ($userId) {
+                    $pq->whereHas('managers', fn($sq) => $sq->where('users.id', $userId))
+                        ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $userId))
+                        ->orWhereHas('watchers', fn($sq) => $sq->where('users.id', $userId))
+                        // 4. Владелец компании
+                        ->orWhereHas('company', fn($sq) => $sq->where('user_id', $userId));
+                });
+        });
+    }
 
 
 

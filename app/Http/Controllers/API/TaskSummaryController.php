@@ -5,7 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Task;
-use App\Models\Subtask; // <--- Не забудьте импорт
+use App\Models\Subtask;
 use App\Models\Company;
 use Illuminate\Support\Facades\Auth;
 
@@ -48,14 +48,15 @@ class TaskSummaryController extends Controller
         // ==========================================
         // 1. ЗАГРУЗКА ГЛАВНЫХ ЗАДАЧ (TASKS)
         // ==========================================
-        // Выполняем, только если фильтр НЕ "только подзадачи"
         if ($filterType !== 'subtask') {
-            $taskQuery = Task::with([
-                'executors:id,name',
-                'responsibles:id,name',
-                'watcherstask:id,name',
-                'project:id,name'
-            ]);
+            // 👇 ИСПРАВЛЕНИЕ ЗДЕСЬ: отключаем фильтр незавершенных задач
+            $taskQuery = Task::withoutGlobalScope('not_completed')
+                ->with([
+                    'executors:id,name',
+                    'responsibles:id,name',
+                    'watcherstask:id,name',
+                    'project:id,name'
+                ]);
 
             if ($mode === 'owner') {
                 $companyIds = Company::where('user_id', $user->id)->pluck('id');
@@ -89,6 +90,8 @@ class TaskSummaryController extends Controller
 
                     $category = 'in_work';
                     $isOverdue = false;
+
+                    // Теперь это условие будет работать, так как завершенные задачи пришли из БД
                     if ($task->completed) {
                         $category = 'completed';
                     } elseif ($task->due_date && \Carbon\Carbon::parse($task->due_date)->endOfDay()->isPast()) {
@@ -121,9 +124,12 @@ class TaskSummaryController extends Controller
         // ==========================================
         // 2. ЗАГРУЗКА ПОДЗАДАЧ (SUBTASKS)
         // ==========================================
-        // Выполняем, только если фильтр НЕ "только задачи"
         if ($filterType !== 'task') {
-            $subtaskQuery = Subtask::with([
+
+            // 👇 ЕСЛИ В МОДЕЛИ Subtask ТОЖЕ ЕСТЬ GlobalScope, РАСКОММЕНТИРУЙТЕ withoutGlobalScope НИЖЕ
+            $subtaskQuery = Subtask::
+             withoutGlobalScope('not_completed')->
+            with([
                 'executors:id,name',
                 'responsibles:id,name',
                 'task.project:id,name'
@@ -162,6 +168,7 @@ class TaskSummaryController extends Controller
 
                     $category = 'in_work';
                     $isOverdue = false;
+
                     if ($sub->completed) {
                         $category = 'completed';
                     } elseif ($sub->due_date && \Carbon\Carbon::parse($sub->due_date)->endOfDay()->isPast()) {
@@ -182,7 +189,7 @@ class TaskSummaryController extends Controller
                         'priority' => null,
                         'roles' => implode(', ', $roles),
                         'is_overdue' => $isOverdue,
-                        'link' => "/tasks/{$sub->task_id}"
+                        'link' => "/subtasks/{$sub->id}"
                     ];
                     $summary[$uid]['stats'][$category . '_count']++;
                     $summary[$uid]['stats']['total']++;

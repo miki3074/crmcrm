@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Storage;
 
 use App\Models\User;
 
+use App\Services\TelegramService;
+
 class SubtaskController extends Controller
 {
     public function index(Task $task)
@@ -94,26 +96,27 @@ public function store(Request $request, Task $task)
 
 
 
-    public function show(Subtask $subtask)
+    public function show($id)
     {
-        $subtask->load([
-    'task.project.company',
-    'task.project.executors:id,name',   // 👈 добавляем
-        'task.project.managers:id,name',    // 👈 добавляем
-    'creator:id,name',
-    'executors:id,name',
-    'responsibles:id,name',
-    'files.user:id,name',
-
-    'checklist.responsible:id,name',
-
-    'comments.user:id,name',
-
-    'children.executors:id,name', // 👈 подгружаем дочерние подзадачи
-        'children.responsibles:id,name',
-        'children.files.user:id,name',
-]);
-
+        // 1. Начинаем запрос с отключения глобального скоупа
+        $subtask = Subtask::withoutGlobalScope('not_completed')
+            // 2. Используем with() вместо load(), чтобы загрузить связи сразу
+            ->with([
+                'task.project.company',
+                'task.project.executors:id,name',
+                'task.project.managers:id,name',
+                'creator:id,name',
+                'executors:id,name',
+                'responsibles:id,name',
+                'files.user:id,name',
+                'checklist.responsible:id,name',
+                'comments.user:id,name',
+                'children.executors:id,name',
+                'children.responsibles:id,name',
+                'children.files.user:id,name',
+            ])
+            // 3. Ищем запись по ID. Если не найдет — будет 404
+            ->findOrFail($id);
 
         $this->authorize('view', $subtask);
 
@@ -347,6 +350,8 @@ public function update(Request $request, Subtask $subtask)
     ]);
 }
 
+
+
 public function uploadFile(Request $request, Subtask $subtask)
 {
     $this->authorize('addFiles', $subtask);
@@ -366,6 +371,67 @@ public function uploadFile(Request $request, Subtask $subtask)
 
     return response()->json($subtaskFile, 201);
 }
+
+
+    public function sendForRevision(Request $request, SubtaskFile $file)
+    {
+        // 1. Валидация комментария
+        $data = $request->validate([
+            'comment' => 'required|string|max:1000',
+        ]);
+
+        // 2. Проверка прав: только Ответственный (responsible) может отправлять на доработку
+        // Получаем подзадачу через связь
+        $subtask = $file->subtask;
+
+        // Проверяем, есть ли текущий юзер в списке ответственных этой подзадачи
+        // Предполагается связь responsibles() как belongsToMany
+        $isResponsible = $subtask->responsibles()
+            ->where('user_id', auth()->id())
+            ->exists();
+
+        if (!$isResponsible) {
+            return response()->json(['message' => 'Только ответственный может отправлять на доработку'], 403);
+        }
+
+        // 3. Обновление файла
+        $file->update([
+            'status' => 'revision',
+            'revision_comment' => $data['comment']
+        ]);
+
+        return response()->json(['message' => 'Файл отправлен на доработку', 'file' => $file]);
+    }
+
+    public function replaceFile(Request $request, SubtaskFile $file)
+    {
+        // Проверка прав (такая же, как при добавлении файлов в подзадачу)
+        // $this->authorize('addFiles', $file->subtask);
+        // Или, если у вас своя логика, убедитесь, что юзер имеет право менять файлы
+
+        $request->validate([
+            'file' => 'required|file|max:10240', // 10 MB
+        ]);
+
+        // 1. Удаляем старый файл с диска
+        if (Storage::disk('public')->exists($file->path)) {
+            Storage::disk('public')->delete($file->path);
+        }
+
+        // 2. Сохраняем новый файл
+        $newFile = $request->file('file');
+        $newPath = $newFile->store('subtask_files', 'public');
+
+        // 3. Обновляем запись в БД
+        $file->update([
+            'filename' => $newFile->getClientOriginalName(),
+            'path'     => $newPath,
+            'status'   => 'ok', // Сбрасываем статус
+            'revision_comment' => null, // Удаляем комментарий
+        ]);
+
+        return response()->json(['message' => 'Файл обновлен', 'file' => $file]);
+    }
 
 public function downloadFile(SubtaskFile $file)
 {

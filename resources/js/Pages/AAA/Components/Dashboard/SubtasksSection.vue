@@ -46,9 +46,7 @@ const hasSubtasks = computed(() => {
     <div class="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all shadow-sm bg-white/70 dark:bg-slate-900/70 backdrop-blur-md">
 
         <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">
-                🧩 Мои подзадачи
-            </h3>
+
             <span v-if="Array.isArray(subtasks)" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
                 {{ subtasks.length }}
             </span>
@@ -61,9 +59,9 @@ const hasSubtasks = computed(() => {
         <div v-else class="space-y-8">
             <!-- Группировка по Компании -->
             <div v-for="(projects, companyName) in groupedSubtasks" :key="companyName" class="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
-                <h4 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 bg-slate-50 dark:bg-slate-800/50 inline-block px-2 py-1 rounded">
-                    🏢 {{ companyName }}
-                </h4>
+<!--                <h4 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 bg-slate-50 dark:bg-slate-800/50 inline-block px-2 py-1 rounded">-->
+<!--                    🏢 {{ companyName }}-->
+<!--                </h4>-->
 
                 <div class="space-y-6">
                     <!-- Группировка по Проекту -->

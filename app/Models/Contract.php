@@ -18,6 +18,8 @@ class Contract extends Model
         'file_path',
         'file_name',
         'created_by',
+        'task_id',
+        'subtask_id',
     ];
 
     protected $casts = [
@@ -32,6 +34,13 @@ class Contract extends Model
     public function files()
     {
         return $this->hasMany(ContractFile::class);
+    }
+
+    public function task() {
+        return $table->belongsTo(Task::class);
+    }
+    public function subtask() {
+        return $table->belongsTo(Subtask::class);
     }
 
 

@@ -9,6 +9,9 @@ use App\Models\SupportMessagetwo;
 use App\Models\SupportAttachmenttwo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
+use App\Services\TelegramService;
+use Illuminate\Support\Str;
 
 class SupportChatController extends Controller
 {
@@ -29,20 +32,53 @@ class SupportChatController extends Controller
     }
 
     // создать новый диалог (первое обращение)
+    // создать новый диалог (первое обращение)
     public function createThread(Request $request)
     {
         $data = $request->validate([
             'subject' => 'nullable|string|max:255',
             'message' => 'nullable|string',
-            'files.*' => 'nullable|file|max:20480', // 20 МБ
+            'files.*' => 'nullable|file|max:20480',
         ]);
 
         $user = $request->user();
 
+        // ---------------------------------------------------------
+        // ЛОГИКА ФОРМИРОВАНИЯ ТЕМЫ
+        // ---------------------------------------------------------
+        $subject = $data['subject'] ?? null;
+
+        // Если темы нет, берем из сообщения
+        if (empty($subject) && !empty($data['message'])) {
+            // Обрезаем сообщение до 50 символов и добавляем "..."
+            $subject = Str::limit($data['message'], 50, '...');
+        }
+
+        // Если и сообщения не было (только файлы), ставим заглушку
+        if (empty($subject)) {
+            $subject = 'Новое обращение';
+        }
+
+        // ---------------------------------------------------------
+        // АЛГОРИТМ РАСПРЕДЕЛЕНИЯ
+        // ---------------------------------------------------------
+        $assignedAgent = User::whereHas('roles', function($q) {
+            $q->where('name', 'support');
+        })
+            ->withCount(['supportThreads as open_tickets_count' => function ($query) {
+                $query->where('status', 'open');
+            }])
+            ->orderBy('open_tickets_count', 'asc')
+            ->first();
+
+        $agentId = $assignedAgent ? $assignedAgent->id : null;
+
+        // Создаем тикет с вычисленной темой ($subject)
         $thread = SupportThread::create([
-            'user_id' => $user->id,
-            'subject' => $data['subject'] ?? null,
-            'status'  => 'open',
+            'user_id'         => $user->id,
+            'support_user_id' => $agentId,
+            'subject'         => $subject, // <--- ИСПОЛЬЗУЕМ СФОРМИРОВАННУЮ ТЕМУ
+            'status'          => 'open',
         ]);
 
         $message = $thread->messages()->create([
@@ -64,7 +100,30 @@ class SupportChatController extends Controller
             }
         }
 
-        return $thread->load('messages.attachments', 'user:id,name');
+        // ---------------------------------------------------------
+        // УВЕДОМЛЕНИЕ В TELEGRAM
+        // ---------------------------------------------------------
+
+        // Используем $thread->subject, так как там уже лежит финальная тема
+        $safeSubject = htmlspecialchars($thread->subject);
+        $safeUser    = htmlspecialchars($user->name);
+
+        if ($assignedAgent && $assignedAgent->telegram_chat_id) {
+            $text = "🆕 <b>Вам назначен новый тикет #{$thread->id}</b>\n";
+            $text .= "Клиент: {$safeUser}\n";
+            $text .= "Тема: {$safeSubject}"; // <--- Теперь тут тема из сообщения
+
+            TelegramService::sendMessage($assignedAgent->telegram_chat_id, $text);
+        }
+        elseif (config('services.telegram.support_chat_id')) {
+            $text = "🆘 <b>Новый тикет #{$thread->id} (Никому не назначен)</b>\n";
+            $text .= "Клиент: {$safeUser}\n";
+            $text .= "Тема: {$safeSubject}";
+
+            TelegramService::sendMessage(config('services.telegram.support_chat_id'), $text);
+        }
+
+        return $thread->load('messages.attachments', 'user:id,name', 'supportAgent:id,name');
     }
 
     // сообщения в диалоге
@@ -80,7 +139,7 @@ class SupportChatController extends Controller
         return $thread;
     }
 
-    // отправка сообщения в существующий диалог
+// отправка сообщения в существующий диалог
     public function sendMessage(SupportThread $thread, Request $request)
     {
         $data = $request->validate([
@@ -90,10 +149,15 @@ class SupportChatController extends Controller
 
         $user = $request->user();
 
+        // Определяем роль (поддержка или клиент)
+        // Если используете Spatie permission:
+        $isSupport = $user->hasRole('support');
+        // Если поле в БД: $isSupport = $user->is_support;
+
         $msg = $thread->messages()->create([
             'user_id'    => $user->id,
             'body'       => $data['message'] ?? null,
-            'is_support' => $user->hasRole('support') ?? false, // если используешь spatie
+            'is_support' => $isSupport,
         ]);
 
         if ($request->hasFile('files')) {
@@ -109,7 +173,57 @@ class SupportChatController extends Controller
             }
         }
 
-        $thread->touch(); // обновим updated_at
+        $thread->touch(); // обновляем дату последнего изменения
+
+        // =================================================================
+        // ЛОГИКА УВЕДОМЛЕНИЙ В TELEGRAM
+        // =================================================================
+
+        // Подготовка данных для текста
+        $safeBody = !empty($data['message'])
+            ? htmlspecialchars($data['message'])
+            : '<i>(Отправлен файл)</i>';
+
+        $ticketLink = "#{$thread->id}"; // Тут можно добавить ссылку на админку/сайт
+
+        // СЦЕНАРИЙ 1: Пишет СОТРУДНИК ПОДДЕРЖКИ -> Уведомляем КЛИЕНТА
+        if ($isSupport) {
+            $client = $thread->user; // Владелец тикета
+
+            if ($client && $client->telegram_chat_id) {
+                $text = "🔔 <b>Новый ответ поддержки</b> (Тикет {$ticketLink})\n\n";
+                $text .= "{$safeBody}";
+
+                TelegramService::sendMessage($client->telegram_chat_id, $text);
+            }
+        }
+
+        // СЦЕНАРИЙ 2: Пишет КЛИЕНТ -> Уведомляем СОТРУДНИКА
+        else {
+            $assignedAgent = $thread->supportAgent; // Сотрудник, назначенный на тикет
+            $safeUserName  = htmlspecialchars($user->name);
+
+            // А. Если у тикета УЖЕ есть ответственный сотрудник
+            if ($assignedAgent && $assignedAgent->telegram_chat_id) {
+                $text = "📩 <b>Новое сообщение от клиента</b> (Тикет {$ticketLink})\n";
+                $text .= "👤 Клиент: <b>{$safeUserName}</b>\n\n";
+                $text .= "{$safeBody}";
+
+                TelegramService::sendMessage($assignedAgent->telegram_chat_id, $text);
+            }
+
+            // Б. Если ответственного НЕТ или у него нет Telegram -> Шлем в общий чат
+            elseif (config('services.telegram.support_chat_id')) {
+                // Если агент есть, но нет ТГ, пометим это
+                $agentInfo = $assignedAgent ? " (Назначен: {$assignedAgent->name})" : " (Не назначен)";
+
+                $text = "📩 <b>Сообщение в тикете {$ticketLink}</b>{$agentInfo}\n";
+                $text .= "👤 Клиент: <b>{$safeUserName}</b>\n\n";
+                $text .= "{$safeBody}";
+
+                TelegramService::sendMessage(config('services.telegram.support_chat_id'), $text);
+            }
+        }
 
         return $msg->load('user:id,name', 'attachments');
     }

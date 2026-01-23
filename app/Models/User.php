@@ -23,9 +23,9 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'created_by', 
+        'created_by',
         'company_id',
-         'telegram_chat_id', 
+         'telegram_chat_id',
     ];
 
     /**
@@ -110,6 +110,31 @@ public function supportMessagesAssigned()
 {
     return $this->hasMany(SupportMessage::class, 'assigned_support_id');
 }
+
+    public function supportThreads()
+    {
+        // Важно указать второй аргумент 'support_user_id',
+        // так как Laravel по умолчанию ищет 'user_id'
+        return $this->hasMany(SupportThread::class, 'support_user_id');
+    }
+
+    public function ownedCompanies()
+    {
+        return $this->hasMany(Company::class, 'user_id');
+    }
+
+    public function workingCompanies()
+    {
+        // Связь через company_user
+        return $this->belongsToMany(Company::class, 'company_user', 'user_id', 'company_id')
+            ->withPivot('role');
+    }
+
+// Хелпер, чтобы получить ВСЕ компании (где владелец + где сотрудник)
+    public function getAllCompaniesAttribute()
+    {
+        return $this->ownedCompanies->merge($this->workingCompanies);
+    }
 
 
 }

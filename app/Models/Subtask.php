@@ -93,9 +93,32 @@ public function checklist()
         });
     }
 
+// 17.01.2026
 
+    public function scopeForUser($query, $userId)
+    {
+        return $query->where(function ($q) use ($userId) {
+            // 1. Создатель подзадачи
+            $q->where('creator_id', $userId)
 
+                // 2. Участник подзадачи
+                ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $userId))
+                ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $userId))
 
+                // 3. Доступ через Родительскую Задачу (наследуем права задачи)
+                ->orWhereHas('task', function ($tq) use ($userId) {
+                    $tq->where('creator_id', $userId)
+                        ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $userId))
+                        ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $userId))
+                        // Проект и компания
+                        ->orWhereHas('project', function ($pq) use ($userId) {
+                            $pq->whereHas('managers', fn($sq) => $sq->where('users.id', $userId))
+                                ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $userId))
+                                ->orWhereHas('company', fn($sq) => $sq->where('user_id', $userId));
+                        });
+                });
+        });
+    }
 
 
 }
