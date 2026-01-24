@@ -34,6 +34,13 @@ const progressColor = computed(() => {
     return 'bg-emerald-500'
 })
 
+
+const getFileName = (file) => {
+    if (file.file_name) return file.file_name
+    if (file.file_path) return file.file_path.split('/').pop()
+    return 'Файл'
+}
+
 const getFileIcon = (filename) => {
     if (!filename) return '📎'
     const ext = filename.split('.').pop().toLowerCase()
@@ -139,11 +146,13 @@ const getFileIcon = (filename) => {
                     </button>
 
                     <div class="text-4xl mb-2 filter drop-shadow-sm transition-transform group-hover:scale-110">
-                        {{ getFileIcon(f.file_name) }}
+                        {{ getFileIcon(getFileName(f)) }}
                     </div>
 
-                    <a :href="`/api/tasks/files/${f.id}`" target="_blank" class="text-xs text-center font-medium text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 break-all stretched-link">
-                        {{ f.file_name }}
+                    <a :href="`/api/tasks/files/${f.id}`" target="_blank"
+                       class="text-xs text-center font-medium text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 break-all stretched-link"
+                       :title="getFileName(f)">
+                        {{ getFileName(f) }}
                     </a>
                 </div>
             </div>

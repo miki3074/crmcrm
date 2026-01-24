@@ -36,13 +36,33 @@ const formatDate = (dateString) => {
     })
 }
 
-const getFileIcon = (filename) => {
-    const ext = filename.split('.').pop().toLowerCase()
-    if (['pdf'].includes(ext)) return '📕'
-    if (['doc', 'docx'].includes(ext)) return '📘'
-    if (['xls', 'xlsx'].includes(ext)) return '📊'
-    return '📄'
-}
+const getFileName = (file) => {
+    // 1. Если есть нормальное имя — возвращаем его
+    if (file.file_name && file.file_name.trim() !== '') {
+        return file.file_name;
+    }
+
+    // 2. Если имени нет, пытаемся вырезать из пути
+    if (file.file_path) {
+        return file.file_path.split('/').pop();
+    }
+
+    // 3. Если и пути нет — заглушка
+    return 'Документ без названия';
+};
+
+const getFileIcon = (file) => {
+    // Получаем имя через нашу новую функцию (это гарантирует строку)
+    const filename = getFileName(file);
+
+    const ext = filename.split('.').pop().toLowerCase();
+
+    if (['pdf'].includes(ext)) return '📕';
+    if (['doc', 'docx'].includes(ext)) return '📘';
+    if (['xls', 'xlsx'].includes(ext)) return '📊';
+    if (['ppt', 'pptx'].includes(ext)) return '📙';
+    return '📄';
+};
 
 // === UPLOAD ===
 const handleFileUpload = async (e) => {
@@ -178,10 +198,16 @@ const getStatusBadge = (status) => {
 
                         <!-- Инфо о файле -->
                         <div class="flex gap-3">
-                            <div class="text-3xl select-none">{{ getFileIcon(file.file_name) }}</div>
+                            <div class="text-3xl select-none">{{ getFileIcon(file) }}</div>
                             <div class="min-w-0">
-                                <a :href="`/storage/${file.file_path}`" target="_blank" class="font-bold hover:underline truncate block text-gray-900 dark:text-white" :title="file.file_name">
-                                    {{ file.file_name }}
+                                <a
+                                    :href="`/storage/${file.file_path}`"
+                                    target="_blank"
+                                    class="font-bold hover:underline truncate block text-gray-900 dark:text-white"
+                                    :title="getFileName(file)"
+                                >
+                                    <!-- Вызываем нашу безопасную функцию -->
+                                    {{ getFileName(file) }}
                                 </a>
                                 <div class="flex flex-wrap items-center gap-2 text-xs opacity-75 mt-1">
                                     <span>👤 {{ file.user?.name }}</span>
