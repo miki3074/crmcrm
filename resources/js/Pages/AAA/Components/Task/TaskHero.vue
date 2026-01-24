@@ -71,7 +71,8 @@ const shortDescription = computed(() => {
                     <!-- Заголовок и Статус -->
                     <div class="mb-6">
                         <div class="flex flex-wrap items-start gap-3 mb-2">
-                            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+                            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight
+               break-words hyphens-auto max-w-full">
                                 {{ task?.title || 'Загрузка...' }}
                             </h1>
                         </div>

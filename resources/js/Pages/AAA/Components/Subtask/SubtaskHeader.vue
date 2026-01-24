@@ -100,14 +100,14 @@ const updateSubtask = async () => {
 <template>
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4 mb-4 dark:border-gray-700">
         <div>
-            <div class="flex items-center gap-3 mb-1">
-                <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200">
+            <div class="flex flex-wrap items-center gap-3 mb-1" style="width: 70%;">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-gray-200 break-words flex-1 min-w-0">
                     {{ subtask.title }}
                 </h2>
                 <!-- Статус Бейдж -->
-                <span class="px-2.5 py-0.5 text-xs rounded-full font-bold shadow-sm" :class="statusBadge.class">
-                    {{ statusBadge.text }}
-                </span>
+                <span class="px-2.5 py-0.5 text-xs rounded-full font-bold shadow-sm flex-shrink-0" :class="statusBadge.class">
+        {{ statusBadge.text }}
+    </span>
             </div>
 
             <div class="text-xs text-gray-500 dark:text-gray-400">
