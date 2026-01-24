@@ -210,23 +210,44 @@ public function addFiles(Request $request, Task $task)
 
 
 
-public function downloadFile($fileId)
-{
-    $file = \App\Models\TaskFile::findOrFail($fileId);
+//public function downloadFile($fileId)
+//{
+//    $file = \App\Models\TaskFile::findOrFail($fileId);
+//
+//    // Проверка доступа к задаче
+//    $this->authorize('view', $file->task);
+//
+//    $path = $file->file_path;
+//
+//    if (!Storage::disk('public')->exists($path)) {
+//        return response()->json(['message' => 'Файл не найден.'], Response::HTTP_NOT_FOUND);
+//    }
+//
+//    $originalName = basename($path); // или сохрани оригинальное имя при загрузке
+//
+//    return Storage::disk('public')->download($path, $originalName);
+//}
 
-    // Проверка доступа к задаче
-    $this->authorize('view', $file->task);
+    public function downloadFile($fileId)
+    {
+        $file = \App\Models\TaskFile::findOrFail($fileId);
 
-    $path = $file->file_path;
+        // 1. Проверка прав
+        $this->authorize('view', $file->task);
 
-    if (!Storage::disk('public')->exists($path)) {
-        return response()->json(['message' => 'Файл не найден.'], Response::HTTP_NOT_FOUND);
+        // 2. Проверка существования
+        if (!Storage::disk('public')->exists($file->file_path)) {
+            abort(404, 'Файл не найден');
+        }
+
+        // 3. Скачивание
+        // Первый аргумент: путь на диске
+        // Второй аргумент: имя, под которым файл скачается у пользователя
+        return Storage::disk('public')->download(
+            $file->file_path,
+            $file->file_name // Используем оригинальное имя из БД
+        );
     }
-
-    $originalName = basename($path); // или сохрани оригинальное имя при загрузке
-
-    return Storage::disk('public')->download($path, $originalName);
-}
 
 
 // public function deleteFile(TaskFile $file)

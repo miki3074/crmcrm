@@ -200,8 +200,9 @@ const getStatusBadge = (status) => {
                         <div class="flex gap-3">
                             <div class="text-3xl select-none">{{ getFileIcon(file) }}</div>
                             <div class="min-w-0">
+
                                 <a
-                                    :href="`/storage/${file.file_path}`"
+                                    :href="`/api/tasks/files/${file.id}`"
                                     target="_blank"
                                     class="font-bold hover:underline truncate block text-gray-900 dark:text-white"
                                     :title="getFileName(file)"
