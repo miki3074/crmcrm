@@ -722,4 +722,21 @@ public function withSubtasks()
     }
 
 
+    public function restore($id)
+    {
+        // Ищем задачу, игнорируя фильтр "не завершенные"
+        $task = Task::withoutGlobalScope('not_completed')->findOrFail($id);
+
+        // $this->authorize('update', $task);
+
+        $task->update([
+            'completed' => 0,
+            'progress' => 0,
+            'completed_at' => null,
+            'status' => 'in_work',
+        ]);
+
+        return back()->with('success', 'Задача восстановлена из архива');
+    }
+
 }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\CompletedTasksController;
+use App\Http\Controllers\API\SubtaskController;
+use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -53,6 +55,12 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/meetings/{meeting}/status', [App\Http\Controllers\MeetingController::class, 'updateStatus'])
         ->name('meetings.status.update');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Маршруты восстановления
+    Route::post('/tasks/{task}/restore', [TaskController::class, 'restore'])->name('tasks.restore');
+    Route::post('/subtasks/{subtask}/restore', [SubtaskController::class, 'restore'])->name('subtasks.restore');
 });
 
 Route::get('/dashboard', function () {

@@ -77,14 +77,14 @@ const hasSubtasks = computed(() => {
                                         {{ projectName }}
                                     </span>
                                     <span class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate" :title="taskTitle">
-                                        ✅ {{ taskTitle }}
+                                        ✅  {{ taskTitle }}
                                     </span>
                                 </div>
 
                                 <!-- Список подзадач -->
                                 <div class="space-y-2">
                                     <div v-for="st in subs" :key="st.id"
-                                         @click="router.visit(`/tasks/${st.task_id}`)"
+                                         @click="router.visit(`/subtasks/${st.id}`)"
                                          class="group flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:shadow-md cursor-pointer transition-all">
 
                                         <div class="flex items-center gap-2 overflow-hidden">

@@ -525,6 +525,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/task-templates/companies/{company}/producers', [ProducerBuyerController::class, 'producersByCompany']);
     Route::get('/task-templates/companies/{company}/buyers',    [ProducerBuyerController::class, 'buyersByCompany']);
 
+
+
 });
 
 // === ПРОИЗВОДИТЕЛИ / ПОКУПАТЕЛИ ===

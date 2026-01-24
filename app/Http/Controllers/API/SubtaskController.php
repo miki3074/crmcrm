@@ -737,7 +737,19 @@ public function updateDescription(Request $request, Subtask $subtask)
         ]);
     }
 
+    public function restore($id)
+    {
+        // Ищем подзадачу, игнорируя глобальные скоупы
+        $subtask = Subtask::withoutGlobalScope('not_completed')->findOrFail($id);
 
+        $subtask->update([
+            'completed' => 0,
+            'progress' => 0,
+            'completed_at' => null,
+        ]);
+
+        return back()->with('success', 'Подзадача восстановлена');
+    }
 
 
 

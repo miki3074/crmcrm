@@ -20,6 +20,8 @@ class TaskSummaryController extends Controller
         // Новый параметр: 'all', 'task', 'subtask'
         $filterType = $request->get('type', 'all');
 
+        $filterStatus = $request->get('status', 'all');
+
         $summary = [];
 
         $initUser = function ($u) use (&$summary) {
@@ -57,6 +59,12 @@ class TaskSummaryController extends Controller
                     'watcherstask:id,name',
                     'project:id,name'
                 ]);
+
+            if ($filterStatus === 'completed') {
+                $taskQuery->where('completed', 1);
+            } elseif ($filterStatus === 'active') { // На будущее, если нужно только активные
+                $taskQuery->where('completed', 0);
+            }
 
             if ($mode === 'owner') {
                 $companyIds = Company::where('user_id', $user->id)->pluck('id');
@@ -134,6 +142,12 @@ class TaskSummaryController extends Controller
                 'responsibles:id,name',
                 'task.project:id,name'
             ]);
+
+            if ($filterStatus === 'completed') {
+                $subtaskQuery->where('completed', 1);
+            } elseif ($filterStatus === 'active') {
+                $subtaskQuery->where('completed', 0);
+            }
 
             if ($mode === 'owner') {
                 $companyIds = Company::where('user_id', $user->id)->pluck('id');
