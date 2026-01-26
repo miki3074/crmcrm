@@ -4,6 +4,7 @@ use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\SubtaskController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\MeetingController;
+use App\Http\Controllers\MeetingDocumentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -55,6 +56,24 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/meetings/{meeting}/status', [App\Http\Controllers\MeetingController::class, 'updateStatus'])
         ->name('meetings.status.update');
+
+    Route::put('/meetings/{meeting}', [MeetingController::class, 'update'])->name('meetings.update');
+
+    Route::post('/meetings/{meeting}/review', [MeetingController::class, 'reviewProtocol'])->name('meetings.review');
+
+    Route::delete('/meetings/{meeting}', [MeetingController::class, 'destroy'])
+        ->name('meetings.destroy');
+
+    Route::post('/meetings/{meeting}/agenda-feedback', [MeetingController::class, 'agendaFeedback'])->name('meetings.agenda.feedback');
+
+    Route::post('/meetings/{meeting}/agenda-fix/{participant}', [MeetingController::class, 'markAgendaFixed'])
+        ->name('meetings.agenda.fixed');
+
+    Route::post('/meetings/{meeting}/documents', [MeetingDocumentController::class, 'store'])->name('meetings.documents.store');
+    Route::get('/meetings/{meeting}/documents/{document}', [MeetingDocumentController::class, 'download'])->name('meetings.documents.download');
+// Используем POST с _method PUT для файлов, так надежнее в Laravel
+    Route::post('/meetings/{meeting}/documents/{document}/update', [MeetingDocumentController::class, 'update'])->name('meetings.documents.update');
+    Route::delete('/meetings/{meeting}/documents/{document}', [MeetingDocumentController::class, 'destroy'])->name('meetings.documents.destroy');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -75,7 +94,9 @@ Route::get('/chatai', function () {
     return Inertia::render('Chat');
 })->middleware(['auth', 'verified'])->name('chat');
 
-
+Route::get('/formzak', function () {
+    return Inertia::render('LegislationForm');
+})->middleware(['auth', 'verified'])->name('formzak');
 
 
 

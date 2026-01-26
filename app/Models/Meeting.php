@@ -23,9 +23,13 @@ class Meeting extends Model
 
     public function participants()
     {
+        // Объединяем всё в одну правильную связь
         return $this->belongsToMany(User::class, 'meeting_participants')
-            ->withPivot('status', 'is_signed');
+            ->withPivot('status', 'is_signed', 'agenda_status', 'agenda_comment') // <-- Все поля здесь
+            ->withTimestamps();
     }
+
+
 
     public function responsible()
     {
@@ -35,5 +39,10 @@ class Meeting extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(MeetingDocumenttwo::class);
     }
 }

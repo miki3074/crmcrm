@@ -159,7 +159,7 @@ const toggleTheme = () => {
                 </Link>
 
                 <Link
-                    :href="route('meeting-documents.index')"
+                    :href="route('meetings.store')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
                     :class="route().current('meeting-documents.index')
                     ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
