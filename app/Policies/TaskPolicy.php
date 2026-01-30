@@ -94,7 +94,7 @@ private function participates(User $user, Task $task): bool
         return $user->id === $comment->user_id ||
                $task->responsibles->contains('id', $user->id) ||
                $task->project->managers->contains('id', $user->id) ||
-               $task->project->executors->contains('id', $user->id) || 
+               $task->project->executors->contains('id', $user->id) ||
                $user->id === ($task->project->company->user_id ?? 0) ||
                $user->id === $task->creator_id;
     }
@@ -149,6 +149,7 @@ private function participates(User $user, Task $task): bool
             optional($task->project->company)->user_id === $user->id ||
             $task->project->managers->contains('id', $user->id) ||
             $task->project->executors->contains('id', $user->id); // 👈 добавили
+
     }
 
  public function updateProgress(User $user, Task $task): bool
@@ -166,10 +167,10 @@ private function participates(User $user, Task $task): bool
 
     public function addFiles(User $user, Task $task): bool
     {
-        return 
+        return
             $task->executors->contains('id', $user->id) ||
             $task->responsibles->contains('id', $user->id) ||
-              $task->project->executors->contains('id', $user->id) || 
+              $task->project->executors->contains('id', $user->id) ||
             $user->id === ($task->project->company->user_id ?? 0);
     }
 
@@ -187,7 +188,7 @@ private function participates(User $user, Task $task): bool
 {
 
     return
-       
+
         $user->id === $task->project->company->user_id ||
         $task->project->managers->contains('id', $user->id) ||
             $task->project->executors->contains('id', $user->id);

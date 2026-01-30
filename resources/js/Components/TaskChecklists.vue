@@ -88,7 +88,7 @@ onMounted(load)
       Добавить чек-лист
     </button>
 
-    <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center">
+    <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center" style="z-index: 999">
   <div class="bg-white rounded p-6 w-96">
     <h4 class="text-lg font-semibold mb-2">Новый пункт чек-листа</h4>
 

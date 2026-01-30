@@ -11,10 +11,13 @@ class Contract extends Model
 
     protected $fillable = [
         'title',
+        'type',
         'counterparty',
         'amount',
+        'margin',
         'status',
         'signed_at',
+        'valid_until',
         'file_path',
         'file_name',
         'created_by',
@@ -24,6 +27,7 @@ class Contract extends Model
 
     protected $casts = [
         'signed_at' => 'date',
+        'valid_until' => 'date',
     ];
 
     public function creator()
@@ -37,10 +41,10 @@ class Contract extends Model
     }
 
     public function task() {
-        return $table->belongsTo(Task::class);
+        return $this->belongsTo(Task::class);
     }
     public function subtask() {
-        return $table->belongsTo(Subtask::class);
+        return $this->belongsTo(Subtask::class);
     }
 
 

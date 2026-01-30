@@ -79,7 +79,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::get('/tasks/search', [ContractController::class, 'searchTasks']);
-
+Route::get('/projects/search', [ContractController::class, 'searchProjects']);
 
 Route::middleware('throttle:chat')->group(function () {
 
@@ -487,11 +487,18 @@ Route::middleware(['auth:sanctum', 'support'])->prefix('support/admin')->group(f
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/contracts', [ContractController::class, 'index']);
     Route::post('/contracts', [ContractController::class, 'store']);
+    Route::get('/contracts/report', [App\Http\Controllers\API\ContractController::class, 'generateReport']);
     Route::put('/contracts/{contract}', [ContractController::class, 'update']);
     Route::delete('/contracts/{contract}', [ContractController::class, 'destroy']);
     Route::delete('/contracts/files/{file}', [ContractController::class, 'deleteFile']);
     Route::post('/contracts/{contract}/move', [ContractController::class, 'move']);
     Route::get('/contracts/files/{file}/download', [ContractController::class, 'downloadFile']);
+    Route::get('/contracts/{contract}/download', [App\Http\Controllers\API\ContractController::class, 'download']);
+    Route::get('/contracts/stats', [ContractController::class, 'stats']);
+    Route::apiResource('contracts', ContractController::class);
+
+
+
 });
 
 Route::middleware('auth:sanctum')->group(function () {
