@@ -131,7 +131,7 @@ Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyControlle
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/summary', [TaskSummaryController::class, 'index']);
-
+    Route::get('/tasks/report/export', [TaskSummaryController::class, 'export']);
     Route::post('/tasks', [TaskController::class, 'store']);
     Route::get('/tasks', [TaskController::class, 'index']); // если нужна страница всех задач
     Route::patch('/tasks/{task}/progress', [TaskController::class, 'updateProgress']);
@@ -244,6 +244,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/checklists', [TaskChecklistController::class, 'index']);
     Route::post('/tasks/{task}/checklists', [TaskChecklistController::class, 'store']);
     Route::patch('/checklists/{checklist}/toggle', [TaskChecklistController::class, 'toggle']);
+    Route::put('/checklists/{checklist}', [TaskChecklistController::class, 'update']);
+    Route::delete('/checklists/{checklist}', [TaskChecklistController::class, 'destroy']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {

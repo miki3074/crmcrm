@@ -34,8 +34,9 @@ public function store(Request $request)
         'responsible_ids.required' => 'Выберите хотя бы одного ответственного.',
         'responsible_ids.min' => 'Выберите хотя бы одного ответственного.',
         'responsible_ids.*.exists' => 'Один из выбранных ответственных не найден.',
-        'files.*.mimes' => 'Можно загружать только файлы PDF, Word или Excel.',
-        'files.*.max' => 'Размер каждого файла не должен превышать 5 МБ.',
+      'files.*.mimes' => 'Можно загружать файлы PDF, Word, Excel или PowerPoint.',
+
+      'files.*.max' => 'Размер каждого файла не должен превышать 5 МБ.',
     ];
 
     $validated = $request->validate([
@@ -51,7 +52,8 @@ public function store(Request $request)
         'project_id' => 'nullable|exists:projects,id',
         'subproject_id' => 'nullable|exists:subprojects,id',
         'company_id' => 'nullable|exists:companies,id',
-        'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
+        'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx|max:5120',
+
     ], $messages);
 
     // Определяем проект
@@ -183,8 +185,17 @@ public function addFiles(Request $request, Task $task)
 {
     $this->authorize('addFiles', $task);
 
+    if ($request->hasFile('files')) {
+
+        dd(
+            $request->file('files')[0]->getSize(),
+            $request->file('files')[0]->getMimeType(),
+            $request->file('files')[0]->getClientOriginalExtension()
+        );
+    }
+
     $request->validate([
-        'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx|max:5120',
+        'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx|max:5120',
         'requires_approval' => 'nullable|boolean', // 👈 Новое поле
     ]);
 

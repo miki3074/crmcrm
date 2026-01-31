@@ -166,6 +166,7 @@ const getFileIcon = (filename) => {
                     type="file"
                     multiple
                     @change="handleFile"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     :disabled="loading"
                 />

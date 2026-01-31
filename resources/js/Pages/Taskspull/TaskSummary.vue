@@ -14,6 +14,19 @@ const availableUsers = ref([])
 const isOwner = ref(false)
 const expandedGroups = ref(new Set()) // Хранит ключи раскрытых списков
 
+// --- НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ОТЧЕТА ---
+const showReportModal = ref(false)
+const filterOptions = ref({
+    companies: [],
+    projects: []
+})
+const reportForm = ref({
+    mode: 'my_tasks', // my_tasks, author, owner
+    user_id: '',
+    company_id: '',
+    project_id: ''
+})
+
 // --- Основные фильтры ---
 const queryFilters = ref({
     mode: 'my_tasks',
@@ -43,9 +56,17 @@ const fetchSummary = async () => {
         summaryData.value = data.summary
         isOwner.value = data.is_owner
 
-        if (!queryFilters.value.user_id) {
+        // Заполняем списки для модального окна (если бэкенд их пришлет)
+        // Если бэкенд не присылает, можно вычленить их из summaryData,
+        // но лучше запросить отдельно. Ниже в контроллере я добавлю их возврат.
+        if (data.meta) {
+            filterOptions.value.companies = data.meta.companies
+            filterOptions.value.projects = data.meta.projects
+            if (!queryFilters.value.user_id) availableUsers.value = data.users
+        } else if (!queryFilters.value.user_id) {
             availableUsers.value = data.users
         }
+
     } catch (e) {
         console.error(e)
     } finally {
@@ -113,6 +134,38 @@ const getVisibleTasks = (tasks, userId, columnType) => {
     }
     return tasks.slice(0, 10)
 }
+
+// --- ЛОГИКА ОТЧЕТА ---
+const openReportModal = () => {
+    // Сброс формы при открытии
+    reportForm.value = {
+        mode: queryFilters.value.mode, // наследуем текущий режим
+        user_id: '',
+        company_id: '',
+        project_id: ''
+    }
+    showReportModal.value = true
+}
+
+const downloadReport = () => {
+    // Формируем URL для скачивания
+    const params = new URLSearchParams({
+        mode: reportForm.value.mode,
+        user_id: reportForm.value.user_id,
+        company_id: reportForm.value.company_id,
+        project_id: reportForm.value.project_id
+    })
+
+    // Открываем в новом окне для скачивания файла
+    window.location.href = `/api/tasks/report/export?${params.toString()}`
+    showReportModal.value = false
+}
+
+// Фильтруем проекты зависимо от выбранной компании в модалке
+const availableProjectsForReport = computed(() => {
+    if (!reportForm.value.company_id) return filterOptions.value.projects;
+    return filterOptions.value.projects.filter(p => p.company_id == reportForm.value.company_id)
+})
 </script>
 
 <template>
@@ -123,6 +176,11 @@ const getVisibleTasks = (tasks, userId, columnType) => {
                 <h2 class="font-bold text-2xl text-slate-800 dark:text-white leading-tight flex items-center gap-2">
                     📊 Сводный пул
                 </h2>
+
+                <button @click="openReportModal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Сформировать отчет
+                </button>
             </div>
         </template>
 
@@ -137,7 +195,7 @@ const getVisibleTasks = (tasks, userId, columnType) => {
                         <div class="flex flex-col gap-2">
                             <span class="text-xs font-bold uppercase text-slate-400 tracking-wider">Область видимости</span>
                             <div class="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg self-start">
-                                <button v-for="mode in [{ key: 'my_tasks', label: 'Мои задачи' }, { key: 'author', label: 'Я — Автор' }, { key: 'owner', label: 'Все задачи', show: isOwner }]" :key="mode.key" v-show="mode.show !== false" @click="queryFilters.mode = mode.key" class="px-4 py-2 rounded-md text-sm font-bold transition-all duration-200" :class="queryFilters.mode === mode.key ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">{{ mode.label }}</button>
+                                <button v-for="mode in [{ key: 'my_tasks', label: 'Мои задачи' }, { key: 'author', label: 'Я — Автор' }, { key: 'owner', label: 'Все задачи сотрудников', show: isOwner }]" :key="mode.key" v-show="mode.show !== false" @click="queryFilters.mode = mode.key" class="px-4 py-2 rounded-md text-sm font-bold transition-all duration-200" :class="queryFilters.mode === mode.key ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">{{ mode.label }}</button>
                             </div>
                         </div>
                         <!-- 2. Исполнитель -->
@@ -244,7 +302,14 @@ const getVisibleTasks = (tasks, userId, columnType) => {
                                                 <span class="flex items-center gap-1 bg-slate-100 dark:bg-slate-600 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                                                     📅 {{ formatDate(task.due_date) }}
                                                 </span>
-                                                <span class="truncate max-w-[40%] opacity-75 ml-2" :title="task.project_name">{{ task.project_name }}</span>
+                                                <div class="flex flex-col items-end min-w-0 max-w-[45%] ml-2">
+    <span class="text-[9px] font-bold text-slate-400 truncate w-full text-right" :title="task.company_name">
+        {{ task.company_name }}
+    </span>
+                                                    <span class="truncate w-full text-right opacity-75" :title="task.project_name">
+        {{ task.project_name }}
+    </span>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -280,7 +345,11 @@ const getVisibleTasks = (tasks, userId, columnType) => {
 
                                             <div class="mt-1 flex flex-col gap-1 text-[10px]">
                                                 <div class="font-bold text-rose-600 whitespace-nowrap">Опоздание! Срок: {{ formatDate(task.due_date) }}</div>
-                                                <div class="text-slate-400 truncate w-full" :title="task.project_name">{{ task.project_name }}</div>
+                                                <div class="text-slate-400 truncate w-full flex items-center gap-1 text-[9px]" :title="`${task.company_name} -> ${task.project_name}`">
+                                                    <span class="font-bold text-slate-500 shrink-0">{{ task.company_name }}</span>
+                                                    <span class="text-slate-300">•</span>
+                                                    <span class="truncate">{{ task.project_name }}</span>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -314,7 +383,11 @@ const getVisibleTasks = (tasks, userId, columnType) => {
                                                         {{ task.title }}
                                                     </a>
                                                 </div>
-                                                <span class="text-[9px] text-slate-400 truncate mt-0.5" :title="task.project_name">{{ task.project_name }}</span>
+                                                <span class="text-[9px] text-slate-400 truncate mt-0.5 flex gap-1" :title="`${task.company_name} | ${task.project_name}`">
+    <span class="font-semibold text-slate-500">{{ task.company_name }}</span>
+    <span>:</span>
+    <span class="truncate">{{ task.project_name }}</span>
+</span>
                                             </div>
                                             <div class="text-emerald-500 ml-1 shrink-0">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
@@ -345,6 +418,69 @@ const getVisibleTasks = (tasks, userId, columnType) => {
                 </div>
             </div>
         </div>
+
+
+        <!-- МОДАЛЬНОЕ ОКНО ОТЧЕТА -->
+        <div v-if="showReportModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-6 border border-slate-200 dark:border-slate-700">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-slate-800 dark:text-white">Параметры отчета</h3>
+                    <button @click="showReportModal = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- 1. Режим отчета -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Чьи задачи выгружать?</label>
+                        <select v-model="reportForm.mode" class="w-full border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="my_tasks">Только мои задачи</option>
+                            <option value="author">Где я — автор</option>
+                            <option v-if="isOwner" value="owner">Все задачи компании</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. Выбор сотрудника (Скрыт если "Мои задачи") -->
+                    <div v-if="reportForm.mode !== 'my_tasks'">
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Фильтр по сотруднику (необязательно)</label>
+                        <select v-model="reportForm.user_id" class="w-full border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Все сотрудники</option>
+                            <option v-for="u in availableUsers" :key="u.id" :value="u.id">{{ u.name }}</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-slate-200 dark:border-slate-700 my-4"></div>
+
+                    <!-- 3. Фильтр по Компании -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Компания</label>
+                        <select v-model="reportForm.company_id" class="w-full border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Все компании</option>
+                            <option v-for="c in filterOptions.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. Фильтр по Проекту -->
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Проект</label>
+                        <select v-model="reportForm.project_id" class="w-full border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Все проекты</option>
+                            <option v-for="p in availableProjectsForReport" :key="p.id" :value="p.id">{{ p.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button @click="showReportModal = false" class="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition">Отмена</button>
+                    <button @click="downloadReport" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition flex items-center gap-2">
+                        <span>Скачать CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
     </AuthenticatedLayout>
 </template>
 

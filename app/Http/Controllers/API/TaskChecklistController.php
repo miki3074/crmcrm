@@ -35,6 +35,8 @@ class TaskChecklistController extends Controller
         'files.*' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg|max:5120',
     ], $messages);
 
+    $validated['created_by'] = $request->user()->id;
+
     $checklist = $task->checklists()->create($validated);
 
     if ($request->hasFile('files')) {
@@ -56,7 +58,7 @@ class TaskChecklistController extends Controller
         }
     }
 
-    return response()->json($checklist->load('assignee', 'files'), 201);
+    return response()->json($checklist->load('assignee', 'files', 'creator'), 201);
 }
 
 
@@ -68,4 +70,52 @@ class TaskChecklistController extends Controller
 
         return response()->json($checklist);
     }
+
+    private function checkPermission($checklist)
+    {
+        // Сначала проверяем, имеет ли пользователь вообще доступ к задаче
+        $this->authorize('update', $checklist->task);
+
+        // Теперь специфика чек-листа
+        if ($checklist->created_by !== null && $checklist->created_by !== auth()->id()) {
+            abort(403, 'Вы не можете редактировать или удалять этот пункт, так как он создан другим пользователем.');
+        }
+    }
+
+    public function update(Request $request, TaskChecklist $checklist)
+    {
+        $this->checkPermission($checklist);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'assigned_to' => 'nullable|exists:users,id',
+            'important' => 'boolean',
+            // Файлы при редактировании обычно добавляются отдельно или сложная логика,
+            // здесь оставим обновление основных полей.
+        ]);
+
+        $checklist->update($validated);
+
+        // Если нужно обновить ответственного и послать уведомление,
+        // можно скопировать логику из store, но для краткости опустим.
+
+        return response()->json($checklist->load('assignee', 'creator'));
+    }
+
+    public function destroy(TaskChecklist $checklist)
+    {
+        $this->checkPermission($checklist);
+
+        // Удаляем файлы с диска (опционально)
+        foreach($checklist->files as $file) {
+            \Storage::disk('public')->delete($file->file_path);
+            $file->delete();
+        }
+
+        $checklist->delete();
+
+        return response()->json(['message' => 'Deleted']);
+    }
+
+
 }

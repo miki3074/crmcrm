@@ -147,6 +147,7 @@ onMounted(fetchSubtask)
                     <SubtaskChecklist
                         :subtask-id="subtask.id"
                         :checklist="subtask.checklist"
+                        :user-id="$page.props.auth.user.id"
                         :executors="subtask.executors"
                         :responsibles="subtask.responsibles"
                         :can-write="canWriteComments()"

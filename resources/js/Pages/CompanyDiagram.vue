@@ -8,6 +8,7 @@ import dagre from 'dagre'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/controls/dist/style.css'
+import {Link} from "@inertiajs/vue3";
 
 // ==== реактивные переменные ====
 const companies = ref([])
@@ -174,14 +175,14 @@ onMounted(fetchCompanies)
 </script>
 
 <template>
-  <AuthenticatedLayout>
+
     <div class="flex h-screen overflow-hidden bg-gray-50 text-gray-900">
       <!-- Левая панель -->
       <aside class="w-72 border-r border-gray-200 bg-white shadow-sm flex flex-col">
         <div class="p-4 border-b border-gray-100">
-          <h2 class="font-semibold text-lg mb-3 text-gray-800 flex items-center gap-2">
-            🏢 Мои компании
-          </h2>
+          <a  :href="route('dashboard')" class="font-semibold text-lg mb-3 text-gray-800 flex items-center gap-2" style="cursor: pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="#000000" width="800px" height="800px" viewBox="0 0 24 24" role="img" class="block h-8 w-auto fill-current text-gray-800 dark:text-gray-200"><title>Планшет</title><path d="M4.59 7.41l4.94 3.54L4.59 24zm0-7.41v6.36l9.53 5.29 4.59-3.52zm0 24l14.82-8.47v-6.7Z"></path></svg> На главную
+          </a>
         </div>
 
         <div class="flex-1 overflow-y-auto p-2">
@@ -210,7 +211,7 @@ onMounted(fetchCompanies)
             @click="fitView"
             class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition"
           >
-            🔍 приблизить
+            🔍 центрировать
           </button>
         </div>
 
@@ -239,13 +240,13 @@ onMounted(fetchCompanies)
           <template v-if="selectedItem.type === 'project'">
             <p><b>Название:</b> {{ selectedItem.name }}</p>
             <p><b>Дата начала:</b> {{ selectedItem.start_date }}</p>
-            
+
           </template>
 
           <!-- Задача -->
           <template v-else-if="selectedItem.type === 'task'">
             <p><b>Название:</b> {{ selectedItem.title }}</p>
-            
+
            <p>
   <b>Исполнители:</b>
   <span v-for="(e, i) in selectedItem.executors" :key="e.id">
@@ -327,7 +328,7 @@ onMounted(fetchCompanies)
         </div>
       </div>
     </div>
-  </AuthenticatedLayout>
+
 </template>
 
 <style scoped>

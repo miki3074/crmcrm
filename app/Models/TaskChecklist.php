@@ -10,7 +10,12 @@ class TaskChecklist extends Model
     use HasFactory;
 
     protected $fillable = [
-        'task_id', 'title', 'assigned_to', 'important', 'completed'
+        'task_id',
+        'title',
+        'assigned_to',
+        'important',
+        'completed',
+        'created_by', // <--- ДОБАВИТЬ ЭТО
     ];
 
     public function task()
@@ -32,5 +37,10 @@ class TaskChecklist extends Model
 {
     return $this->belongsToMany(User::class, 'checklist_assignees');
 }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
 }
