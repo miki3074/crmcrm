@@ -222,7 +222,9 @@ onMounted(fetchTask)
                 </div>
             </div>
         </div>
-        <div v-else class="text-center py-20 text-gray-500">Загрузка задачи...</div>
+        <div v-else class="text-center py-20 text-gray-500">Загрузка задачи...
+        <br/> нет доступа к этой задаче
+        </div>
 
         <!-- MODALS -->
         <TaskActionModals

@@ -96,14 +96,14 @@ public function watcherstask()
 {
     return $this->belongsToMany(User::class, 'task_user_watchers')
         ->withTimestamps()
-        ->select('users.id', 'users.name'); // 🔑 явное указание
+        ->select('users.id', 'users.name', 'users.email');
 }
 
 public function watchers()
 {
     return $this->belongsToMany(User::class, 'task_user_watchers')
         ->withTimestamps()
-        ->select('users.id', 'users.name');
+        ->select('users.id', 'users.name', 'users.email');
 }
 
     public function producers()

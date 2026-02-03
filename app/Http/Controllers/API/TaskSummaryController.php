@@ -385,4 +385,62 @@ class TaskSummaryController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+
+    public function completedByProject(Project $project)
+    {
+        $user = Auth::user();
+
+        $result = [
+            'tasks' => [],
+            'subtasks' => []
+        ];
+
+        // ========================
+        // ЗАВЕРШЁННЫЕ ЗАДАЧИ
+        // ========================
+        $tasks = Task::withoutGlobalScope('not_completed')
+            ->where('project_id', $project->id)
+            ->where('completed', 1)
+            ->with(['company:id,name'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        foreach ($tasks as $task) {
+            $result['tasks'][] = [
+                'id' => $task->id,
+                'title' => $task->title,
+                'due_date' => $task->due_date,
+                'company' => $task->company->name ?? '—',
+                'link' => "/tasks/{$task->id}",
+            ];
+        }
+
+        // ========================
+        // ЗАВЕРШЁННЫЕ ПОДЗАДАЧИ
+        // ========================
+        $subtasks = Subtask::withoutGlobalScope('not_completed')
+            ->where('completed', 1)
+            ->whereHas('task', fn ($q) =>
+            $q->where('project_id', $project->id)
+            )
+            ->with(['task:id,title'])
+            ->orderByDesc('updated_at')
+            ->get();
+
+        foreach ($subtasks as $sub) {
+            $result['subtasks'][] = [
+                'id' => $sub->id,
+                'title' => $sub->title,
+                'task_title' => $sub->task->title,
+                'due_date' => $sub->due_date,
+                'link' => "/subtasks/{$sub->id}",
+            ];
+        }
+
+        return response()->json($result);
+    }
+
+
+
 }

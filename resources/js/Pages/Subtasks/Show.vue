@@ -164,7 +164,9 @@ onMounted(fetchSubtask)
                 </div>
 
             </div>
-            <div v-else class="text-gray-600 dark:text-gray-300 text-center py-10">Загрузка...</div>
+            <div v-else class="text-gray-600 dark:text-gray-300 text-center py-10">Загрузка...
+                <br/> нет доступа к этой задаче
+            </div>
         </div>
     </AuthenticatedLayout>
 </template>

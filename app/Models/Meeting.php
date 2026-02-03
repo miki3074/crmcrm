@@ -9,10 +9,36 @@ class Meeting extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'company_id',
+        'creator_id',
+        'responsible_id',
+        'title',
+        'description',
+        'start_time',
+        'end_time',
+        'agenda',
+        'minutes',
+        'rejection_reason',
+        'status',
+
+        // Добавьте эти два поля:
+        'task_id',
+        'subtask_id',
+    ];
+
     protected $guarded = [];
 
 
+    public function task()
+    {
+        return $this->belongsTo(Task::class);
+    }
 
+    public function subtask()
+    {
+        return $this->belongsTo(Subtask::class);
+    }
 
 
     public function company()

@@ -6,9 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Meeting;
+use App\Models\Subtask;
+use App\Models\Task;
 use App\Models\User;
+use App\Services\TelegramService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,14 +25,21 @@ class MeetingController extends Controller
     {
         $user = Auth::user();
 
-        // Ищем совещания, где юзер: Создатель ИЛИ Ответственный ИЛИ Участник
         $meetings = Meeting::query()
-            ->where('creator_id', $user->id)
-            ->orWhere('responsible_id', $user->id)
-            ->orWhereHas('participants', function (Builder $query) use ($user) {
-                $query->where('user_id', $user->id);
+            // Группируем условия "ИЛИ", чтобы они корректно работали
+            ->where(function ($query) use ($user) {
+                $query->where('creator_id', $user->id)
+                    ->orWhere('responsible_id', $user->id)
+                    ->orWhereHas('participants', function (Builder $q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    });
             })
-            ->with('company') // Подгрузим название компании
+            // 🚀 ГЛАВНОЕ ИЗМЕНЕНИЕ ЗДЕСЬ:
+            ->with([
+                'company',              // Название компании
+                'task.project',         // Чтобы получить Проект через Задачу
+                'subtask.task.project'  // Чтобы получить Проект через Подзадачу (если выбрана только она)
+            ])
             ->orderBy('start_time', 'desc')
             ->get();
 
@@ -89,35 +101,143 @@ class MeetingController extends Controller
     // Сохранение совещания
     public function store(Request $request)
     {
+        // 1. Валидация входных данных
         $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-            'title' => 'required|string|max:255',
-            'start_time' => 'required|date',
+            'company_id'     => 'required|exists:companies,id',
+            'title'          => 'required|string|max:255',
+            'start_time'     => 'required|date',
             'responsible_id' => 'required|exists:users,id',
-            'agenda' => 'nullable|string',
-            'participants' => 'array', // массив ID пользователей
-            'participants.*' => 'exists:users,id'
+            'agenda'         => 'nullable|string',
+            'task_id'        => 'nullable|exists:tasks,id',
+            'subtask_id'     => 'nullable|exists:subtasks,id',
+            'participants'   => 'array',
         ]);
 
-        // Валидация доступа к компании (аналогично getCompanyUsers) пропускаю для краткости
+        // 2. Логика фильтрации участников (исправленная)
+        $allowedUserIds = [];
+        $restrictParticipants = false;
 
-        DB::transaction(function () use ($validated) {
+        if (!empty($validated['subtask_id'])) {
+            // --- ЕСЛИ ВЫБРАНА ПОДЗАДАЧА ---
+            // Загружаем реальные связи: исполнители, ответственные
+            $subtask = Subtask::with(['executors', 'responsibles'])->find($validated['subtask_id']);
+
+            // Собираем коллекцию ID
+            $collection = collect();
+            if ($subtask->creator_id) {
+                $collection->push($subtask->creator_id);
+            }
+            // Добавляем ID из связей
+            $collection = $collection->merge($subtask->executors->pluck('id'));
+            $collection = $collection->merge($subtask->responsibles->pluck('id'));
+
+            $allowedUserIds = $collection->unique()->toArray();
+            $restrictParticipants = true;
+
+        } elseif (!empty($validated['task_id'])) {
+            // --- ЕСЛИ ВЫБРАНА ЗАДАЧА ---
+            // Загружаем реальные связи: исполнители, ответственные, наблюдатели
+            $task = Task::with(['executors', 'responsibles', 'watchers'])->find($validated['task_id']);
+
+            // Собираем коллекцию ID
+            $collection = collect();
+            if ($task->creator_id) {
+                $collection->push($task->creator_id);
+            }
+            $collection = $collection->merge($task->executors->pluck('id'));
+            $collection = $collection->merge($task->responsibles->pluck('id'));
+            $collection = $collection->merge($task->watchers->pluck('id')); // У вас связь называется watchers
+
+            $allowedUserIds = $collection->unique()->toArray();
+            $restrictParticipants = true;
+        }
+
+        // 3. Валидация списка участников
+        if ($restrictParticipants) {
+            // Добавляем ответственного за совещание в список разрешенных,
+            // чтобы не было ошибки, если секретарь не участвует в задаче
+            $allowedUserIds[] = $validated['responsible_id'];
+
+            // Превращаем массив в коллекцию и обратно для гарантии уникальности и индексов
+            $allowedUserIds = array_values(array_unique($allowedUserIds));
+
+            if (empty($allowedUserIds)) {
+                // Если вдруг в задаче вообще никого нет, даем предупреждение или разрешаем всех (на ваш выбор)
+                // return back()->withErrors(['participants' => 'В выбранной задаче нет участников.']);
+            } else {
+                $request->validate([
+                    'participants.*' => [
+                        'exists:users,id',
+                        Rule::in($allowedUserIds) // Разрешаем только тех, кто в списке
+                    ]
+                ], [
+                    'participants.*.in' => 'Один из участников не относится к выбранной задаче.'
+                ]);
+            }
+        } else {
+            $request->validate([
+                'participants.*' => 'exists:users,id'
+            ]);
+        }
+
+        // --- Транзакция и Создание ---
+        DB::transaction(function () use ($validated, $request) {
             $meeting = Meeting::create([
-                'company_id' => $validated['company_id'],
-                'creator_id' => Auth::id(),
+                'company_id'     => $validated['company_id'],
+                'creator_id'     => Auth::id(),
                 'responsible_id' => $validated['responsible_id'],
-                'title' => $validated['title'],
-                'start_time' => $validated['start_time'],
-                'agenda' => $validated['agenda'],
-                'status' => 'scheduled', // Сразу назначаем
+                'title'          => $validated['title'],
+                'start_time'     => $validated['start_time'],
+                'agenda'         => $validated['agenda'],
+                'task_id'        => $validated['task_id'] ?? null,
+                'subtask_id'     => $validated['subtask_id'] ?? null,
+                'status'         => 'scheduled',
             ]);
 
-            // Добавляем участников
-            if (!empty($validated['participants'])) {
-                $meeting->participants()->attach($validated['participants']);
+            $participantIds = $request->input('participants', []);
+
+            if (!empty($participantIds)) {
+                $meeting->participants()->attach($participantIds);
             }
 
-            // TODO: Здесь можно отправить Email приглашения (Notification)
+            // --- ОТПРАВКА УВЕДОМЛЕНИЙ ---
+
+            // Собираем всех получателей: участники + ответственный
+            $recipientIds = collect($participantIds)
+                ->push($validated['responsible_id'])
+                ->unique();
+
+            // Берем тех, у кого есть telegram_chat_id
+            $usersToNotify = User::whereIn('id', $recipientIds)
+                ->whereNotNull('telegram_chat_id')
+                ->where('telegram_chat_id', '!=', '')
+                ->get();
+
+            // Формируем сообщение
+            $formattedDate = Carbon::parse($meeting->start_time)->format('d.m.Y H:i');
+
+            $message = "<b>📅 Новое совещание:</b> {$meeting->title}\n";
+            $message .= "🕒 <b>Время:</b> {$formattedDate}\n";
+
+            // Доп. инфо о задаче для сообщения
+            if (!empty($validated['task_id'])) {
+                // Тут мы просто берем заголовок, with() не нужен
+                $t = Task::find($validated['task_id']);
+                if($t) $message .= "📌 <b>По задаче:</b> {$t->title}\n";
+            }
+
+            if (!empty($meeting->agenda)) {
+                $agendaShort = \Illuminate\Support\Str::limit($meeting->agenda, 100);
+                $message .= "\n📝 <b>Повестка:</b> {$agendaShort}";
+            }
+
+
+         $url = route('meetings.show', $meeting->id);
+         $message .= "\n🔗 <a href='{$url}'>Открыть подробности</a>";
+
+            foreach ($usersToNotify as $user) {
+                TelegramService::sendMessage($user->telegram_chat_id, $message);
+            }
         });
 
         return redirect()->route('meetings.index')->with('success', 'Совещание создано');
@@ -127,7 +247,7 @@ class MeetingController extends Controller
     {
         $user = Auth::user();
 
-        // Проверка доступа... (как и была)
+        // Проверка доступа...
         $isParticipant = $meeting->participants->contains($user->id);
         if ($meeting->creator_id !== $user->id &&
             $meeting->responsible_id !== $user->id &&
@@ -136,20 +256,30 @@ class MeetingController extends Controller
         }
 
         // Загружаем связи
-        $meeting->load(['company', 'responsible', 'participants', 'creator','documents.uploader']);
+        // ВАЖНО: Добавляем вложенные связи для задач и проектов
+        $meeting->load([
+            'company',
+            'responsible',
+            'participants',
+            'creator',
+            'documents.uploader',
+            // Если привязана задача -> грузим её проект
+            'task.project',
+            // Если привязана подзадача -> грузим её задачу и проект задачи
+            'subtask.task.project'
+        ]);
 
-        // НОВОЕ: Получаем список всех сотрудников этой компании для выбора в модалке
-        // Логика: Владелец компании + Сотрудники
-        $availableUsers = User::where('id', $meeting->company->user_id) // Владелец
-        ->orWhereHas('workingCompanies', function($q) use ($meeting) {
-            $q->where('company_id', $meeting->company_id); // Сотрудники
-        })
-            ->get(['id', 'name', 'email']); // Берем только нужные поля
+        // Получаем список сотрудников (как было)
+        $availableUsers = User::where('id', $meeting->company->user_id)
+            ->orWhereHas('workingCompanies', function($q) use ($meeting) {
+                $q->where('company_id', $meeting->company_id);
+            })
+            ->get(['id', 'name', 'email']);
 
         return Inertia::render('Meetings/Show', [
             'meeting' => $meeting,
             'auth_user_id' => $user->id,
-            'available_users' => $availableUsers, // <-- Передаем во Vue
+            'available_users' => $availableUsers,
         ]);
     }
 

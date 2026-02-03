@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
-
+import { ref, computed, onMounted } from 'vue'
+import { router } from '@inertiajs/vue3'
 const props = defineProps(['project'])
+
 
 const showModal = ref(false)
 const CHAR_LIMIT = 150
@@ -23,6 +24,38 @@ const truncatedDescription = computed(() => {
 const formatMoney = (value) => {
     return value ? Number(value).toLocaleString('ru-RU') + ' ₽' : '—'
 }
+
+const showCompletedModal = ref(false)
+const completedTasks = ref([])
+const completedSubtasks = ref([])
+
+const makeLink = (task, isSubtask = false) => {
+    return isSubtask ? `/subtasks/${task.id}` : `/tasks/${task.id}`
+}
+
+onMounted(async () => {
+    try {
+    const { data } = await axios.get(
+        `/api/projects/${props.project.id}/completed-tasks`
+    )
+
+        completedTasks.value = data.tasks.map(t => ({ ...t, link: makeLink(t) }))
+        completedSubtasks.value = data.subtasks.map(s => ({ ...s, link: makeLink(s, true) }))
+    } catch (e) {
+        console.error('Ошибка загрузки завершенных задач:', e)
+    }
+})
+
+
+const goTo = (url) => {
+    if (!url) {
+        console.warn('Ссылка не задана')
+        return
+    }
+    showCompletedModal.value = false
+    router.visit(url)
+}
+
 </script>
 
 <template>
@@ -152,6 +185,99 @@ const formatMoney = (value) => {
             </div>
         </div>
     </Transition>
+
+    <div class="mt-8">
+        <button
+            @click="showCompletedModal = true"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg
+               bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold
+               transition shadow"
+        >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2l4-4M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            Завершённые задачи проекта
+            <span v-if="completedTasks.length || completedSubtasks.length"
+                  class="ml-1 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+            {{ completedTasks.length + completedSubtasks.length }}
+        </span>
+        </button>
+    </div>
+
+    <!-- Модалка -->
+    <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+    >
+        <div v-if="showCompletedModal"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4">
+
+            <!-- Фон -->
+            <div class="absolute inset-0 bg-slate-900/60" @click="showCompletedModal = false"></div>
+
+            <!-- Контент -->
+            <div class="relative w-full max-w-xl bg-white dark:bg-slate-800
+                  rounded-2xl shadow-2xl max-h-[80vh] flex flex-col z-10"
+                 @click.stop>
+
+                <!-- Header -->
+                <div class="px-6 py-4 border-b flex justify-between items-center">
+                    <h3 class="font-bold text-lg">Завершённые задачи проекта</h3>
+                    <button @click="showCompletedModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 overflow-y-auto space-y-6">
+
+                    <div v-if="!completedTasks.length && !completedSubtasks.length" class="text-sm text-slate-400">
+                        Пока нет завершённых задач
+                    </div>
+
+                    <!-- Задачи -->
+                    <div v-if="completedTasks.length">
+                        <h4 class="text-sm font-semibold mb-2">Задачи</h4>
+                        <ul class="space-y-2">
+                            <li v-for="task in completedTasks" :key="task.id">
+                                <a :href="task.link" class="text-indigo-600 hover:underline">
+                                    ✔ {{ task.title }}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Подзадачи -->
+                    <div v-if="completedSubtasks.length">
+                        <h4 class="text-sm font-semibold mb-2">Подзадачи</h4>
+                        <ul class="space-y-2">
+                            <li v-for="sub in completedSubtasks" :key="sub.id">
+                                <a :href="sub.link" class="text-emerald-600 hover:underline">
+                                    ✔ {{ sub.title }}
+                                    <span class="text-slate-400 text-xs">
+  ({{ sub.task && sub.task.title ? sub.task.title : 'Без задачи' }})
+</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t flex justify-end">
+                    <button @click="showCompletedModal = false" class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
+                        Закрыть
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </Transition>
+
+
 </template>
 
 <style scoped>

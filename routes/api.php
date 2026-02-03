@@ -6,6 +6,9 @@ use App\Http\Controllers\API\TaskSummaryController;
 use App\Http\Controllers\API\TaskTemplateController;
 
 use App\Http\Controllers\MeetingController;
+use App\Models\Project;
+use App\Models\Subtask;
+use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -139,6 +142,11 @@ Route::post('/tasks/{task}/files', [TaskController::class, 'addFiles']);
 Route::get('/tasks/{task}', [TaskController::class, 'show']);
 
     Route::post('/tasks/{task}/start', [TaskController::class, 'startWork']);
+
+    Route::get(
+        '/projects/{project}/completed-tasks',
+        [TaskSummaryController::class, 'completedByProject']
+    )->middleware('auth:sanctum');
 });
 
 Route::get('/tasks/files/{file}', [TaskController::class, 'downloadFile'])
@@ -561,7 +569,77 @@ Route::post('/tasks/{task}/buyers/{buyer}', [ProducerBuyerController::class, 'at
 
 Route::middleware('auth')->get('/company/{id}/users', [MeetingController::class, 'getCompanyUsers']);
 
+Route::middleware('auth:sanctum')->group(function () {
 
+    // Получить пользователей компании
+    Route::get('/companies/{company}/users', function (Company $company) {
+        // Предполагается, что у Company есть связь users()
+        return $company->users()->select('users.id', 'users.name', 'users.email')->get();
+    });
+
+    // Получить проекты компании
+    Route::get('/companies/{company}/projects', function (Company $company) {
+        return $company->projects()->select('id', 'name')->get();
+    });
+
+    // Получить задачи проекта
+    Route::get('/projects/{project}/tasks', function (Project $project) {
+        return $project->tasks()->select('id', 'title', 'status')->get();
+    });
+
+    // Получить подзадачи задачи
+    Route::get('/tasks/{task}/subtasks', function (Task $task) {
+        return $task->subtasks()->select('id', 'title')->get();
+    });
+
+    // --- ГЛАВНОЕ: Получить участников задачи ---
+    Route::get('/tasks/{task}/users', function (Task $task) {
+        // 1. Загружаем все группы участников, которые есть в вашей модели
+        $task->load(['executors', 'responsibles', 'watchers', 'creator']);
+
+        // 2. Создаем пустую коллекцию и начинаем собирать людей
+        $participants = collect();
+
+        // Добавляем создателя (если он есть)
+        if ($task->creator) {
+            $participants->push($task->creator);
+        }
+
+        // Добавляем исполнителей, ответственных и наблюдателей
+        // Используем merge, чтобы объединить массивы
+        $participants = $participants
+            ->merge($task->executors)
+            ->merge($task->responsibles)
+            ->merge($task->watchers);
+
+        // 3. Убираем дубликатов (unique по ID) и возвращаем "чистый" массив
+        // values() нужен, чтобы сбросить ключи массива для JSON
+        return $participants->unique('id')->values();
+    });
+
+    Route::get('/subtasks/{subtask}/users', function (Subtask $subtask) {
+        // 1. Загружаем исполнителей, ответственных и создателя
+        $subtask->load(['executors', 'responsibles', 'creator']);
+
+        // 2. Создаем коллекцию и собираем всех в одну кучу
+        $participants = collect();
+
+        // Добавляем создателя
+        if ($subtask->creator) {
+            $participants->push($subtask->creator);
+        }
+
+        // Добавляем исполнителей и ответственных
+        $participants = $participants
+            ->merge($subtask->executors)
+            ->merge($subtask->responsibles);
+
+        // 3. Убираем дубли (unique) и сбрасываем ключи (values) для корректного JSON
+        return $participants->unique('id')->values();
+    });
+
+
+});
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
     $user = $request->user();
