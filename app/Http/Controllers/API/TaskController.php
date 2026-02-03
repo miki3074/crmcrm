@@ -182,43 +182,45 @@ public function updateProgress(Request $request, Task $task)
 
 
 
-public function addFiles(Request $request, Task $task)
-{
-    $this->authorize('addFiles', $task);
+    public function addFiles(Request $request, Task $task)
+    {
+        // Проверка прав
+        $this->authorize('addFiles', $task);
 
-    if ($request->hasFile('files')) {
-
-        dd(
-            $request->file('files')[0]->getSize(),
-            $request->file('files')[0]->getMimeType(),
-            $request->file('files')[0]->getClientOriginalExtension()
-        );
-    }
-
-    $request->validate([
-        'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx|max:5120',
-        'requires_approval' => 'nullable|boolean', // 👈 Новое поле
-    ]);
-
-    $initialStatus = $request->boolean('requires_approval') ? 'pending' : 'none';
-
-    if ($request->hasFile('files')) {
-    foreach ($request->file('files') as $file) {
-        $originalName = $file->getClientOriginalName();
-        $path = $file->storeAs('task_files', $originalName, 'public');
-
-        $task->files()->create([
-            'file_path' => $path,
-            'file_name' => $originalName,
-            'user_id' => auth()->id(),  // 👈 сохраняем
-            'status' => $initialStatus,
+        // 1️⃣ Валидация файлов
+        $request->validate([
+            'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:51200', // 51200 KB = 50 MB
+            'requires_approval' => 'nullable|boolean',
+        ], [
+            'files.*.max' => 'Файл не должен превышать 50 МБ',
+            'files.*.mimes' => 'Разрешены только форматы: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar',
         ]);
+
+        $requiresApproval = $request->boolean('requires_approval');
+        $status = $requiresApproval ? 'pending' : 'none';
+
+        // 2️⃣ Обработка каждого файла
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+
+                // Оригинальное имя
+                $originalName = $file->getClientOriginalName();
+
+                // Сохраняем в storage/app/public/task_files
+                $path = $file->storeAs('task_files', $originalName, 'public');
+
+                // Добавляем запись в БД
+                $task->files()->create([
+                    'file_path' => $path,
+                    'file_name' => $originalName,
+                    'user_id' => auth()->id(),
+                    'status' => $status,
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Файлы успешно загружены');
     }
-}
-
-
-    return response()->json(['message' => 'Файлы успешно добавлены']);
-}
 
 
 

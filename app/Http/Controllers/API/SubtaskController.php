@@ -352,25 +352,39 @@ public function update(Request $request, Subtask $subtask)
 
 
 
-public function uploadFile(Request $request, Subtask $subtask)
-{
-    $this->authorize('addFiles', $subtask);
+    public function uploadFile(Request $request, Subtask $subtask)
+    {
+        // Проверка прав
+        $this->authorize('addFiles', $subtask);
 
-    $request->validate([
-        'file' => 'required|file|max:10240', // до 10 МБ
-    ]);
+        // Валидация
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:51200', // до 50 МБ
+            'requires_approval' => 'nullable|boolean',
+        ], [
+            'file.max' => 'Файл не должен превышать 50 МБ',
+            'file.mimes' => 'Разрешены форматы: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar',
+        ]);
 
-    $file = $request->file('file');
-    $path = $file->store('subtask_files', 'public');
+        $file = $request->file('file');
+        $requiresApproval = $request->boolean('requires_approval');
+        $status = $requiresApproval ? 'pending' : 'none';
 
-    $subtaskFile = $subtask->files()->create([
-        'user_id' => auth()->id(),
-        'filename' => $file->getClientOriginalName(),
-        'path' => $path,
-    ]);
+        // Уникальное имя файла, чтобы не перезаписывать существующие
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('subtask_files', $filename, 'public');
 
-    return response()->json($subtaskFile, 201);
-}
+        // Сохраняем в БД
+        $subtaskFile = $subtask->files()->create([
+            'user_id' => auth()->id(),
+            'filename' => $file->getClientOriginalName(),
+            'path' => $path,
+            'status' => $status,
+        ]);
+
+        return response()->json($subtaskFile, 201);
+    }
+
 
 
     public function sendForRevision(Request $request, SubtaskFile $file)

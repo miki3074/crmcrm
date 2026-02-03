@@ -114,22 +114,28 @@ public function company(Request $request, \App\Models\Company $company)
     }
 
     // Загрузка файлов
+    // Загрузка файлов в компанию
     public function upload(Request $request, Company $company)
     {
         $this->authorize('create', [StorageFile::class, $company]);
 
         $data = $request->validate([
-            'visibility'      => 'required|in:company_all,selected',
-            'files.*'         => 'required|file|max:10240', // 10MB
-            'allowed_user_ids'=> 'array',
-            'allowed_user_ids.*' => 'integer|exists:users,id',
+            'visibility'       => 'required|in:company_all,selected',
+            'files.*'          => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:51200', // до 50MB
+            'allowed_user_ids' => 'array',
+            'allowed_user_ids.*'=> 'integer|exists:users,id',
+        ], [
+            'files.*.max' => 'Файл не должен превышать 50 МБ',
+            'files.*.mimes' => 'Разрешены форматы: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar',
         ]);
 
         $saved = [];
 
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('storage_files', 'public');
+                // Генерируем уникальное имя для хранения
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('storage_files', $filename, 'public');
 
                 $item = StorageFile::create([
                     'company_id'    => $company->id,
@@ -140,6 +146,7 @@ public function company(Request $request, \App\Models\Company $company)
                     'visibility'    => $data['visibility'],
                 ]);
 
+                // Привязка к выбранным пользователям
                 if ($data['visibility'] === 'selected' && !empty($data['allowed_user_ids'])) {
                     $item->allowedUsers()->sync($data['allowed_user_ids']);
                 }
@@ -150,6 +157,7 @@ public function company(Request $request, \App\Models\Company $company)
 
         return response()->json(['files' => $saved], 201);
     }
+
 
     // Скачать файл
     public function download(Request $request, StorageFile $file)

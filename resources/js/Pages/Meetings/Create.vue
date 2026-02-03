@@ -7,6 +7,7 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 // Пропсы от контроллера
 const props = defineProps({
     available_companies: Array,
+
 });
 
 // Форма
@@ -43,6 +44,8 @@ watch(() => form.company_id, async (newId) => {
         const usersRes = await axios.get(`/api/companies/${newId}/users`);
         allCompanyUsers.value = usersRes.data;
         filteredUsers.value = usersRes.data; // По умолчанию показываем всех
+
+
 
         // 2. Грузим проекты компании
         const projectsRes = await axios.get(`/api/companies/${newId}/projects`);
@@ -154,9 +157,11 @@ const submit = () => {
                         </select>
                     </div>
 
+
                     <!-- Проект (опционально) -->
                     <div v-if="form.company_id">
-                        <label class="block font-semibold text-gray-700 mb-1">Проект</label>
+
+                        <label class="block font-semibold text-gray-700 mb-1">выбор задачи если нужно</label>
                         <select v-model="form.project_id" class="w-full border-gray-300 rounded shadow-sm">
                             <option value="">-- Без проекта --</option>
                             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
