@@ -194,14 +194,7 @@ const appName = "Планшет CRM-система"; // ЗАМЕНИТЕ НА В
                         </div>
                     </div>
 
-                    <!-- ВАЖНО: Ссылки на полные PDF -->
-                    <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                        <h4 class="font-bold text-yellow-800">Полная документация</h4>
-                        <p class="text-sm text-yellow-700 mt-2">
-                            Скачать подробные инструкции в формате PDF:
-                        </p>
-
-                    </div>
+                    
                 </div>
 
             </div>
