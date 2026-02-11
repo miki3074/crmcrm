@@ -41,6 +41,14 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/docs/registry', function () {
+    return Inertia::render('Public/RegistryDocs');
+})->name('registry.docs');
+
+Route::get('/licensing', function () {
+    return Inertia::render('Public/FreeLicense');
+})->name('licensing.show');
+
 Route::middleware('auth')->group(function () {
     Route::get('/meetings/create', [MeetingController::class, 'create'])->name('meetings.create');
 
