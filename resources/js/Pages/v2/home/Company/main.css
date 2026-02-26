@@ -1,0 +1,546 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: #f4f6fb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* главный контейнер — страница компании */
+.company-page {
+    max-width: 1400px;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* шапка */
+.header {
+    padding: 24px 32px;
+    background: white;
+    border-bottom: 1px solid #eef2f6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    background: linear-gradient(135deg, #4361ee, #9c4dff);
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 6px 12px rgba(67, 97, 238, 0.2);
+}
+
+.logo-text h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e293b;
+    letter-spacing: -0.3px;
+}
+
+.logo-text span {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 400;
+}
+
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #5f6c84;
+    font-size: 15px;
+}
+
+.breadcrumbs i {
+    font-size: 12px;
+    color: #a0b0c8;
+}
+
+.breadcrumbs a {
+    color: #4361ee;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.notification-badge {
+    position: relative;
+    font-size: 22px;
+    color: #475569;
+    cursor: pointer;
+}
+
+.notification-badge::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.avatar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f1f4f9;
+    padding: 6px 12px 6px 6px;
+    border-radius: 40px;
+    cursor: pointer;
+}
+
+.avatar-img {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(145deg, #4361ee, #6c5ce7);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* основное содержимое */
+.content {
+    padding: 32px;
+    background: #f9fbfe;
+}
+
+/* шапка компании с обложкой */
+.company-cover {
+    background: linear-gradient(112deg, #1e2b4f, #2a3f6e);
+    border-radius: 28px;
+    padding: 30px 36px;
+    margin-bottom: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    color: white;
+    box-shadow: 0 18px 30px -12px #15203a;
+}
+
+.company-title-block {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.company-logo-large {
+    width: 85px;
+    height: 85px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.company-name h1 {
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.company-name p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    opacity: 0.85;
+    font-size: 16px;
+}
+
+.company-stats-mini {
+    display: flex;
+    gap: 28px;
+    background: rgba(0,0,0,0.2);
+    padding: 18px 32px;
+    border-radius: 60px;
+    backdrop-filter: blur(6px);
+}
+
+.stat-mini-item {
+    text-align: center;
+}
+
+.stat-mini-value {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.stat-mini-label {
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+/* информация и действия */
+.company-info-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border-radius: 22px;
+    padding: 18px 28px;
+    margin-bottom: 32px;
+    box-shadow: 0 6px 18px -8px #bac8dc;
+}
+
+.info-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.tag-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 15px;
+}
+
+.tag-item i {
+    color: #4361ee;
+    width: 20px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #d0ddeb;
+    padding: 10px 20px;
+    border-radius: 40px;
+    font-weight: 500;
+    color: #2c3e5c;
+    cursor: pointer;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-outline:hover {
+    background: #f0f5ff;
+    border-color: #9bb2d1;
+}
+
+.btn-primary {
+    background: #4361ee;
+    border: none;
+    padding: 10px 26px;
+    border-radius: 40px;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 18px -8px #4361ee80;
+}
+
+.btn-primary:hover {
+    background: #304ec7;
+}
+
+/* сетка: сотрудники + проекты */
+.two-col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.8fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+@media (max-width: 1000px) {
+    .two-col-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* карточка команды */
+.team-card {
+    background: white;
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow: 0 10px 25px -14px #919eb9;
+    border: 1px solid #edf2f9;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.card-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge-ghost {
+    background: #ecf2ff;
+    color: #4361ee;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0f4fa;
+}
+
+.member-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.member-avatar {
+    width: 52px;
+    height: 52px;
+    background: #e6edfc;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 18px;
+    color: #1e3c72;
+}
+
+.member-info {
+    flex: 1;
+}
+
+.member-info h4 {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.member-info p {
+    font-size: 13px;
+    color: #617388;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.member-role {
+    background: #e8edf5;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #253649;
+}
+
+/* карточка проектов */
+.projects-card {
+    background: white;
+    border-radius: 28px;
+    padding: 24px;
+    box-shadow: 0 10px 25px -14px #919eb9;
+    border: 1px solid #edf2f9;
+}
+
+.project-item {
+    display: flex;
+    align-items: center;
+    padding: 18px 0;
+    border-bottom: 1px solid #ecf1f7;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.project-item:last-child {
+    border-bottom: none;
+}
+
+.project-icon {
+    width: 54px;
+    height: 54px;
+    background: #f2f6ff;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #4361ee;
+}
+
+.project-info {
+    flex: 2;
+    min-width: 180px;
+}
+
+.project-info h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #0b1f3b;
+}
+
+.project-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: #576c89;
+}
+
+.project-meta i {
+    color: #798eaa;
+    width: 16px;
+}
+
+.task-count-badge {
+    background: #4361ee0c;
+    padding: 8px 18px;
+    border-radius: 60px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    border: 1px solid #dbe3f5;
+    margin-left: auto;
+}
+
+.task-count-number {
+    background: #4361ee;
+    color: white;
+    border-radius: 30px;
+    padding: 2px 10px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.progress-tag {
+    background: #e0e7ff;
+    padding: 5px 12px;
+    border-radius: 40px;
+    font-size: 13px;
+    color: #253649;
+    white-space: nowrap;
+}
+
+/* дополнительный блок с активностью */
+.recent-activity {
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    border: 1px solid #edf2f9;
+    margin-top: 24px;
+}
+
+.activity-title {
+    font-weight: 600;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.activity-dot {
+    width: 10px;
+    height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+}
+
+.activity-text {
+    flex: 1;
+    color: #334155;
+}
+
+.activity-time {
+    font-size: 13px;
+    color: #8192ab;
+}
+
+/* адаптив */
+@media (max-width: 700px) {
+    .company-stats-mini {
+        margin-top: 15px;
+        width: 100%;
+        justify-content: center;
+    }
+    .company-title-block {
+        width: 100%;
+    }
+}
