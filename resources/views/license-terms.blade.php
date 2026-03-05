@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Информация о стоимости и лицензировании | Планшет CRM-система</title>
+    <title>Информация о стоимости и лицензировании | CRM-система «Планшет»</title>
 
     <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -90,7 +90,7 @@
 <body>
 
 <?php
-$appName = "Планшет CRM-система";
+$appName = "CRM-система «Планшет»";
 $companyName = "НПО Энерготех";
 $currentYear = date('Y');
 ?>
@@ -263,7 +263,7 @@ $currentYear = date('Y');
                     </div>
                 </div>
 
-               
+
             </div>
         </div>
 
