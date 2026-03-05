@@ -28,21 +28,34 @@ use App\Http\Controllers\Support\AdminSupportController;
 |
 */
 
+//new---------------------------------------------------------------
+
 Route::get('/home', function () {
-    return Inertia::render('v2/Home');
+    return Inertia::render('v2/Dashboard');
 })->middleware(['auth', 'verified'])->name('home');
 
 Route::get('/companieshome/{id}', function ($id) {
-    return Inertia::render('v2/Company', [
+    return Inertia::render('v2/Companies/Show', [
         'id' => $id,
     ]);
 })->middleware(['auth', 'verified']);
 
 Route::middleware(['auth'])->get('/projectshome/{id}', function ($id) {
-    return Inertia::render('v2/Project', [
+    return Inertia::render('v2/Projects/Show', [
         'id' => $id,
     ]);
 });
+
+Route::get('/taskshome/{id}', function ($id) {
+    return Inertia::render('v2/Tasks/Show', ['id' => (int)$id]);
+})->middleware(['auth']);
+
+
+
+Route::get('/subtaskshome/{id}', function ($id) {
+    return Inertia::render('v2/Subtasks/Show', ['id' => (int)$id]);
+})->middleware(['auth']);
+
 
 //new------------------------------------------------------------
 

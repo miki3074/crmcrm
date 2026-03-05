@@ -148,8 +148,7 @@ public function store(Request $request)
     {
         $user = auth()->user();
 
-        // 1. Загружаем сам ПРОЕКТ и глобальные роли (менеджеры, компания)
-        // Задачи здесь пока НЕ грузим (убрали 'tasks' отсюда)
+        // 1. Загружаем сам ПРОЕКТ и глобальные роли
         $project = Project::with([
             'managers:id,name',
             'company:id,name,user_id',
@@ -165,7 +164,6 @@ public function store(Request $request)
         $this->authorize('view', $project);
 
         // 2. Определяем, есть ли у пользователя ПОЛНЫЙ доступ
-        // (Владелец компании ИЛИ Менеджер проекта)
         $hasFullAccess = (
             $project->company->user_id === $user->id ||
             $project->managers->contains('id', $user->id)
@@ -181,19 +179,39 @@ public function store(Request $request)
                     'executors:id,name',
                     'responsibles:id,name',
                     'files:id,task_id,file_path',
+                    // 🔥 ВАЖНО: Загружаем подзадачи с их исполнителями и ответственными
+                    'subtasks' => function($q) {
+                        $q->with(['executors:id,name', 'responsibles:id,name']);
+                    }
                 ]);
 
-            // 🔥 САМОЕ ГЛАВНОЕ: Фильтрация
-            // Если это не босс, то показываем только те задачи, где он участвует
+            // 🔥 Фильтрация задач
             if (!$hasFullAccess) {
                 $query->where(function ($q) use ($user) {
                     $q->where('creator_id', $user->id) // Создатель
                     ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $user->id)) // Исполнитель
-                    ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $user->id)); // Ответственный
-                    // ->orWhereHas('watcherstask', ...) // Если есть наблюдатели
+                    ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $user->id)) // Ответственный
+
+                    // 🔥 НОВОЕ: Исполнитель подзадачи
+                    ->orWhereHas('subtasks.executors', function($sq) use ($user) {
+                        $sq->where('users.id', $user->id);
+                    })
+
+                        // 🔥 НОВОЕ: Ответственный подзадачи
+                        ->orWhereHas('subtasks.responsibles', function($sq) use ($user) {
+                            $sq->where('users.id', $user->id);
+                        });
                 });
             }
         }]);
+
+        // 4. Добавляем флаг для фронтенда (опционально)
+        $project->tasks->each(function($task) use ($user) {
+            $task->user_in_subtasks = $task->subtasks->contains(function($subtask) use ($user) {
+                return $subtask->executors->contains('id', $user->id) ||
+                    $subtask->responsibles->contains('id', $user->id);
+            });
+        });
 
         return response()->json($project);
     }

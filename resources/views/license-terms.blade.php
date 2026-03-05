@@ -1,11 +1,11 @@
-<!-- resources/views/license-terms.blade.php -->
+<!-- resources/views/license.blade.php -->
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лицензионные условия - Планшет CRM</title>
+    <title>Информация о стоимости и лицензировании | Планшет CRM-система</title>
 
     <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,273 +13,348 @@
     <!-- Подключаем Font Awesome для иконок -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
-    <!-- Подключаем Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f6f9fc 0%, #e6f0f5 100%);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
             min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
+            padding: 2rem 1rem;
         }
 
-        /* Декоративные элементы фона */
-        .bg-pattern {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                radial-gradient(circle at 10% 20%, rgba(52, 152, 219, 0.03) 0%, transparent 20%),
-                radial-gradient(circle at 90% 50%, rgba(46, 204, 113, 0.03) 0%, transparent 25%),
-                radial-gradient(circle at 30% 80%, rgba(155, 89, 182, 0.03) 0%, transparent 30%);
-            pointer-events: none;
-            z-index: 0;
+        .license-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
         }
 
-        /* Анимации */
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
+        .license-header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            padding: 3rem 2rem;
+            color: white;
         }
 
-        @keyframes glow {
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.2); }
-            50% { box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0.1); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.2); }
-        }
-
-        .float-animation {
-            animation: float 6s ease-in-out infinite;
-        }
-
-        .glow-animation {
-            animation: glow 3s ease-in-out infinite;
+        .free-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .license-card {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.95);
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
             transition: all 0.3s ease;
         }
 
         .license-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 30px 50px -20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
-        .feature-icon {
-            transition: all 0.3s ease;
+        .check-icon {
+            color: #10b981;
+            margin-right: 0.5rem;
         }
 
-        .feature-icon:hover {
-            transform: scale(1.1) rotate(5deg);
+        .legal-notice {
+            background: #f3f4f6;
+            border-left: 4px solid #059669;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
         }
 
-        .gradient-border {
-            position: relative;
-            background: linear-gradient(white, white) padding-box,
-            linear-gradient(135deg, #10b981, #3b82f6) border-box;
-            border: 2px solid transparent;
-            border-radius: 1rem;
-        }
-
-        .badge {
+        .license-type {
             display: inline-block;
-            padding: 0.5rem 1rem;
+            padding: 0.25rem 1rem;
+            background: #d1fae5;
+            color: #065f46;
             border-radius: 9999px;
-            font-size: 0.875rem;
             font-weight: 600;
-            letter-spacing: 0.05em;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+            font-size: 0.875rem;
         }
     </style>
 </head>
-<body class="antialiased">
 
-<!-- Фоновый паттерн -->
-<div class="bg-pattern"></div>
+<body>
 
 <?php
 $appName = "Планшет CRM-система";
-$companyName = "ООО «Планшет Технологии»"; // Добавлено название компании
+$companyName = "НПО Энерготех";
 $currentYear = date('Y');
 ?>
 
-<div class="relative z-10 min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+<div class="license-container">
+    <!-- Шапка -->
+    <div class="license-header relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+        <div class="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
 
-    <!-- Декоративный элемент сверху -->
-    <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full max-w-7xl">
-        <div class="w-64 h-64 bg-green-500 opacity-5 rounded-full blur-3xl float-animation"></div>
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-3xl font-bold">
+                    {{ $appName }}
+                </h1>
+                <span class="free-badge">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    ПО распространяется бесплатно
+                </span>
+            </div>
+
+            <p class="text-xl opacity-90 max-w-2xl">
+                Информация о стоимости и условиях использования программного обеспечения
+            </p>
+
+            <div class="mt-6 flex items-center text-sm">
+                <i class="fas fa-calendar-alt mr-2"></i>
+                Дата актуализации: {{ date('d.m.Y') }}
+            </div>
+        </div>
     </div>
 
-    <div class="sm:mx-auto sm:w-full sm:max-w-3xl relative">
-        <!-- Иконка замка или документа -->
-        <div class="flex justify-center">
-            <div class="inline-flex p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg glow-animation">
-                <i class="fas fa-file-contract text-4xl text-white"></i>
+    <!-- Основной контент -->
+    <div class="p-8">
+        <!-- Крупный баннер о бесплатности -->
+        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-8 mb-8 text-center border-2 border-emerald-200">
+            <i class="fas fa-gift text-6xl text-emerald-600 mb-4"></i>
+            <h2 class="text-3xl font-bold text-emerald-800 mb-2">Программное обеспечение предоставляется БЕСПЛАТНО</h2>
+            <p class="text-lg text-emerald-700">На условиях открытой лицензии — без взимания платы с пользователей</p>
+
+            <div class="mt-6 flex justify-center space-x-4">
+                <span class="license-type">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    Бессрочно
+                </span>
+                <span class="license-type">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    Без ограничений
+                </span>
+                <span class="license-type">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    Для любых целей
+                </span>
             </div>
         </div>
 
-        <!-- Заголовок -->
-        <h2 class="mt-6 text-center text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-700">
-            Лицензионные условия
-        </h2>
-        <p class="mt-2 text-center text-lg text-gray-600">
-            <i class="fas fa-check-circle text-green-500 mr-2"></i>
-            Официальный документ для пользователей и экспертных организаций
-        </p>
-
-
-    </div>
-
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-3xl relative">
-        <!-- Основная карточка -->
-        <div class="license-card bg-white py-8 px-6 shadow-2xl sm:rounded-2xl sm:px-10 border border-gray-100 relative overflow-hidden">
-
-            <!-- Декоративная линия сверху -->
-            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-500 via-green-400 to-blue-500"></div>
-
-            <!-- Бейдж "Бесплатно" -->
-
-
-            <!-- Блок о бесплатности -->
-            <div class="mb-10 relative">
-                <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div class="feature-icon w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center mr-4">
-                        <i class="fas fa-coins text-2xl text-green-600"></i>
+        <!-- Основная информация - то, что требует Минцифры -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <!-- Пункт 4 "и" - Стоимость -->
+            <div class="license-card">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mr-4">
+                        <i class="fas fa-ruble-sign text-2xl text-emerald-600"></i>
                     </div>
-                    <span class="bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
-                        Стоимость использования
-                    </span>
-                </h3>
+                    <h3 class="text-xl font-bold text-gray-800">Стоимость ПО</h3>
+                </div>
 
-                <div class="gradient-border p-6 bg-gradient-to-br from-green-50 to-white">
+                <div class="space-y-4">
                     <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center shadow-lg">
-                                <i class="fas fa-check text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-xl font-bold text-green-800 mb-2">
-                                Программное обеспечение «{{ $appName }}» предоставляется на безвозмездной основе
-                            </p>
-                            <p class="text-green-700">
-                                Полностью бесплатное использование без ограничений по функционалу
-                            </p>
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Лицензия на использование:</span>
+                            <span class="ml-2 text-emerald-600 font-bold text-xl">0 ₽ (ноль рублей)</span>
                         </div>
                     </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Техническая поддержка:</span>
+                            <span class="ml-2 text-emerald-600 font-bold">Бесплатно</span>
+                            <p class="text-sm text-gray-500 mt-1">Включена в объеме, указанном в документации</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Обновления:</span>
+                            <span class="ml-2 text-emerald-600 font-bold">Бесплатно</span>
+                            <p class="text-sm text-gray-500 mt-1">Все версии и обновления предоставляются без взимания платы</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Количество пользователей:</span>
+                            <span class="ml-2 text-emerald-600 font-bold">Не ограничено</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Срок действия лицензии:</span>
+                            <span class="ml-2 text-emerald-600 font-bold">Бессрочно</span>
+                        </div>
+                    </div>
                 </div>
 
-                <p class="mt-6 text-gray-700 leading-relaxed text-lg">
-                    Правообладатель  предоставляет пользователям право использования программного обеспечения на условиях <span class="bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">простой (неисключительной) безвозмездной лицензии</span>.
-                </p>
-
-                <!-- Сетка с преимуществами -->
-                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <div class="text-2xl font-bold text-green-600">0 ₽</div>
-                        <div class="text-sm text-gray-600">Стоимость лицензии</div>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <div class="text-2xl font-bold text-green-600">0 ₽</div>
-                        <div class="text-sm text-gray-600">Абонентская плата</div>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                        <div class="text-2xl font-bold text-green-600">0</div>
-                        <div class="text-sm text-gray-600">Скрытых платежей</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Разделитель с иконкой -->
-            <div class="relative my-10">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-gray-200"></div>
-                </div>
-                <div class="relative flex justify-center">
-                    <span class="bg-white px-4 text-gray-400">
-                        <i class="fas fa-gem text-green-500"></i>
-                    </span>
-                </div>
-            </div>
-
-            <!-- Условия использования -->
-            <div class="mb-8">
-                <h3 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                    <div class="feature-icon w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mr-4">
-                        <i class="fas fa-key text-2xl text-blue-600"></i>
-                    </div>
-                    <span class="bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
-                        Порядок получения доступа
-                    </span>
-                </h3>
-
-                <div class="bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100">
-                    <p class="text-gray-700 mb-4 text-lg">
-                        <i class="fas fa-check-circle text-blue-500 mr-2"></i>
-                        Для начала работы с системой не требуется заключение договора купли-продажи или оплата счетов.
+                <!-- Итоговая строка -->
+                <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                    <p class="text-center text-gray-700">
+                        <i class="fas fa-info-circle text-emerald-600 mr-1"></i>
+                        <span class="font-medium">ИТОГО: плата за использование ПО не взимается</span>
                     </p>
-
-                    <div class="flex items-center space-x-4 bg-white p-4 rounded-lg border border-blue-100">
-                        <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                            1
-                        </div>
-                        <div>
-                            <span class="font-bold text-gray-900">Свободная регистрация:</span>
-                            <p class="text-gray-600">Пользователь самостоятельно регистрируется в системе и получает полный доступ ко всем функциям</p>
-                        </div>
-                    </div>
-
-                    <!-- Дополнительный шаг для наглядности -->
-                    <div class="mt-3 flex items-center space-x-4 bg-white p-4 rounded-lg border border-blue-100 opacity-75">
-                        <div class="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-bold text-xl flex-shrink-0">
-                            2
-                        </div>
-                        <div>
-                            <span class="font-bold text-gray-900">Начало работы:</span>
-                            <p class="text-gray-600">После регистрации вы сразу можете создавать проекты и задачи</p>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <!-- Отказ от ответственности -->
-            <div class="mt-8 relative">
-                <div class="bg-gradient-to-br from-gray-50 to-white p-6 rounded-xl border border-gray-200 shadow-inner">
+            <!-- Пункт 4 "к" - Открытая лицензия / безвозмездный договор -->
+            <div class="license-card">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                        <i class="fas fa-file-contract text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800">Условия использования</h3>
+                </div>
+
+                <div class="space-y-4">
                     <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-shield-alt text-gray-500"></i>
-                            </div>
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Тип лицензии:</span>
+                            <span class="ml-2 text-blue-600 font-bold">Открытая лицензия</span>
                         </div>
-                        <div class="ml-4">
-                            <h4 class="font-bold text-gray-800 mb-2 text-lg">Ограничение ответственности (AS IS)</h4>
-                            <p class="text-gray-600 leading-relaxed">
-                                Программное обеспечение предоставляется по принципу «как есть» (as is). Правообладатель не гарантирует, что функционал ПО будет отвечать всем ожиданиям пользователя, и не несет ответственности за возможные убытки, возникшие в результате использования данного ПО. Техническая поддержка предоставляется в рамках регламента компании.
-                            </p>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Основание:</span>
+                            <span class="ml-2 text-gray-700">Статья 1286.1 ГК РФ (открытая лицензия)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Права пользователя:</span>
+                            <ul class="list-disc pl-5 mt-2 text-gray-600 space-y-1">
+                                <li>Устанавливать и использовать ПО без ограничений</li>
+                                <li>Использовать для любых целей (личных, коммерческих)</li>
+                                <li>Распространять копии ПО (с сохранением условий лицензии)</li>
+                                <li>Получать обновления и новые версии</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <i class="fas fa-check-circle check-icon mt-1"></i>
+                        <div>
+                            <span class="font-semibold text-gray-800">Ограничения:</span>
+                            <ul class="list-disc pl-5 mt-2 text-gray-600 space-y-1">
+                                <li>Запрещено изменять код программы (для сохранения целостности)</li>
+                                <li>Запрещено взимать плату за перепродажу</li>
+                                <li>Необходимо сохранять уведомление об авторских правах</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
+
+               
             </div>
+        </div>
 
+        <!-- Подтверждение безвозмездности (важно!) -->
+        <div class="legal-notice mb-8">
+            <div class="flex items-start">
+                <i class="fas fa-balance-scale text-emerald-600 mt-1 mr-3 text-xl"></i>
+                <div>
+                    <h4 class="font-bold text-gray-800 mb-1">Правовое основание</h4>
+                    <p class="text-gray-600">
+                        Настоящим подтверждается, что программное обеспечение «{{ $appName }}» распространяется
+                        <span class="font-bold text-emerald-600">на безвозмездной основе</span> в соответствии с условиями
+                        открытой лицензии. Плата за использование, установку, обновление и техническую поддержку
+                        <span class="font-bold underline">не взимается</span>.
+                    </p>
+                    <p class="text-gray-500 text-sm mt-2">
+                        * Информация размещена во исполнение требований пунктов 4 «и» и 4 «к» Постановления Правительства РФ №1236.
+                    </p>
+                </div>
+            </div>
+        </div>
 
+        <!-- Сравнение вариантов -->
+        <div class="bg-gray-50 rounded-xl p-6 mb-8">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-list-check text-emerald-600 mr-2"></i>
+                Сводная информация о стоимости
+            </h3>
 
+            <table class="w-full">
+                <thead>
+                <tr class="border-b border-gray-200">
+                    <th class="text-left py-2">Вид предоставления</th>
+                    <th class="text-left py-2">Стоимость</th>
+                    <th class="text-left py-2">Примечание</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">Лицензия на ПО</td>
+                    <td class="py-3 font-bold text-emerald-600">Бесплатно (0 ₽)</td>
+                    <td class="py-3 text-gray-500 text-sm">Бессрочная, на неограниченное число пользователей</td>
+                </tr>
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">Техническая поддержка</td>
+                    <td class="py-3 font-bold text-emerald-600">Бесплатно (0 ₽)</td>
+                    <td class="py-3 text-gray-500 text-sm">Через встроенный модуль, email, телефон</td>
+                </tr>
+                <tr class="border-b border-gray-200">
+                    <td class="py-3">Обновления (апдейты)</td>
+                    <td class="py-3 font-bold text-emerald-600">Бесплатно (0 ₽)</td>
+                    <td class="py-3 text-gray-500 text-sm">Все версии, включая мажорные</td>
+                </tr>
+                <tr>
+                    <td class="py-3">Обучение</td>
+                    <td class="py-3 font-bold text-emerald-600">Бесплатно (0 ₽)</td>
+                    <td class="py-3 text-gray-500 text-sm">Документация, видеоуроки, вебинары</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
 
+        <!-- Часто задаваемые вопросы -->
+        <div class="bg-white rounded-xl p-6 border border-gray-200">
+            <h3 class="font-bold text-gray-800 mb-4">Часто задаваемые вопросы о бесплатном ПО</h3>
+
+            <div class="space-y-4">
+                <div class="border-b border-gray-100 pb-4">
+                    <p class="font-medium text-gray-800">❓ Действительно ли ПО полностью бесплатное?</p>
+                    <p class="text-gray-600 mt-1">Да, 100% функций доступны бесплатно. Никаких платных подписок, скрытых платежей или триальных версий.</p>
+                </div>
+
+                <div class="border-b border-gray-100 pb-4">
+                    <p class="font-medium text-gray-800">❓ Есть ли ограничение по времени?</p>
+                    <p class="text-gray-600 mt-1">Нет. Лицензия бессрочная. Вы можете пользоваться программой неограниченное время.</p>
+                </div>
+
+                <div class="border-b border-gray-100 pb-4">
+                    <p class="font-medium text-gray-800">❓ Можно ли использовать в коммерческих целях?</p>
+                    <p class="text-gray-600 mt-1">Да, открытая лицензия разрешает коммерческое использование без взимания платы.</p>
+                </div>
+
+                <div>
+                    <p class="font-medium text-gray-800">❓ Что будет, если я захочу поддержать разработчиков?</p>
+                    <p class="text-gray-600 mt-1">Мы рады любой поддержке, но она остается на ваше усмотрение и не является обязательным условием использования ПО.</p>
+                </div>
+            </div>
         </div>
 
 
     </div>
-
-    <!-- Копирайт -->
-
 </div>
 
 </body>

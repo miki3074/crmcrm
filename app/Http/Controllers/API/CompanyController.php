@@ -382,9 +382,8 @@ class CompanyController extends Controller
             }
         ]);
 
-        // 2. Фильтрация списка ПРОЕКТОВ (оставляем как было, чтобы скрыть лишние проекты)
+        // 2. Фильтрация списка ПРОЕКТОВ (оставляем как было)
         $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-            // ... (Ваша логика фильтрации проектов остается без изменений) ...
             if ($company->user_id === $userId) return true;
             if ($project->initiator_id === $userId) return true;
             if ($project->managers->contains('id', $userId)) return true;
@@ -411,12 +410,7 @@ class CompanyController extends Controller
 
             'projects' => $company->projects->map(function ($project) use ($userId, $company) {
 
-                // --- ЛОГИКА ДОСТУПА К ЗАДАЧАМ (как в ProjectController) ---
-
-                // Пользователь имеет ПОЛНЫЙ доступ, если он:
-                // 1. Владелец компании
-                // 2. Инициатор проекта
-                // 3. Менеджер проекта
+                // --- ЛОГИКА ДОСТУПА К ЗАДАЧАМ ---
                 $hasFullAccess = (
                     $company->user_id === $userId ||
                     $project->initiator_id === $userId ||
@@ -428,16 +422,22 @@ class CompanyController extends Controller
                     // Если босс/менеджер — видит всё
                     if ($hasFullAccess) return true;
 
-                    // Иначе проверяем участие в конкретной задаче
-                    $isCreator = $task->creator_id === $userId; // Убедитесь, что поле creator_id есть в модели
+                    // Иначе проверяем участие в конкретной задаче или её подзадачах
+                    $isCreator = $task->creator_id === $userId;
                     $isExecutor = $task->executors->contains('id', $userId);
                     $isResponsible = $task->responsibles->contains('id', $userId);
 
-                    // (Опционально) Если вы хотите, чтобы наблюдатели проекта видели все задачи,
-                    // добавьте проверку $project->watchers->contains(...) в $hasFullAccess.
-                    // Но судя по ProjectController, вы хотите строгую фильтрацию.
+                    // 🔥 ВАЖНО: Проверяем подзадачи
+                    $isSubtaskExecutor = $task->subtasks->contains(function($subtask) use ($userId) {
+                        return $subtask->executors->contains('id', $userId);
+                    });
 
-                    return $isCreator || $isExecutor || $isResponsible;
+                    $isSubtaskResponsible = $task->subtasks->contains(function($subtask) use ($userId) {
+                        return $subtask->responsibles->contains('id', $userId);
+                    });
+
+                    return $isCreator || $isExecutor || $isResponsible ||
+                        $isSubtaskExecutor || $isSubtaskResponsible;
                 });
 
                 // -----------------------------------------------------------
@@ -473,7 +473,7 @@ class CompanyController extends Controller
                         'name' => $e->name,
                     ]),
 
-                    // Используем отфильтрованные задачи ($filteredTasks) вместо всех ($project->tasks)
+                    // Используем отфильтрованные задачи
                     'tasks' => $filteredTasks->values()->map(fn($t) => [
                         'id' => $t->id,
                         'title' => $t->title,
@@ -481,8 +481,14 @@ class CompanyController extends Controller
                         'priority' => $t->priority,
                         'status' => $t->status,
                         'due_date' => $t->due_date,
-                        // Добавляем ответственных для отображения аватарок в списке
                         'responsibles' => $t->responsibles->map(fn($r) => ['id' => $r->id, 'name' => $r->name]),
+
+                        // 🔥 Добавляем информацию о подзадачах, чтобы фронтенд мог показать,
+                        // что пользователь участвует через подзадачи
+                        'user_in_subtasks' => $t->subtasks->contains(function($subtask) use ($userId) {
+                            return $subtask->executors->contains('id', $userId) ||
+                                $subtask->responsibles->contains('id', $userId);
+                        })
                     ]),
 
                     'is_manager' => $project->managers->contains('id', $userId),
