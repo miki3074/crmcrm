@@ -9,7 +9,7 @@ import MeetingProtocol from '../AAA/Components/Meeting/MeetingProtocol.vue';
 import MeetingDocuments from '../AAA/Components/Meeting/MeetingDocumentss.vue';
 import MeetingMyStatus from '../AAA/Components/Meeting/MeetingMyStatus.vue';
 import MeetingParticipants from '../AAA/Components/Meeting/MeetingParticipants.vue';
-import MeetingSettingsModal from '../AAA/Components/Meeting//MeetingSettingsModal.vue';
+import MeetingSettingsModal from '../AAA/Components/Meeting/MeetingSettingsModal.vue';
 
 const props = defineProps({
     meeting: Object,
