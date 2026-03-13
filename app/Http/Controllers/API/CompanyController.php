@@ -667,11 +667,15 @@ $watchingProjects = Project::with([
 
     // Срезы по срокам (берём только из задач)
     $dueToday = $allTasks->filter(fn($t) =>
-        !empty($t->due_date) && Carbon::parse($t->due_date)->isSameDay($today)
+        $t->progress < 100 && // Добавляем проверку: только если прогресс меньше 100
+        !empty($t->due_date) &&
+        Carbon::parse($t->due_date)->isSameDay($today)
     )->values();
 
     $overdue = $allTasks->filter(fn($t) =>
-        !empty($t->due_date) && Carbon::parse($t->due_date)->lt($today)
+        $t->progress < 100 && // Добавляем проверку: только если прогресс меньше 100
+        !empty($t->due_date) &&
+        Carbon::parse($t->due_date)->lt($today)
     )->values();
 
 
@@ -692,13 +696,14 @@ foreach ($allSubtasks as $sub) {
     ];
 }
 
-
+    $incompleteTasks = $allTasks->filter(fn($t) => (int)$t->progress < 100)->values();
 
     return response()->json([
         'managing_projects'       => $managingProjects,
         'all_tasks'               => $allTasks,
         'all_subtasks'            => $groupedSubtasks,
         // 'all_subtasks'            => $allSubtasks,
+        'incomplete_tasks'        => $incompleteTasks,
         'responsible_subprojects' => $responsibleSubprojects,
         'due_today'               => $dueToday,
         'overdue'                 => $overdue,

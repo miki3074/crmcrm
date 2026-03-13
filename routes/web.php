@@ -56,6 +56,15 @@ Route::get('/subtaskshome/{id}', function ($id) {
     return Inertia::render('v2/Subtasks/Show', ['id' => (int)$id]);
 })->middleware(['auth']);
 
+Route::middleware(['auth', 'verified'])->get('/calendarhome', function () {
+    return Inertia::render('v2/Calendar/Index');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/employeeshome', function () {
+        return Inertia::render('v2'); // или 'Employees/Index' если ты положишь в папку
+    });
+});
 
 //new------------------------------------------------------------
 

@@ -45,6 +45,8 @@ const perms = computed(() => {
     const canManageTask = isCreator || isExec || isResp
     const canManageMembers = isOwner || isProjMgr || isProjExec
 
+
+
     return {
         canCreateSubtask: isOwner || isCreator || isResp || isExec || isProjMgr || isProjExec,
         canUpdate: isOwner || isProjMgr || isProjExec,

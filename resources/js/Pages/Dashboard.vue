@@ -124,50 +124,61 @@ onMounted(() => {
 
                     <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
 
-
+                        <!-- Шапка вкладок -->
                         <div class="flex items-center border-b border-slate-100 dark:border-slate-800">
 
-
+                            <!-- Вкладка: Все задачи -->
                             <button
                                 @click="activeTab = 'tasks'"
                                 class="flex-1 py-4 text-sm font-bold transition-all relative outline-none"
                                 :class="activeTab === 'tasks'
-                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
                             >
                                 ✅ Мои задачи
                                 <span v-if="summary.all_tasks?.length" class="ml-2 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-full text-xs">
-                        {{ summary.all_tasks.length }}
-                    </span>
+                {{ summary.all_tasks.length }}
+            </span>
                                 <div v-if="activeTab === 'tasks'" class="absolute bottom-0 left-0 w-full h-[2px] bg-indigo-600 dark:bg-indigo-400"></div>
                             </button>
+
+                            <div class="w-[1px] h-6 bg-slate-200 dark:bg-slate-700"></div>
+
+                            <!-- НОВАЯ Вкладка: Незавершенные (В работе) -->
 
 
                             <div class="w-[1px] h-6 bg-slate-200 dark:bg-slate-700"></div>
 
-
+                            <!-- Вкладка: Подзадачи -->
                             <button
                                 @click="activeTab = 'subtasks'"
                                 class="flex-1 py-4 text-sm font-bold transition-all relative outline-none"
                                 :class="activeTab === 'subtasks'
-                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
+                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'"
                             >
                                 📋 Подзадачи
-                                <span v-if="summary.all_subtasks?.length" class="ml-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full text-xs">
-                        {{ summary.all_subtasks.length }}
-                    </span>
+                                <!-- Обратите внимание: для объектов в JS .length не работает. Если all_subtasks это объект, тут может понадобиться другая логика подсчета -->
                                 <div v-if="activeTab === 'subtasks'" class="absolute bottom-0 left-0 w-full h-[2px] bg-indigo-600 dark:bg-indigo-400"></div>
                             </button>
                         </div>
 
-
+                        <!-- Контент вкладок -->
                         <div class="p-6 min-h-[300px]">
                             <Transition name="fade" mode="out-in">
                                 <div v-if="activeTab === 'tasks'" key="tasks">
-                                    <TasksSummary :tasks="summary.all_tasks" />
+                                    <TasksSummary
+                                        :tasks="summary.all_tasks"
+                                        title="Мои задачи"
+                                        :show-filters="true"
+                                    />
                                 </div>
-                                <div v-else key="subtasks">
+
+                                <div v-else-if="activeTab === 'incomplete'" key="incomplete">
+                                    <TasksSummary :tasks="summary.incomplete_tasks" title="Задачи в работе" />
+                                </div>
+
+                                <div v-else-if="activeTab === 'subtasks'" key="subtasks">
                                     <SubtasksSection :subtasks="summary.all_subtasks" />
                                 </div>
                             </Transition>

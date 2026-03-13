@@ -423,7 +423,7 @@ onMounted(async () => {
 
 
 
-              
+
             </tr>
             <tr v-if="!filtered.length">
               <td colspan="4" class="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
@@ -549,7 +549,7 @@ onMounted(async () => {
 
     <!-- === TAB 2: Прикрепить существующего === -->
     <div v-else class="p-6">
-      
+
     <div class="">
     <!-- Заголовок -->
     <!-- <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
@@ -656,7 +656,7 @@ onMounted(async () => {
 
 
 
-    
+
     <!-- modal create -->
     <!-- <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div class="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
@@ -870,6 +870,6 @@ onMounted(async () => {
 </div>
 
 
-    
+
   </AuthenticatedLayout>
 </template>

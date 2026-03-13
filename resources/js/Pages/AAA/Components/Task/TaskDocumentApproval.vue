@@ -235,7 +235,15 @@ const getStatusBadge = (status) => {
 
                             <div class="flex items-center gap-2 mt-auto">
                                 <!-- Для Ответственного: Кнопки решения -->
-                                <div v-if="isResponsible && file.status === 'pending'" class="flex gap-2">
+<!--                                <div v-if="isResponsible && file.status === 'pending'" class="flex gap-2">-->
+<!--                                    <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">-->
+<!--                                        ✔ Принять-->
+<!--                                    </button>-->
+<!--                                    <button @click="openRejectModal(file)" class="btn-action bg-rose-500 hover:bg-rose-600 text-white">-->
+<!--                                        ✖ Вернуть-->
+<!--                                    </button>-->
+<!--                                </div>-->
+                                <div v-if="(isExecutor || isResponsible) && file.status === 'pending'" class="flex gap-2">
                                     <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">
                                         ✔ Принять
                                     </button>
