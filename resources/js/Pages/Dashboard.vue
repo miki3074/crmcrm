@@ -174,9 +174,9 @@ onMounted(() => {
                                     />
                                 </div>
 
-                                <div v-else-if="activeTab === 'incomplete'" key="incomplete">
-                                    <TasksSummary :tasks="summary.incomplete_tasks" title="Задачи в работе" />
-                                </div>
+<!--                                <div v-else-if="activeTab === 'incomplete'" key="incomplete">-->
+<!--                                    <TasksSummary :tasks="summary.incomplete_tasks" title="Задачи в работе" />-->
+<!--                                </div>-->
 
                                 <div v-else-if="activeTab === 'subtasks'" key="subtasks">
                                     <SubtasksSection :subtasks="summary.all_subtasks" />
