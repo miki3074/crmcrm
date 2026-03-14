@@ -87,6 +87,19 @@ const removeMember = async (role, id) => {
     await axios.delete(`/api/projects/${props.project.id}/members`, { data: { user_id: id, role }})
     emit('refresh')
 }
+
+// Добавьте метод для отправки уведомлений
+const sendReminders = async () => {
+    if (!confirm('Отправить напоминание всем участникам о задачах с 0% прогрессом?')) return
+
+    try {
+        const response = await axios.post(`/api/projects/${props.project.id}/remind-stagnant`)
+        alert(response.data.message)
+    } catch (e) {
+        alert(e.response?.data?.message || 'Произошла ошибка при отправке')
+    }
+}
+
 </script>
 
 <template>
@@ -103,12 +116,18 @@ const removeMember = async (role, id) => {
                 Назад к компании
             </button>
 
+            <button @click="sendReminders" class="btn-team border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400">
+                <span class="text-lg">🔔</span> Напомнить о задачах
+            </button>
             <!-- Основные действия -->
             <div class="flex flex-wrap items-center gap-2">
                 <button v-if="canEdit" @click="openModal('name')" class="btn-secondary">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     Название
                 </button>
+
+
+
                 <button v-if="canEditBudget" @click="openModal('budget')" class="btn-secondary">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     Бюджет

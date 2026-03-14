@@ -81,6 +81,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::post('/projects/{project}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindStagnantTasks']);
+
+Route::post('/companies/{company}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindCompanyStagnant']);
+
+
 Route::get('/tasks/search', [ContractController::class, 'searchTasks']);
 Route::get('/projects/search', [ContractController::class, 'searchProjects']);
 

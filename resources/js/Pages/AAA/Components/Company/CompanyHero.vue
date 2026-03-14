@@ -9,6 +9,18 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['create', 'openMembers'])
+
+const sendCompanyReminders = async () => {
+    if (!confirm('Отправить напоминания всем исполнителям во всех проектах компании, где прогресс 0%?')) return
+
+    try {
+        const response = await axios.post(`/api/companies/${props.company.id}/remind-stagnant`)
+        alert(response.data.message)
+    } catch (e) {
+        alert(e.response?.data?.message || 'Ошибка при рассылке')
+    }
+}
+
 </script>
 
 <template>
@@ -44,14 +56,29 @@ const emit = defineEmits(['create', 'openMembers'])
                 </div>
             </div>
 
+
+
+
             <!-- Кнопки -->
             <div class="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+
                 <button
-                    @click="$emit('openMembers')"
-                    class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition text-sm font-semibold flex items-center justify-center gap-2"
+                    v-if="isOwner || isAdmin"
+                    @click="sendCompanyReminders"
+                    class="px-5 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 backdrop-blur-md transition text-sm font-semibold text-rose-100 flex items-center justify-center gap-2"
+                    title="Напомнить всем про задачи с 0% прогрессом"
                 >
-                    👥 Участники
+                    <span>🔔</span>
+                    <span class="hidden lg:inline">Напомнить о задачах</span>
                 </button>
+
+
+<!--                <button-->
+<!--                    @click="$emit('openMembers')"-->
+<!--                    class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition text-sm font-semibold flex items-center justify-center gap-2"-->
+<!--                >-->
+<!--                    👥 Участники-->
+<!--                </button>-->
                 <button
                     v-if="canCreate"
                     @click="$emit('create')"
