@@ -18,32 +18,46 @@ class ChatController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Получаем ID всех компаний (явно указываем таблицу companies.id)
-        $companyIds = $user->ownedCompanies()->pluck('companies.id')
-            ->merge($user->companiesmess()->pluck('companies.id'))
-            ->unique()
-            ->toArray(); // Преобразуем в массив для надежности
+        // 1. Получаем компании с их участниками
+        $ownedCompanies = $user->ownedCompanies()->with('users:id,name')->get();
+        $memberCompanies = $user->companiesmess()->with('users:id,name')->get();
 
-        // 2. Получаем всех УНИКАЛЬНЫХ коллег из этих компаний
-        $colleagues = User::select('users.id', 'users.name', 'users.email')
+        $companies = $ownedCompanies->merge($memberCompanies)
+            ->unique('id')
+            ->values()
+            ->map(function ($company) {
+                // Собираем всех участников компании в один массив
+                $participants = $company->users->map(function($u) {
+                    return ['id' => $u->id, 'name' => $u->name];
+                });
+
+                // Добавляем владельца компании в список участников, если его там нет
+                $owner = User::find($company->user_id);
+                if ($owner && !$participants->contains('id', $owner->id)) {
+                    $participants->push(['id' => $owner->id, 'name' => $owner->name]);
+                }
+
+                return [
+                    'id' => $company->id,
+                    'name' => $company->name,
+                    'members' => $participants->values()
+                ];
+            });
+
+        $companyIds = $companies->pluck('id')->toArray();
+
+        // 2. Коллеги для общего списка чатов (все уникальные)
+        $colleagues = User::select('users.id', 'users.name')
             ->where('users.id', '!=', $user->id)
             ->where(function($query) use ($companyIds) {
-                // Коллеги, которые являются участниками в этих компаниях
-                $query->whereHas('companiesmess', function($q) use ($companyIds) {
-                    $q->whereIn('companies.id', $companyIds);
-                })
-                    // Или владельцы этих компаний
-                    ->orWhereHas('ownedCompanies', function($q) use ($companyIds) {
-                        $q->whereIn('companies.id', $companyIds);
-                    });
+                $query->whereHas('companiesmess', fn($q) => $q->whereIn('companies.id', $companyIds))
+                    ->orWhereHas('ownedCompanies', fn($q) => $q->whereIn('companies.id', $companyIds));
             })
             ->distinct()
             ->get();
 
-        // 3. Получаем все группы пользователя изо всех его компаний
-        $groups = $user->chatGroups()
-            ->whereIn('company_id', $companyIds)
-            ->get();
+        // 3. Группы
+        $groups = $user->chatGroups()->whereIn('company_id', $companyIds)->get();
 
         $messages = [];
         if ($type === 'user' && $targetId) {
@@ -71,9 +85,13 @@ class ChatController extends Controller
                 ->with('sender')
                 ->orderBy('created_at', 'asc')
                 ->get();
+
         }
+        $activeGroup = ChatGroup::with('users')->find($targetId);
 
         return Inertia::render('Chat/Index', [
+            'activeGroup' => $activeGroup,
+            'companies' => $companies,
             'groups' => $groups,
             'colleagues' => $colleagues,
             'messages' => $messages,
@@ -165,4 +183,38 @@ class ChatController extends Controller
 
         return back();
     }
+
+    public function addMember(Request $request, ChatGroup $group)
+    {
+        $request->validate(['user_id' => 'required|exists:users,id']);
+
+        // Проверка: состоит ли пользователь уже в группе
+        if (!$group->users()->where('users.id', $request->user_id)->exists()) {
+            $group->users()->attach($request->user_id);
+
+            // Опционально: уведомление в Телеграм
+            $user = User::find($request->user_id);
+            if ($user->telegram_chat_id) {
+                $text = "📢 Вас добавили в группу <b>{$group->name}</b>";
+                SendTelegramNotification::dispatch($user->telegram_chat_id, $text);
+            }
+        }
+
+        return back();
+    }
+
+// Удаление участника
+    public function removeMember(Request $request, ChatGroup $group)
+    {
+        $request->validate(['user_id' => 'required|exists:users,id']);
+
+        // Нельзя удалить создателя (опционально)
+        if ($group->creator_id == $request->user_id) {
+            return back()->withErrors(['message' => 'Нельзя удалить создателя группы']);
+        }
+
+        $group->users()->detach($request->user_id);
+        return back();
+    }
+
 }

@@ -36,6 +36,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Создание группы
     Route::post('/chat/create-group', [ChatController::class, 'createGroup'])->name('chat.group.create');
+
+    Route::post('/chat/groups/{group}/add', [ChatController::class, 'addMember']);
+    Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
 });
 
 
