@@ -31,9 +31,7 @@ use App\Http\Controllers\Support\AdminSupportController;
 
 Route::middleware(['auth'])->group(function () {
     // Основная страница чата с параметрами
-    Route::get('/chat/{companyId?}/{type?}/{targetId?}', [ChatController::class, 'index'])->name('chat.index');
-
-    // Отправка сообщения
+    Route::get('/chat/{type?}/{targetId?}', [ChatController::class, 'index'])->name('chat.index');
     Route::post('/chat/send', [ChatController::class, 'store'])->name('chat.store');
 
     // Создание группы
