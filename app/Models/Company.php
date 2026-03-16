@@ -60,5 +60,49 @@ public function managers()
         ->withTimestamps();
 }
 
-    
+    public function allParticipants()
+    {
+        // Получаем сотрудников из pivot таблицы
+        $users = $this->users()->get();
+
+        // Добавляем владельца, если его нет в списке
+        $owner = \App\Models\User::find($this->user_id);
+        if (!$users->contains('id', $owner->id)) {
+            $users->push($owner);
+        }
+
+        return $users;
+    }
+
+    public function scopeRelatedToUser($query, $userId)
+    {
+        return $query->where('user_id', $userId)
+            ->orWhereHas('users', fn($q) => $q->where('user_id', $userId))
+            ->orWhereHas('projects', function ($q) use ($userId) {
+                $q->whereHas('managers', fn($m) => $m->where('users.id', $userId))
+                    ->orWhereHas('executors', fn($e) => $e->where('users.id', $userId))
+                    ->orWhereHas('watchers', fn($w) => $w->where('users.id', $userId))
+                    ->orWhereHas('tasks', fn($t) => $t->forUser($userId));
+            });
+    }
+
+// Авто-удаление связанных файлов при удалении компании
+    protected static function booted()
+    {
+        static::deleting(function ($company) {
+            $company->projects->each(function ($project) {
+                $project->tasks->each(function ($task) {
+                    foreach ($task->files as $file) {
+                        \Storage::disk('public')->delete($file->file_path);
+                        $file->delete();
+                    }
+                    $task->subtasks()->delete();
+                    $task->delete();
+                });
+                $project->delete();
+            });
+        });
+    }
+
+
 }

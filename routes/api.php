@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\ProducerBuyerController;
+use App\Http\Controllers\Api\ProjectNotificationController;
 use App\Http\Controllers\API\TaskSummaryController;
 use App\Http\Controllers\API\TaskTemplateController;
 
@@ -81,9 +82,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/projects/{project}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindStagnantTasks']);
+//Route::post('/projects/{project}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindStagnantTasks']);
 
-Route::post('/companies/{company}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindCompanyStagnant']);
+//Route::post('/companies/{company}/remind-stagnant', [App\Http\Controllers\Api\ProjectNotificationController::class, 'remindCompanyStagnant']);
+
+Route::get('/projects/{project}/stagnant-items', [ProjectNotificationController::class, 'getStagnantItems']);
+Route::post('/projects/{project}/remind-stagnant', [ProjectNotificationController::class, 'remindStagnantTasks']);
+
+Route::get('/companies/{company}/stagnant-items', [ProjectNotificationController::class, 'getCompanyStagnantItems']);
+Route::post('/companies/{company}/remind-stagnant', [ProjectNotificationController::class, 'remindCompanyStagnant']);
 
 
 Route::get('/tasks/search', [ContractController::class, 'searchTasks']);

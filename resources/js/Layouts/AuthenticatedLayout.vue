@@ -213,6 +213,25 @@ const toggleTheme = () => {
                     </span>
                 </Link>
 
+                <Link
+                    :href="route('chat.index')"
+                    class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
+                    :class="route().current('tasks.completed')
+                    ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
+                >
+                    <svg class="flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+
+                    <span
+                        class="ml-3 transition-all duration-300 ease-in-out overflow-hidden"
+                        :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
+                    >
+                        Чат
+                    </span>
+                </Link>
+
             </div>
 
             <!-- Нижняя часть сайдбара: Переключатель темы -->

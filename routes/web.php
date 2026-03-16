@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\SubtaskController;
 use App\Http\Controllers\API\TaskController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingDocumentController;
 use App\Http\Controllers\ProfileController;
@@ -27,6 +28,18 @@ use App\Http\Controllers\Support\AdminSupportController;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::middleware(['auth'])->group(function () {
+    // Основная страница чата с параметрами
+    Route::get('/chat/{companyId?}/{type?}/{targetId?}', [ChatController::class, 'index'])->name('chat.index');
+
+    // Отправка сообщения
+    Route::post('/chat/send', [ChatController::class, 'store'])->name('chat.store');
+
+    // Создание группы
+    Route::post('/chat/create-group', [ChatController::class, 'createGroup'])->name('chat.group.create');
+});
+
 
 //new---------------------------------------------------------------
 

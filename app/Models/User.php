@@ -52,6 +52,11 @@ class User extends Authenticatable
             return $this->hasMany(Company::class);
         }
 
+    public function companiesmess()
+    {
+        return $this->belongsToMany(Company::class, 'company_user');
+    }
+
     public function employees()
         {
             return $this->hasMany(User::class, 'created_by');
@@ -134,6 +139,10 @@ public function supportMessagesAssigned()
     public function getAllCompaniesAttribute()
     {
         return $this->ownedCompanies->merge($this->workingCompanies);
+    }
+
+    public function chatGroups() {
+        return $this->belongsToMany(ChatGroup::class, 'chat_group_user');
     }
 
 

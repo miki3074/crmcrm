@@ -15,10 +15,6 @@ class Task extends Model
         'executor_id','responsible_id','project_id','company_id',
         'creator_id','progress','completed','completed_at', 'status'
     ];
-
-
-
-
     public function executor() {
         return $this->belongsTo(User::class, 'executor_id');
     }
@@ -137,6 +133,11 @@ public function watchers()
                         ->orWhereHas('company', fn($sq) => $sq->where('user_id', $userId));
                 });
         });
+    }
+
+    public function scopeIncomplete($query)
+    {
+        return $query->where('progress', '<', 100);
     }
 
 

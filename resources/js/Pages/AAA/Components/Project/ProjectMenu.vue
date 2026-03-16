@@ -82,21 +82,65 @@ const replaceManager = async () => {
     } catch(e) { alert('Ошибка') }
 }
 
-const removeMember = async (role, id) => {
-    if(role === 'manager' && props.project.managers.length <= 1) return alert('В проекте должен остаться хотя бы один руководитель')
-    await axios.delete(`/api/projects/${props.project.id}/members`, { data: { user_id: id, role }})
-    emit('refresh')
+// Состояния модалки
+const showReminderModal = ref(false)
+const isLoadingItems = ref(false)
+const isSending = ref(false)
+
+// Данные из API
+const stagnantItems = ref({ tasks: [], subtasks: [] })
+
+// Выбранные ID
+const selectedTaskIds = ref([])
+const selectedSubtaskIds = ref([])
+
+// Открыть модалку и загрузить список
+// Открыть модалку и загрузить список
+const openReminderModal = async () => {
+    showReminderModal.value = true // ИСПРАВЛЕНО: .value вместо .ref
+    isLoadingItems.value = true
+    try {
+        const res = await axios.get(`/api/projects/${props.project.id}/stagnant-items`)
+        stagnantItems.value = res.data
+        // По умолчанию выбираем всё
+        selectedTaskIds.value = res.data.tasks.map(t => t.id)
+        selectedSubtaskIds.value = res.data.subtasks.map(s => s.id)
+    } catch (e) {
+        alert('Ошибка при загрузке задач')
+        showReminderModal.value = false // Закрываем, если ошибка
+    } finally {
+        isLoadingItems.value = false
+    }
 }
 
-// Добавьте метод для отправки уведомлений
-const sendReminders = async () => {
-    if (!confirm('Отправить напоминание всем участникам о задачах с 0% прогрессом?')) return
+// Выбрать/снять всё
+const toggleAll = (type) => {
+    if (type === 'tasks') {
+        selectedTaskIds.value = selectedTaskIds.value.length === stagnantItems.value.tasks.length
+            ? [] : stagnantItems.value.tasks.map(t => t.id)
+    } else {
+        selectedSubtaskIds.value = selectedSubtaskIds.value.length === stagnantItems.value.subtasks.length
+            ? [] : stagnantItems.value.subtasks.map(s => s.id)
+    }
+}
 
+const sendReminders = async () => {
+    if (!selectedTaskIds.value.length && !selectedSubtaskIds.value.length) {
+        return alert('Выберите хотя бы одну задачу')
+    }
+
+    isSending.value = true
     try {
-        const response = await axios.post(`/api/projects/${props.project.id}/remind-stagnant`)
+        const response = await axios.post(`/api/projects/${props.project.id}/remind-stagnant`, {
+            task_ids: selectedTaskIds.value,
+            subtask_ids: selectedSubtaskIds.value
+        })
         alert(response.data.message)
+        showReminderModal.value = false
     } catch (e) {
-        alert(e.response?.data?.message || 'Произошла ошибка при отправке')
+        alert(e.response?.data?.message || 'Ошибка при отправке')
+    } finally {
+        isSending.value = false
     }
 }
 
@@ -116,9 +160,12 @@ const sendReminders = async () => {
                 Назад к компании
             </button>
 
-            <button @click="sendReminders" class="btn-team border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400">
+            <button  @click="openReminderModal" class="btn-team border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-400">
                 <span class="text-lg">🔔</span> Напомнить о задачах
             </button>
+
+
+
             <!-- Основные действия -->
             <div class="flex flex-wrap items-center gap-2">
                 <button v-if="canEdit" @click="openModal('name')" class="btn-secondary">
@@ -336,6 +383,61 @@ const sendReminders = async () => {
         </Transition>
 
     </div>
+
+
+    <div v-if="showReminderModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+            <h3 class="mb-4 text-xl font-bold">Выберите задачи для напоминания</h3>
+
+            <div v-if="isLoadingItems" class="py-10 text-center">Загрузка...</div>
+
+            <div v-else class="max-h-[60vh] overflow-y-auto pr-2">
+                <!-- Задачи -->
+                <div v-if="stagnantItems.tasks.length" class="mb-6">
+                    <div class="mb-2 flex items-center justify-between border-b pb-1">
+                        <span class="font-semibold">Задачи (0%)</span>
+                        <button @click="toggleAll('tasks')" class="text-xs text-blue-500 underline">Выбрать все</button>
+                    </div>
+                    <div v-for="task in stagnantItems.tasks" :key="task.id" class="flex items-center gap-2 py-1">
+                        <input type="checkbox" :id="'t'+task.id" :value="task.id" v-model="selectedTaskIds">
+                        <label :for="'t'+task.id" class="text-sm cursor-pointer">{{ task.title }}</label>
+                    </div>
+                </div>
+
+                <!-- Подзадачи -->
+                <div v-if="stagnantItems.subtasks.length">
+                    <div class="mb-2 flex items-center justify-between border-b pb-1">
+                        <span class="font-semibold">Подзадачи (0%)</span>
+                        <button @click="toggleAll('subtasks')" class="text-xs text-blue-500 underline">Выбрать все</button>
+                    </div>
+                    <div v-for="sub in stagnantItems.subtasks" :key="sub.id" class="flex items-center gap-2 py-1">
+                        <input type="checkbox" :id="'s'+sub.id" :value="sub.id" v-model="selectedSubtaskIds">
+                        <label :for="'s'+sub.id" class="text-sm cursor-pointer">
+                            {{ sub.title }} <span class="text-xs opacity-50">({{ sub.task.title }})</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div v-if="!stagnantItems.tasks.length && !stagnantItems.subtasks.length" class="text-center opacity-50">
+                    Нет задач с нулевым прогрессом
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button @click="showReminderModal = false" class="rounded-lg px-4 py-2 hover:bg-slate-100">Отмена</button>
+                <button
+                    @click="sendReminders"
+                    :disabled="isSending"
+                    class="rounded-lg bg-rose-600 px-6 py-2 text-white hover:bg-rose-700 disabled:opacity-50"
+                >
+                    {{ isSending ? 'Отправка...' : 'Отправить уведомления' }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+
 </template>
 
 <style scoped>
