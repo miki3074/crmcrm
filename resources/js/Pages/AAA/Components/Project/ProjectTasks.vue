@@ -101,13 +101,8 @@ const createTask = async () => {
         <!-- Task Grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
-            <Link
-                v-for="t in project.tasks"
-                :key="t.id"
-                :href="`/tasks/${t.id}`"
-                class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between"
-                :class="{'border-emerald-400 ring-1 ring-emerald-400 bg-emerald-50/30': t.progress === 100}"
-            >
+            <Link v-for="t in project.tasks" :key="t.id" :href="`/tasks/${t.id}`"
+                  class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-[2rem] hover:shadow-2xl hover:border-indigo-500/50 hover:-translate-y-1.5 transition-all duration-300">
                 <!-- Top: Header -->
                 <div>
                     <div class="flex justify-between items-start mb-3">

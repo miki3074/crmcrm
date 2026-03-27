@@ -18,7 +18,7 @@ class TaskChecklistController extends Controller
 
     public function store(Request $request, Task $task)
 {
-    $this->authorize('update', $task);
+    $this->authorize('list', $task);
 
     $messages = [
         'title.required' => 'Введите название пункта чек-листа.',

@@ -438,7 +438,7 @@ Route::post('/support/messages/{id}/transfer', [SupportMessageController::class,
     ->middleware(['auth:sanctum']);
 
 
-
+Route::post('/projects/{project}/remove-member', [ProjectController::class, 'remove']);
 Route::delete('/projects/{project}/members', [ProjectController::class, 'remove']);
 Route::delete('/tasks/files/{file}', [TaskController::class, 'deleteFile']);
 

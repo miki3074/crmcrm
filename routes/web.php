@@ -4,6 +4,11 @@ use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\SubtaskController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\ChatController;
+
+use App\Http\Controllers\KlientController;
+use App\Http\Controllers\KlientDealController;
+use App\Http\Controllers\KlientFileController;
+use App\Http\Controllers\KlientTaskController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingDocumentController;
 use App\Http\Controllers\ProfileController;
@@ -40,6 +45,96 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/groups/{group}/add', [ChatController::class, 'addMember']);
     Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
 });
+
+
+
+Route::middleware(['auth'])->group(function () {
+    // Список всех клиентов
+    Route::get('/klients', [KlientController::class, 'index'])->name('klients.index');
+
+    // Форма создания
+    Route::get('/klients/create', [KlientController::class, 'create'])->name('klients.create');
+
+    // Сохранение
+    Route::post('/klients', [KlientController::class, 'store'])->name('klients.store');
+
+    Route::get('/klients/{klient}', [KlientController::class, 'show'])->name('klients.show');
+});
+
+Route::middleware(['auth'])->group(function () {
+    // Загрузка (передаем ID клиента)
+    Route::post('/klients/{klient}/files', [KlientFileController::class, 'store'])->name('klient-files.store');
+
+    // Скачивание (передаем ID файла)
+    Route::get('/klient-files/{file}/download', [KlientFileController::class, 'download'])->name('klient-files.download');
+
+    // Удаление (передаем ID файла)
+    Route::delete('/klient-files/{file}', [KlientFileController::class, 'destroy'])->name('klient-files.destroy');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::post('/klients/{klient}/tasks', [KlientTaskController::class, 'store'])->name('klient-tasks.store');
+    Route::patch('/klient-tasks/{task}/toggle', [KlientTaskController::class, 'toggleStatus'])->name('klient-tasks.toggle');
+    Route::patch('/klient-tasks/{task}/status', [KlientTaskController::class, 'updateStatus'])->name('klient-tasks.update-status');
+
+    Route::get('/klient-tasks/{task}', [KlientTaskController::class, 'show'])->name('klient-tasks.show');
+
+
+    Route::get('/klients/{klient}/edit', [KlientController::class, 'edit'])->name('klients.edit');
+    Route::put('/klients/{klient}', [KlientController::class, 'update'])->name('klients.update');
+
+});
+
+Route::middleware(['auth'])->group(function () {
+    // Страница создания (форма)
+    Route::get('/klients/{klient}/deals/create', [KlientDealController::class, 'create'])->name('klient-deals.create');
+
+    // Сохранение
+    Route::post('/klients/{klient}/deals', [KlientDealController::class, 'store'])->name('klient-deals.store');
+
+    // Просмотр сделки
+    Route::get('/klient-deals/{deal}', [KlientDealController::class, 'show'])->name('klient-deals.show');
+
+    Route::patch('/klient-deals/{deal}/status', [KlientDealController::class, 'updateStatus'])->name('klient-deals.update-status');
+
+    Route::get('/klient-deals/{deal}/edit', [KlientDealController::class, 'edit'])->name('klient-deals.edit');
+    Route::put('/klient-deals/{deal}', [KlientDealController::class, 'update'])->name('klient-deals.update');
+    Route::delete('/klient-deal-files/{file}', [KlientDealController::class, 'destroyFile'])->name('klient-deal-files.destroy');
+
+    Route::get('/deals', [KlientDealController::class, 'index'])->name('deals.index');
+
+    Route::prefix('klients/{klient}/tasks')->group(function () {
+        Route::put('/{task}', [KlientTaskController::class, 'update'])->name('klient-tasks.update');
+        Route::delete('/{task}/files/{file}', [KlientTaskController::class, 'deleteFile'])->name('klient-tasks.delete-file');
+    });
+
+});
+
+Route::middleware(['auth'])->group(function () {
+    // Маршруты для файлов задач
+    Route::post('/klient-tasks/{task}/files', [KlientTaskController::class, 'upload'])
+        ->name('klient-task-files.upload');
+
+    Route::get('/klient-task-files/{file}/download', [KlientTaskController::class, 'download'])
+        ->name('klient-task-files.download');
+
+    Route::delete('/klient-task-files/{file}', [KlientTaskController::class, 'destroy'])
+        ->name('klient-task-files.destroy');
+
+    Route::delete('/klient-tasks/{task}/files', [KlientTaskController::class, 'destroyMultiple'])
+        ->name('klient-task-files.destroy-multiple');
+
+
+    Route::post('/klient-deals/{deal}/upload-files', [KlientDealController::class, 'uploadFiles'])
+        ->name('klient-deals.upload-files');
+
+// Скачивание файла
+    Route::get('/klient-deal-files/{file}/download', [KlientDealController::class, 'downloadFile'])
+        ->name('klient-deal-files.download');
+
+});
+
+
 
 
 //new---------------------------------------------------------------

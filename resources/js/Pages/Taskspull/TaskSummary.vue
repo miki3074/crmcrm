@@ -171,18 +171,18 @@ const availableProjectsForReport = computed(() => {
 <template>
     <Head title="Сводка задач" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="font-bold text-2xl text-slate-800 dark:text-white leading-tight flex items-center gap-2">
-                    📊 Сводный пул
-                </h2>
+<!--        <template #header>-->
+<!--            <div class="flex items-center justify-between">-->
+<!--                <h2 class="font-bold text-2xl text-slate-800 dark:text-white leading-tight flex items-center gap-2">-->
+<!--                    📊 Сводный пул-->
+<!--                </h2>-->
 
-                <button @click="openReportModal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Сформировать отчет
-                </button>
-            </div>
-        </template>
+<!--                <button @click="openReportModal" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">-->
+<!--                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>-->
+<!--                    Сформировать отчет-->
+<!--                </button>-->
+<!--            </div>-->
+<!--        </template>-->
 
         <div class="py-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
             <!-- max-w-full чтобы использовать всю ширину, px-2 для небольших отступов по краям экрана -->

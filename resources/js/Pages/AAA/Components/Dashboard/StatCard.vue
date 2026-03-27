@@ -1,16 +1,20 @@
-<!-- Partials/StatCard.vue -->
 <script setup>
-defineProps(['title', 'icon', 'color'])
+const props = defineProps(['title', 'icon', 'color'])
+const colors = {
+    violet: 'bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400',
+    indigo: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400',
+    rose: 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400',
+}
 </script>
 
 <template>
-    <button class="group relative overflow-hidden p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left">
-        <!-- Декоративный фон при наведении -->
-        <div class="absolute -right-4 -top-4 w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full group-hover:scale-[3] transition-transform duration-500 opacity-50"></div>
-
-        <div class="relative z-10 flex flex-col gap-3">
-            <span class="text-2xl">{{ icon }}</span>
-            <span class="font-semibold text-slate-700 dark:text-slate-200">{{ title }}</span>
+    <button class="group relative p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+        <div :class="['w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-3 transition-transform group-hover:scale-110', colors[color]]">
+            {{ icon }}
         </div>
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ title }}</div>
     </button>
 </template>

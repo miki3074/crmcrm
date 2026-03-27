@@ -50,7 +50,8 @@ const perms = computed(() => {
     return {
         canCreateSubtask: isOwner || isCreator || isResp || isExec || isProjMgr || isProjExec,
         canUpdate: isOwner || isProjMgr || isProjExec,
-        canDelete: isOwner || isProjMgr || isProjExec,
+        canDelete: isOwner,
+        // || isProjMgr || isProjExec
         canUpload: isExec || isResp || isProjExec || isOwner,
         canFinish: (task.value.progress === 100) && !task.value.completed && !task.value.subtasks?.some(s => !s.completed),
         canManageMembers,

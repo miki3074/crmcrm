@@ -214,6 +214,25 @@ const toggleTheme = () => {
                 </Link>
 
                 <Link
+                    :href="route('formzak')"
+                    class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
+                    :class="route().current('tasks.completed')
+                    ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
+                >
+                    <svg class="flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+
+                    <span
+                        class="ml-3 transition-all duration-300 ease-in-out overflow-hidden"
+                        :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
+                    >
+                       Форма Законопроекта
+                    </span>
+                </Link>
+
+                <Link
                     :href="route('chat.index')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
                     :class="route().current('tasks.completed')

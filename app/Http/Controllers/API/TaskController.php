@@ -334,7 +334,7 @@ public function deleteFile($fileId)
 
 public function complete(Task $task)
     {
-        $this->authorize('update', $task);
+        $this->authorize('complete', $task);
 
         // Притянем подзадачи (чтобы не попасть в N+1 при фронтовом show)
         $task->loadMissing('subtasks:id,task_id,completed');

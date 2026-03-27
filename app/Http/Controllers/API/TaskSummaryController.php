@@ -390,19 +390,36 @@ class TaskSummaryController extends Controller
     public function completedByProject(Project $project)
     {
         $user = Auth::user();
+        $userId = $user->id;
 
         $result = [
             'tasks' => [],
             'subtasks' => []
         ];
 
+        // 1. Проверяем, имеет ли пользователь "Глобальный доступ" к этому проекту
+        // (Владелец компании, Инициатор проекта или один из Менеджеров проекта)
+        $hasFullAccess = ($project->company->user_id === $userId) ||
+            ($project->initiator_id === $userId) ||
+            ($project->managers()->where('users.id', $userId)->exists());
+
         // ========================
         // ЗАВЕРШЁННЫЕ ЗАДАЧИ
         // ========================
-        $tasks = Task::withoutGlobalScope('not_completed')
+        $tasksQuery = Task::withoutGlobalScope('not_completed')
             ->where('project_id', $project->id)
-            ->where('completed', 1)
-            ->with(['company:id,name'])
+            ->where('completed', 1);
+
+        // Если нет полного доступа, фильтруем только те задачи, к которым юзер имеет отношение
+        if (!$hasFullAccess) {
+            $tasksQuery->where(function($q) use ($userId) {
+                $q->where('creator_id', $userId) // Создатель
+                ->orWhereHas('executors', fn($e) => $e->where('users.id', $userId)) // Исполнитель
+                ->orWhereHas('responsibles', fn($r) => $r->where('users.id', $userId)); // Ответственный
+            });
+        }
+
+        $tasks = $tasksQuery->with(['company:id,name'])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -419,12 +436,25 @@ class TaskSummaryController extends Controller
         // ========================
         // ЗАВЕРШЁННЫЕ ПОДЗАДАЧИ
         // ========================
-        $subtasks = Subtask::withoutGlobalScope('not_completed')
+        $subtasksQuery = Subtask::withoutGlobalScope('not_completed')
             ->where('completed', 1)
-            ->whereHas('task', fn ($q) =>
-            $q->where('project_id', $project->id)
-            )
-            ->with(['task:id,title'])
+            ->whereHas('task', fn ($q) => $q->where('project_id', $project->id));
+
+        // Если нет полного доступа, фильтруем только те подзадачи, где юзер участвует
+        if (!$hasFullAccess) {
+            $subtasksQuery->where(function($q) use ($userId) {
+                $q->whereHas('executors', fn($e) => $e->where('users.id', $userId)) // Исполнитель подзадачи
+                ->orWhereHas('responsibles', fn($r) => $r->where('users.id', $userId)) // Ответственный подзадачи
+                // Или если он имеет отношение к родительской задаче, то может видеть и её подзадачи
+                ->orWhereHas('task', function($parentTask) use ($userId) {
+                    $parentTask->where('creator_id', $userId)
+                        ->orWhereHas('executors', fn($e) => $e->where('users.id', $userId))
+                        ->orWhereHas('responsibles', fn($r) => $r->where('users.id', $userId));
+                });
+            });
+        }
+
+        $subtasks = $subtasksQuery->with(['task:id,title'])
             ->orderByDesc('updated_at')
             ->get();
 

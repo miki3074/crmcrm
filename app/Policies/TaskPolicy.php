@@ -152,6 +152,50 @@ private function participates(User $user, Task $task): bool
 
     }
 
+    public function complete(User $user, Task $task): bool
+    {
+        return
+            // 1. Создатель самой задачи
+            $user->id === $task->creator_id ||
+
+            // 2. Исполнители задачи (Executors на уровне задачи)
+            $task->executors->contains('id', $user->id) ||
+
+            // 3. Ответственные задачи (Responsibles на уровне задачи)
+            $task->responsibles->contains('id', $user->id) ||
+
+            // 4. Владелец компании, которой принадлежит проект
+            optional($task->project->company)->user_id === $user->id ||
+
+            // 5. Менеджеры проекта
+            $task->project->managers->contains('id', $user->id) ||
+
+            // 6. Исполнители проекта
+            $task->project->executors->contains('id', $user->id);
+    }
+
+    public function list(User $user, Task $task): bool
+    {
+        return
+            // 1. Создатель самой задачи
+            $user->id === $task->creator_id ||
+
+            // 2. Исполнители задачи (Executors на уровне задачи)
+            $task->executors->contains('id', $user->id) ||
+
+            // 3. Ответственные задачи (Responsibles на уровне задачи)
+            $task->responsibles->contains('id', $user->id) ||
+
+            // 4. Владелец компании, которой принадлежит проект
+            optional($task->project->company)->user_id === $user->id ||
+
+            // 5. Менеджеры проекта
+            $task->project->managers->contains('id', $user->id) ||
+
+            // 6. Исполнители проекта
+            $task->project->executors->contains('id', $user->id);
+    }
+
  public function updateProgress(User $user, Task $task): bool
     {
         return

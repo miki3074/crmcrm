@@ -13,37 +13,121 @@ use App\Models\Company;
 class EmployeeController extends Controller
 {
 
-public function index() { 
-    abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden'); 
-    $ownerId = auth()->id();
-     $companies = Company::where('user_id', $ownerId)->pluck('id'); 
-     $users = \DB::table('company_user') 
-     ->join('users', 'company_user.user_id', '=', 'users.id') 
-     ->join('companies', 'company_user.company_id', '=', 'companies.id') 
-     ->whereIn('companies.id', $companies) 
-     ->select( 'users.id', 
-     'users.name', 
-     'users.email', 
-     'companies.id as company_id', 
-     'companies.name as company_name', 
-     'company_user.role', 
-     'company_user.created_by' ) 
-     ->get() 
-     ->map(function ($row) {
-         return [ 
-            'id' => $row->id, 
-            'name' => $row->name, 
-            'email' => $row->email, 
-            'company' => [ 
-                'id' => $row->company_id, 
-                'name' => $row->company_name, 
-            ], 
-            'role' => $row->role, 
-            'created_by' => $row->created_by, 
-        ]; 
-    }); 
-    return response()->json($users->values()); 
-}
+//public function index() {
+//    abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden');
+//
+//    $ownerId = auth()->id();
+//     $companies = Company::where('user_id', $ownerId)->pluck('id');
+//
+//     $users = \DB::table('company_user')
+//     ->join('users', 'company_user.user_id', '=', 'users.id')
+//     ->join('companies', 'company_user.company_id', '=', 'companies.id')
+//     ->whereIn('companies.id', $companies)
+//
+//     ->select( 'users.id',
+//     'users.name',
+//     'users.email',
+//     'companies.id as company_id',
+//     'companies.name as company_name',
+//     'company_user.role',
+//     'company_user.created_by' )
+//     ->get()
+//     ->map(function ($row) {
+//         return [
+//            'id' => $row->id,
+//            'name' => $row->name,
+//            'email' => $row->email,
+//            'company' => [
+//                'id' => $row->company_id,
+//                'name' => $row->company_name,
+//            ],
+//            'role' => $row->role,
+//            'created_by' => $row->created_by,
+//        ];
+//    });
+//    return response()->json($users->values());
+//}
+
+    public function index() {
+        abort_unless(auth()->user()->hasRole('admin'), 403, 'Forbidden');
+        $ownerId = auth()->id();
+
+        // Получаем компании владельца
+        $companies = Company::where('user_id', $ownerId)->pluck('id');
+
+        // Получаем сотрудников двумя способами:
+        // 1. Через company_user (прикрепленные к компаниям владельца)
+        // 2. Прямо из users (созданные пользователем, даже без привязки к компании)
+
+        // Часть 1: Прикрепленные сотрудники (имеют связь через company_user)
+        $attachedUsers = \DB::table('company_user')
+            ->join('users', 'company_user.user_id', '=', 'users.id')
+            ->join('companies', 'company_user.company_id', '=', 'companies.id')
+            ->whereIn('companies.id', $companies)
+            ->select(
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.created_by as user_created_by',
+                'companies.id as company_id',
+                'companies.name as company_name',
+                'company_user.role',
+                'company_user.created_by as relation_created_by',
+                \DB::raw("'attached' as relation_type")
+            )
+            ->get();
+
+        // Часть 2: Созданные сотрудники (созданы пользователем, но возможно без компаний)
+        $createdUsers = \DB::table('users')
+            ->leftJoin('company_user', function($join) {
+                $join->on('users.id', '=', 'company_user.user_id');
+            })
+            ->leftJoin('companies', 'company_user.company_id', '=', 'companies.id')
+            ->where('users.created_by', $ownerId)
+            ->whereNull('company_user.id') // Только те, у кого нет привязки к компаниям
+            ->select(
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.created_by as user_created_by',
+                \DB::raw("NULL as company_id"),
+                \DB::raw("NULL as company_name"),
+                \DB::raw("NULL as role"),
+                \DB::raw("NULL as relation_created_by"),
+                \DB::raw("'created' as relation_type")
+            )
+            ->get();
+
+        // Объединяем оба набора
+        $allUsers = $attachedUsers->concat($createdUsers);
+
+        // Преобразуем в нужный формат
+        $users = $allUsers->map(function ($row) use ($ownerId) {
+            // Для созданных сотрудников без компании, relation_type уже установлен
+            $relationType = $row->relation_type;
+
+            // Если это прикрепленный сотрудник, проверяем, был ли он создан текущим пользователем
+            if ($relationType === 'attached' && $row->user_created_by && $row->user_created_by == $ownerId) {
+                $relationType = 'created_with_company'; // Создан и прикреплен к компании
+            }
+
+            return [
+                'id' => $row->id,
+                'name' => $row->name,
+                'email' => $row->email,
+                'company' => $row->company_id ? [
+                    'id' => $row->company_id,
+                    'name' => $row->company_name,
+                ] : null,
+                'role' => $row->role ?? 'employee', // Дефолтная роль
+                'created_by' => $row->user_created_by,
+                'relation_type' => $relationType, // 'created', 'attached', или 'created_with_company'
+                'has_company' => !is_null($row->company_id),
+            ];
+        });
+
+        return response()->json($users->values());
+    }
 
 public function employeesqw()
 {
@@ -303,6 +387,30 @@ public function destroy(Request $request, $id)
         ->where('user_id', $id)
         ->where('company_id', $company->id)
         ->delete();
+
+    // 2️⃣ Удаляем доступ к клиентам этой компании
+    // Находим всех клиентов, принадлежащих этой компании
+    $klientIds = \App\Models\Klient::where('company_id', $company->id)->pluck('id');
+
+    if ($klientIds->isNotEmpty()) {
+        // Удаляем записи из klient_access
+        \DB::table('klient_access')
+            ->where('user_id', $id)
+            ->whereIn('klient_id', $klientIds)
+            ->delete();
+    }
+
+    // 3️⃣ Дополнительно: если пользователь был добавлен как allowed_user к клиентам этой компании
+    // (на случай, если доступ был предоставлен вручную, не через компанию)
+    if ($klientIds->isNotEmpty()) {
+        // Получаем всех клиентов компании
+        $klients = \App\Models\Klient::where('company_id', $company->id)->get();
+
+        foreach ($klients as $klient) {
+            // Удаляем пользователя из allowed_users клиента
+            $klient->allowedUsers()->detach($id);
+        }
+    }
 
 
     // 2️⃣ Список всех проектов компании

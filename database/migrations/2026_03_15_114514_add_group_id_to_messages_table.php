@@ -12,7 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('messages', function (Blueprint $table) {
-            $table->foreignId('group_id')->nullable()->constrained('chat_groups')->onDelete('cascade');
+            if (!Schema::hasColumn('messages', 'group_id')) {
+                $table->foreignId('group_id')
+                    ->nullable()
+                    ->constrained('chat_groups')
+                    ->onDelete('cascade');
+            }
+
             $table->unsignedBigInteger('receiver_id')->nullable()->change();
         });
     }
@@ -23,7 +29,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('messages', function (Blueprint $table) {
-            //
+            $table->dropForeign(['group_id']);
+            $table->dropColumn('group_id');
         });
     }
 };

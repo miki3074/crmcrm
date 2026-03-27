@@ -23,61 +23,47 @@ class ProjectPolicy
     {
         $userId = $user->id;
 
-        // 1️⃣ Владелец компании
-        if ($userId === $project->company->user_id) {
-            return true;
-        }
+        // Пункты 1-5 остаются без изменений...
+        if ($userId === $project->company->user_id) return true;
+        if ($userId === $project->initiator_id) return true;
+        if ($project->managers->contains('id', $userId)) return true;
+        if ($project->executors->contains('id', $userId)) return true;
+        if ($project->watchers->contains('id', $userId)) return true;
 
-        // 2️⃣ Инициатор проекта
-        if ($userId === $project->initiator_id) {
-            return true;
-        }
-
-        // 3️⃣ Менеджер проекта
-        if ($project->managers->contains('id', $userId)) {
-            return true;
-        }
-
-        // 4️⃣ Исполнитель проекта
-        if ($project->executors->contains('id', $userId)) {
-            return true;
-        }
-
-        // 5️⃣ Наблюдатель проекта
-        if ($project->watchers->contains('id', $userId)) {
-            return true;
-        }
-
-        // 6️⃣ Исполнитель хотя бы одной задачи
+        // 6️⃣ Исполнитель хотя бы одной задачи (включая завершенные)
         if (
             $project->tasks()
+                ->withoutGlobalScope('not_completed') // 👈 ВАЖНО
                 ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
                 ->exists()
         ) {
             return true;
         }
 
-        // 7️⃣ Ответственный хотя бы одной задачи
+        // 7️⃣ Ответственный хотя бы одной задачи (включая завершенные)
         if (
             $project->tasks()
+                ->withoutGlobalScope('not_completed') // 👈 ВАЖНО
                 ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
                 ->exists()
         ) {
             return true;
         }
 
-        // 8️⃣ Исполнитель подзадачи
+        // 8️⃣ Исполнитель подзадачи (включая завершенные)
         if (
-            \App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+            \App\Models\Subtask::withoutGlobalScope('not_completed') // 👈 ВАЖНО
+            ->whereHas('task', fn($q) => $q->where('project_id', $project->id))
                 ->whereHas('executors', fn($q) => $q->where('users.id', $userId))
                 ->exists()
         ) {
             return true;
         }
 
-        // 9️⃣ Ответственный подзадачи
+        // 9️⃣ Ответственный подзадачи (включая завершенные)
         if (
-            \App\Models\Subtask::whereHas('task', fn($q) => $q->where('project_id', $project->id))
+            \App\Models\Subtask::withoutGlobalScope('not_completed') // 👈 ВАЖНО
+            ->whereHas('task', fn($q) => $q->where('project_id', $project->id))
                 ->whereHas('responsibles', fn($q) => $q->where('users.id', $userId))
                 ->exists()
         ) {

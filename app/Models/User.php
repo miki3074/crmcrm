@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -144,6 +145,9 @@ public function supportMessagesAssigned()
     public function chatGroups() {
         return $this->belongsToMany(ChatGroup::class, 'chat_group_user');
     }
+
+
+
 
 
 }

@@ -65,6 +65,11 @@ public function executors()
     return $this->belongsToMany(User::class, 'project_executors')->withTimestamps();
 }
 
+    public function project_users()
+    {
+        return $this->belongsToMany(User::class, 'project_user', 'project_id', 'user_id');
+    }
+
 
 public function clients()
 {
