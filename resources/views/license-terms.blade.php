@@ -126,26 +126,7 @@ $currentYear = date('Y');
     <!-- Основной контент -->
     <div class="p-8">
         <!-- Крупный баннер о бесплатности -->
-        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-8 mb-8 text-center border-2 border-emerald-200">
-            <i class="fas fa-gift text-6xl text-emerald-600 mb-4"></i>
-            <h2 class="text-3xl font-bold text-emerald-800 mb-2">Программное обеспечение предоставляется БЕСПЛАТНО</h2>
-            <p class="text-lg text-emerald-700">На условиях открытой лицензии — без взимания платы с пользователей</p>
 
-            <div class="mt-6 flex justify-center space-x-4">
-                <span class="license-type">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    Бессрочно
-                </span>
-                <span class="license-type">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    Без ограничений
-                </span>
-                <span class="license-type">
-                    <i class="fas fa-check-circle mr-1"></i>
-                    Для любых целей
-                </span>
-            </div>
-        </div>
 
         <!-- Основная информация - то, что требует Минцифры -->
         <div class="grid md:grid-cols-2 gap-6 mb-8">
@@ -225,26 +206,26 @@ $currentYear = date('Y');
                         <i class="fas fa-check-circle check-icon mt-1"></i>
                         <div>
                             <span class="font-semibold text-gray-800">Тип лицензии:</span>
-                            <span class="ml-2 text-blue-600 font-bold">Открытая лицензия</span>
+                            <span class="ml-2 text-blue-600 font-bold">Простая (неисключительная) лицензия</span>
                         </div>
                     </div>
 
-                    <div class="flex items-start">
-                        <i class="fas fa-check-circle check-icon mt-1"></i>
-                        <div>
-                            <span class="font-semibold text-gray-800">Основание:</span>
-                            <span class="ml-2 text-gray-700">Статья 1286.1 ГК РФ (открытая лицензия)</span>
-                        </div>
-                    </div>
+{{--                    <div class="flex items-start">--}}
+{{--                        <i class="fas fa-check-circle check-icon mt-1"></i>--}}
+{{--                        <div>--}}
+{{--                            <span class="font-semibold text-gray-800">Основание:</span>--}}
+{{--                            <span class="ml-2 text-gray-700">Статья 1286.1 ГК РФ (открытая лицензия)</span>--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
 
                     <div class="flex items-start">
                         <i class="fas fa-check-circle check-icon mt-1"></i>
                         <div>
                             <span class="font-semibold text-gray-800">Права пользователя:</span>
                             <ul class="list-disc pl-5 mt-2 text-gray-600 space-y-1">
-                                <li>Устанавливать и использовать ПО без ограничений</li>
-                                <li>Использовать для любых целей (личных, коммерческих)</li>
-                                <li>Распространять копии ПО (с сохранением условий лицензии)</li>
+
+                                <li>Использовать для внутренних нужд</li>
+
                                 <li>Получать обновления и новые версии</li>
                             </ul>
                         </div>
@@ -255,9 +236,10 @@ $currentYear = date('Y');
                         <div>
                             <span class="font-semibold text-gray-800">Ограничения:</span>
                             <ul class="list-disc pl-5 mt-2 text-gray-600 space-y-1">
-                                <li>Запрещено изменять код программы (для сохранения целостности)</li>
-                                <li>Запрещено взимать плату за перепродажу</li>
-                                <li>Необходимо сохранять уведомление об авторских правах</li>
+
+
+                                <li>Запрещено скачивание, копирование и передача ПО третьим лицам</li>
+                                <li>Запрещена модификация и удаление уведомлений об авторских правах</li>
                             </ul>
                         </div>
                     </div>
