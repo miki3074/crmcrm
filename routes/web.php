@@ -198,6 +198,15 @@ Route::get('/', function () {
     ]);
 });
 
+Route::middleware(['auth'])->group(function () {
+    // ... другие маршруты
+
+    Route::get('/watching', function () {
+        return Inertia::render('WatchingPage');
+    })->name('watching');
+});
+
+
 //Route::get('/docs/registry', function () {
 //    return Inertia::render('Public/RegistryDocs');
 //})->name('registry.docs');

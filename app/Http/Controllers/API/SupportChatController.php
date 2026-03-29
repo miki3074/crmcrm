@@ -21,10 +21,14 @@ class SupportChatController extends Controller
         $user = $request->user();
 
         $threads = SupportThread::with([
-                'user:id,name',
-                'messages' => fn($q) => $q->latest()->limit(1),
-            ])
+            'user:id,name',
+            'messages' => fn($q) => $q->latest()->limit(1),
+        ])
             ->where('user_id', $user->id)
+            // Добавляем подсчет непрочитанных сообщений от саппорта
+            ->withCount(['messages as unread_count' => function ($query) {
+                $query->where('is_support', true)->whereNull('read_at');
+            }])
             ->orderByDesc('updated_at')
             ->get();
 
@@ -129,7 +133,25 @@ class SupportChatController extends Controller
     // сообщения в диалоге
     public function messages(SupportThread $thread, Request $request)
     {
-        // можно добавить проверку, что это владелец или саппорт
+        $user = $request->user();
+
+        // ПРОВЕРКА ДОСТУПА (опционально, но желательно)
+        if ($thread->user_id !== $user->id && !$user->hasRole('support')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        // ЛОГИКА ОБНОВЛЕНИЯ ПРОЧТЕНИЯ
+        $unreadQuery = $thread->messages()->whereNull('read_at');
+
+        if ($user->hasRole('support')) {
+            // Если зашел саппорт — помечаем как прочитанные сообщения клиента
+            $unreadQuery->where('is_support', false)->update(['read_at' => now()]);
+        } else {
+            // Если зашел клиент — помечаем как прочитанные сообщения саппорта
+            $unreadQuery->where('is_support', true)->update(['read_at' => now()]);
+        }
+
+        // Загружаем данные для возврата
         $thread->load([
             'user:id,name',
             'messages.user:id,name',

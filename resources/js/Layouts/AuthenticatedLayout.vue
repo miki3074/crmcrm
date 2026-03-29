@@ -27,17 +27,9 @@ const toggleSidebarLock = () => {
     isSidebarLocked.value = !isSidebarLocked.value
 }
 
-/* === 🔵 Уведомления тех.поддержки === */
-const unreadSupport = ref(0)
 
-const loadUnread = async () => {
-    try {
-        const { data } = await axios.get('/api/support/history')
-        unreadSupport.value = data.data.filter(m => m.has_unread).length
-    } catch (err) {
-        console.error('Не удалось загрузить непрочитанные сообщения:', err)
-    }
-}
+
+
 
 onMounted(() => {
     // Темная тема
@@ -49,7 +41,7 @@ onMounted(() => {
         document.documentElement.classList.add('dark')
         isDark.value = true
     }
-    loadUnread()
+
 
     // Можно восстановить состояние сайдбара из localStorage, если нужно
     // const savedLock = localStorage.getItem('sidebarLocked')
@@ -66,6 +58,11 @@ const toggleTheme = () => {
         localStorage.theme = 'light'
     }
 }
+const page = usePage();
+
+const unreadSupport = computed(() => page.props.unreadSupportCount);
+const unreadChat = computed(() => page.props.unreadChatCount);
+
 </script>
 
 <template>
@@ -134,28 +131,38 @@ const toggleTheme = () => {
                         Главная
                     </span>
                 </Link>
+                <!-- Временно добавьте это для теста -->
 
                 <Link
                     :href="route('support.chat')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 relative whitespace-nowrap"
                     :class="route().current('support.chat')
-                    ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
+            ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
                 >
                     <div class="relative flex-shrink-0">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        <!-- Индикатор на иконке, когда меню свернуто -->
-                        <span v-if="unreadSupport > 0 && !isSidebarOpen" class="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-gray-800 animate-pulse"></span>
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+
+                        <!-- Точка на иконке (когда меню свернуто) -->
+                        <span v-if="unreadSupport > 0 && !isSidebarOpen"
+                              class="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-gray-800 animate-pulse">
+            </span>
                     </div>
 
                     <span
                         class="ml-3 transition-all duration-300 ease-in-out overflow-hidden flex-1 flex items-center justify-between"
                         :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
                     >
-                        Техподдержка
-                        <!-- Индикатор внутри текста, когда меню развернуто -->
-                        <span v-if="unreadSupport > 0" class="ml-2 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></span>
-                    </span>
+            Техподдержка
+
+                        <!-- Точка рядом с текстом (когда меню развернуто) -->
+            <span v-if="unreadSupport > 0"
+                  class=" block h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-white dark:ring-gray-800 animate-pulse">
+
+    </span>
+        </span>
                 </Link>
 
                 <Link
@@ -233,23 +240,61 @@ const toggleTheme = () => {
                 </Link>
 
                 <Link
-                    :href="route('chat.index')"
+                    :href="route('watching')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
                     :class="route().current('tasks.completed')
                     ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
                 >
                     <svg class="flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7S3.732 16.057 2.458 12z"/>
+                        <circle cx="12" cy="12" r="3" stroke-width="2"/>
                     </svg>
+
 
                     <span
                         class="ml-3 transition-all duration-300 ease-in-out overflow-hidden"
                         :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
                     >
-                        Чат
+                        Наблюдатель
                     </span>
                 </Link>
+
+                <Link
+                    :href="route('chat.index')"
+                    class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 relative whitespace-nowrap"
+                    :class="route().current('chat.index')
+        ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
+                >
+                    <div class="relative flex-shrink-0">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+
+                        <!-- Точка на иконке (когда меню свернуто) -->
+                        <span v-if="unreadChat > 0 && !isSidebarOpen"
+                              class="absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800 animate-pulse">
+        </span>
+                    </div>
+
+                    <span
+                        class="ml-3 transition-all duration-300 ease-in-out overflow-hidden flex-1 flex items-center justify-between"
+                        :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
+                    >
+        Чат
+
+                        <!-- Красный кружок с цифрой или точка (когда меню развернуто) -->
+        <span v-if="unreadChat > 0"
+              class="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse min-w-[18px] text-center">
+            {{ unreadChat }}
+        </span>
+    </span>
+                </Link>
+
+
+
 
             </div>
 
@@ -352,13 +397,8 @@ const toggleTheme = () => {
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Главная
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('support.history')" :active="route().current('support.history')">
-                            Техподдержка
-                            <span v-if="unreadSupport > 0" class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">New</span>
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('meeting-documents.index')" :active="route().current('meeting-documents.index')">
-                            Повестки
-                        </ResponsiveNavLink>
+
+
                         <!-- Остальные ссылки для мобилки можно добавить сюда -->
                     </div>
 

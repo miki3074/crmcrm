@@ -18,35 +18,40 @@ class ChatController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Получаем компании с их участниками
+        // === 1. ОБНОВЛЕНИЕ СТАТУСОВ ПРОЧТЕНИЯ (ДОЛЖНО БЫТЬ ПЕРВЫМ) ===
+
+        if ($type === 'group' && $targetId) {
+            // Обновляем время захода в группу
+            $user->chatGroups()->updateExistingPivot($targetId, [
+                'last_read_at' => now()
+            ]);
+        }
+
+        if ($type === 'user' && $targetId) {
+            // Помечаем личные сообщения как прочитанные
+            Message::where('sender_id', $targetId)
+                ->where('receiver_id', $user->id)
+                ->whereNull('group_id')
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+        }
+
+        // === 2. ПОЛУЧЕНИЕ ДАННЫХ КОМПАНИЙ ===
         $ownedCompanies = $user->ownedCompanies()->with('users:id,name')->get();
         $memberCompanies = $user->companiesmess()->with('users:id,name')->get();
 
-        $companies = $ownedCompanies->merge($memberCompanies)
-            ->unique('id')
-            ->values()
-            ->map(function ($company) {
-                // Собираем всех участников компании в один массив
-                $participants = $company->users->map(function($u) {
-                    return ['id' => $u->id, 'name' => $u->name];
-                });
-
-                // Добавляем владельца компании в список участников, если его там нет
-                $owner = User::find($company->user_id);
-                if ($owner && !$participants->contains('id', $owner->id)) {
-                    $participants->push(['id' => $owner->id, 'name' => $owner->name]);
-                }
-
-                return [
-                    'id' => $company->id,
-                    'name' => $company->name,
-                    'members' => $participants->values()
-                ];
-            });
+        $companies = $ownedCompanies->merge($memberCompanies)->unique('id')->values()->map(function ($company) {
+            $participants = $company->users->map(fn($u) => ['id' => $u->id, 'name' => $u->name]);
+            $owner = User::find($company->user_id);
+            if ($owner && !$participants->contains('id', $owner->id)) {
+                $participants->push(['id' => $owner->id, 'name' => $owner->name]);
+            }
+            return ['id' => $company->id, 'name' => $company->name, 'members' => $participants->values()];
+        });
 
         $companyIds = $companies->pluck('id')->toArray();
 
-        // 2. Коллеги для общего списка чатов (все уникальные)
+        // === 3. КОЛЛЕГИ (Счетчики будут верными, так как update был выше) ===
         $colleagues = User::select('users.id', 'users.name')
             ->where('users.id', '!=', $user->id)
             ->where(function($query) use ($companyIds) {
@@ -54,39 +59,50 @@ class ChatController extends Controller
                     ->orWhereHas('ownedCompanies', fn($q) => $q->whereIn('companies.id', $companyIds));
             })
             ->distinct()
-            ->get();
+            ->get()
+            ->map(function($colleague) use ($user) {
+                $colleague->unread_count = Message::where('sender_id', $colleague->id)
+                    ->where('receiver_id', $user->id)
+                    ->whereNull('group_id')
+                    ->where('is_read', false)
+                    ->count();
+                return $colleague;
+            });
 
-        // 3. Группы
-        $groups = $user->chatGroups()->whereIn('company_id', $companyIds)->get();
+        // === 4. ГРУППЫ (Явно запрашиваем свежий pivot) ===
+        $groups = $user->chatGroups()
+            ->withPivot('last_read_at') // Убедитесь, что это тут есть
+            ->whereIn('company_id', $companyIds)
+            ->get()
+            ->map(function($group) use ($user) {
+                $lastReadAt = $group->pivot->last_read_at;
+                $group->unread_count = Message::where('group_id', $group->id)
+                    ->where('sender_id', '!=', $user->id)
+                    ->when($lastReadAt, function($q) use ($lastReadAt) {
+                        $q->where('created_at', '>', $lastReadAt);
+                    })
+                    ->count();
+                return $group;
+            });
 
+        // === 5. СООБЩЕНИЯ ДЛЯ ТЕКУЩЕГО ЧАТА ===
         $messages = [];
         if ($type === 'user' && $targetId) {
-            // Помечаем сообщения от этого пользователя как прочитанные
-            Message::where('sender_id', $targetId)
-                ->where('receiver_id', $user->id)
-                ->whereNull('group_id')
-                ->update(['is_read' => true]);
-
-            // Загружаем переписку
             $messages = Message::whereNull('group_id')
                 ->where(function($q) use ($user, $targetId) {
-                    $q->where(function($i) use ($user, $targetId) {
-                        $i->where('sender_id', $user->id)->where('receiver_id', $targetId);
-                    })->orWhere(function($i) use ($user, $targetId) {
-                        $i->where('sender_id', $targetId)->where('receiver_id', $user->id);
-                    });
+                    $q->where(fn($i) => $i->where('sender_id', $user->id)->where('receiver_id', $targetId))
+                        ->orWhere(fn($i) => $i->where('sender_id', $targetId)->where('receiver_id', $user->id));
                 })
                 ->with('sender')
                 ->orderBy('created_at', 'asc')
                 ->get();
         } elseif ($type === 'group' && $targetId) {
-            // Групповой чат
             $messages = Message::where('group_id', $targetId)
                 ->with('sender')
                 ->orderBy('created_at', 'asc')
                 ->get();
-
         }
+
         $activeGroup = ChatGroup::with('users')->find($targetId);
 
         return Inertia::render('Chat/Index', [
@@ -130,27 +146,27 @@ class ChatController extends Controller
             'group_id' => $request->type === 'group' ? $request->target_id : null,
         ]);
 
-        // 1. Уведомление для личного чата
-        if ($request->type === 'user') {
-            $receiver = User::find($request->target_id);
-            if ($receiver && $receiver->telegram_chat_id) {
-                $text = "💬 <b>Сообщение от {$sender->name}</b>\n\n{$request->message}";
-                SendTelegramNotification::dispatch($receiver->telegram_chat_id, $text);
-            }
-        }
-        // 2. Уведомление для группы
-        else {
-            $group = ChatGroup::with('users')->find($request->target_id);
-            if ($group) {
-                $text = "👥 <b>Группа: {$group->name}</b>\n<b>{$sender->name}:</b> {$request->message}";
-
-                foreach ($group->users as $member) {
-                    if ($member->id !== $sender->id && $member->telegram_chat_id) {
-                        SendTelegramNotification::dispatch($member->telegram_chat_id, $text);
-                    }
-                }
-            }
-        }
+//        // 1. Уведомление для личного чата
+//        if ($request->type === 'user') {
+//            $receiver = User::find($request->target_id);
+//            if ($receiver && $receiver->telegram_chat_id) {
+//                $text = "💬 <b>Сообщение от {$sender->name}</b>\n\n{$request->message}";
+//                SendTelegramNotification::dispatch($receiver->telegram_chat_id, $text);
+//            }
+//        }
+//        // 2. Уведомление для группы
+//        else {
+//            $group = ChatGroup::with('users')->find($request->target_id);
+//            if ($group) {
+//                $text = "👥 <b>Группа: {$group->name}</b>\n<b>{$sender->name}:</b> {$request->message}";
+//
+//                foreach ($group->users as $member) {
+//                    if ($member->id !== $sender->id && $member->telegram_chat_id) {
+//                        SendTelegramNotification::dispatch($member->telegram_chat_id, $text);
+//                    }
+//                }
+//            }
+//        }
 
         return back();
     }

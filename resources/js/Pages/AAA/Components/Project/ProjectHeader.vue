@@ -150,32 +150,32 @@ const openClientModal = (client) => {
             </div>
 
             <!-- CLIENTS CARD -->
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-xl font-bold flex items-center gap-3">
-                        <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center">🤝</span>
-                        Контрагенты
-                    </h3>
-                    <span class="text-xs font-black text-slate-400">{{ project.clients?.length || 0 }}</span>
-                </div>
+<!--            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8">-->
+<!--&lt;!&ndash;                <div class="flex justify-between items-center mb-6">&ndash;&gt;-->
+<!--&lt;!&ndash;                    <h3 class="text-xl font-bold flex items-center gap-3">&ndash;&gt;-->
+<!--&lt;!&ndash;                        <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center">🤝</span>&ndash;&gt;-->
+<!--&lt;!&ndash;                        Контрагенты&ndash;&gt;-->
+<!--&lt;!&ndash;                    </h3>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <span class="text-xs font-black text-slate-400">{{ project.clients?.length || 0 }}</span>&ndash;&gt;-->
+<!--&lt;!&ndash;                </div>&ndash;&gt;-->
 
-                <div class="space-y-3">
-                    <div v-for="c in project.clients" :key="c.id"
-                         @click="openClientModal(c)"
-                         class="group p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-transparent hover:border-emerald-300 dark:hover:border-emerald-500 transition-all cursor-pointer flex items-center justify-between">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-xl shadow-sm group-hover:rotate-12 transition-transform">
-                                🏢
-                            </div>
-                            <div>
-                                <p class="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{{ c.organization_name || c.name }}</p>
-                                <p class="text-xs text-slate-400">{{ c.email || 'Контакт не указан' }}</p>
-                            </div>
-                        </div>
-                        <svg class="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </div>
-                </div>
-            </div>
+<!--                <div class="space-y-3">-->
+<!--                    <div v-for="c in project.clients" :key="c.id"-->
+<!--                         @click="openClientModal(c)"-->
+<!--                         class="group p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-transparent hover:border-emerald-300 dark:hover:border-emerald-500 transition-all cursor-pointer flex items-center justify-between">-->
+<!--                        <div class="flex items-center gap-4">-->
+<!--                            <div class="w-12 h-12 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center text-xl shadow-sm group-hover:rotate-12 transition-transform">-->
+<!--                                🏢-->
+<!--                            </div>-->
+<!--                            <div>-->
+<!--                                <p class="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{{ c.organization_name || c.name }}</p>-->
+<!--                                <p class="text-xs text-slate-400">{{ c.email || 'Контакт не указан' }}</p>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                        <svg class="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
         </div>
 
         <!-- MODAL -->

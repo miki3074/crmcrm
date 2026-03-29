@@ -12,7 +12,8 @@ class ChatGroup extends Model
     protected $fillable = ['name', 'company_id', 'creator_id'];
 
     public function users() {
-        return $this->belongsToMany(User::class, 'chat_group_user');
+        return $this->belongsToMany(User::class, 'chat_group_user')
+            ->withPivot('last_read_at');
     }
 
     public function messages() {

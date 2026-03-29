@@ -3,6 +3,7 @@ import { ref, onMounted, nextTick, watch } from 'vue'
 import { Head, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import axios from 'axios'
+import { router } from '@inertiajs/vue3' // Добавьте импорт router
 
 const { props } = usePage()
 const currentUser = props.auth.user // Предполагаем, что юзер доступен тут
@@ -46,12 +47,23 @@ const scrollToBottom = async () => {
 
 const openThread = async (thread) => {
     activeThread.value = thread
-    messages.value = [] // Очистим пока грузим
+
+    // МГНОВЕННЫЙ СБРОС: обнуляем счетчик в локальном списке диалогов
+    const threadInList = threads.value.find(t => t.id === thread.id)
+    if (threadInList) {
+        threadInList.unread_count = 0
+    }
+
+    messages.value = []
     loadingMessages.value = true
 
     try {
         const { data } = await axios.get(`/api/support/threads/${thread.id}`)
         messages.value = data.messages
+
+        // Обновляем глобальный счетчик в Sidebar через Inertia
+        router.reload({ only: ['unreadSupportCount'] })
+
         scrollToBottom()
     } catch (e) {
         console.error(e)
@@ -189,32 +201,40 @@ onMounted(fetchThreads)
                         v-for="t in threads"
                         :key="t.id"
                         @click="openThread(t)"
-                        class="group p-3 rounded-xl cursor-pointer transition-all duration-200 border border-transparent"
+                        class="group p-3 rounded-xl cursor-pointer transition-all duration-200 border border-transparent relative"
                         :class="activeThread?.id === t.id
-              ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800'
-              : 'hover:bg-slate-50 dark:hover:bg-slate-800'"
+        ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800'
+        : 'hover:bg-slate-50 dark:hover:bg-slate-800'"
                     >
-                        <div class="flex justify-between items-start mb-1">
-              <span
-                  class="text-xs font-medium px-2 py-0.5 rounded-md"
-                  :class="t.status === 'open'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
-              >
-                {{ t.status === 'open' ? 'В работе' : 'Закрыт' }}
-              </span>
-                            <span class="text-[10px] text-slate-400">
-                #{{ t.id }}
-              </span>
+                        <!-- Индикатор нового сообщения (точка) -->
+                        <div v-if="t.unread_count > 0"
+                             class="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse">
                         </div>
 
-                        <div class="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate mb-1">
+                        <div class="flex justify-between items-start mb-1">
+        <span
+            class="text-xs font-medium px-2 py-0.5 rounded-md"
+            :class="t.status === 'open'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+        >
+            {{ t.status === 'open' ? 'В работе' : 'Закрыт' }}
+        </span>
+                            <span class="text-[10px] text-slate-400" :class="{'mr-4': t.unread_count > 0}">
+            #{{ t.id }}
+        </span>
+                        </div>
+
+                        <!-- Делаем текст жирным, если есть непрочитанные -->
+                        <div class="text-sm text-slate-800 dark:text-slate-200 truncate mb-1"
+                             :class="t.unread_count > 0 ? 'font-bold' : 'font-semibold'">
                             {{ t.subject || 'Без темы' }}
                         </div>
 
-<!--                        <div class="text-xs text-slate-500 dark:text-slate-400 truncate group-hover:text-slate-600 dark:group-hover:text-slate-300">-->
-<!--                            {{ t.messages[0]?.body || 'Файл...' }}-->
-<!--                        </div>-->
+                        <!-- Можно вывести количество цифрой, если хотите -->
+                        <div v-if="t.unread_count > 0" class="text-[10px] text-blue-600 font-bold uppercase">
+                            Новое сообщение
+                        </div>
                     </div>
                 </div>
             </div>

@@ -34,21 +34,34 @@
                         </button>
                     </div>
                     <div class="space-y-0.5">
+
                         <div v-for="group in groups" :key="'g' + group.id"
                              @click="openChat('group', group.id)"
                              :class="['flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-all relative group',
-                                      chatType === 'group' && targetId === group.id ? 'bg-indigo-50' : 'hover:bg-slate-50']">
+              chatType === 'group' && targetId === group.id ? 'bg-indigo-50' : 'hover:bg-slate-50']">
+
+                            <!-- Иконка группы -->
                             <div :class="['w-10 h-10 rounded-xl flex items-center justify-center mr-3 font-bold transition-colors',
                                           chatType === 'group' && targetId === group.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600']">
                                 #
                             </div>
+
                             <div class="flex-1 min-w-0">
                                 <div :class="['font-semibold text-sm truncate', chatType === 'group' && targetId === group.id ? 'text-indigo-900' : 'text-slate-700']">
                                     {{ group.name }}
                                 </div>
                             </div>
+
+                            <!-- Кружок непрочитанных для группы -->
+                            <div v-if="group.unread_count > 0"
+                                 class="ml-2 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                {{ group.unread_count }}
+                            </div>
+
                             <div v-if="chatType === 'group' && targetId === group.id" class="absolute left-0 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
                         </div>
+
+
                     </div>
                 </div>
 
@@ -58,22 +71,37 @@
                         <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Коллеги</span>
                     </div>
                     <div class="space-y-0.5">
+
+
+
                         <div v-for="user in colleagues" :key="'u' + user.id"
                              @click="openChat('user', user.id)"
                              :class="['flex items-center px-3 py-2.5 rounded-xl cursor-pointer transition-all relative group',
-                                      chatType === 'user' && targetId === user.id ? 'bg-indigo-50' : 'hover:bg-slate-50']">
+              chatType === 'user' && targetId === user.id ? 'bg-indigo-50' : 'hover:bg-slate-50']">
+
+                            <!-- Аватар -->
                             <div :class="['w-10 h-10 rounded-full flex items-center justify-center mr-3 text-xs font-bold shadow-sm transition-colors',
                                           chatType === 'user' && targetId === user.id ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-500 group-hover:border-indigo-200 group-hover:text-indigo-600']">
-                                {{ user.name.substring(0, 1).toUpperCase() }}
+
+                            {{ user.name.substring(0, 1).toUpperCase() }}
                             </div>
+
                             <div class="flex-1 min-w-0">
                                 <div :class="['font-semibold text-sm truncate', chatType === 'user' && targetId === user.id ? 'text-indigo-900' : 'text-slate-700']">
                                     {{ user.name }}
                                 </div>
                                 <div class="text-[11px] text-slate-400">На связи</div>
                             </div>
+
+                            <!-- Красный кружок непрочитанных для коллеги -->
+                            <div v-if="user.unread_count > 0"
+                                 class="ml-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                                {{ user.unread_count }}
+                            </div>
+
                             <div v-if="chatType === 'user' && targetId === user.id" class="absolute left-0 w-1 h-6 bg-indigo-600 rounded-r-full"></div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -319,7 +347,26 @@ const activeChatName = computed(() => {
 
 const openChat = (type, id) => {
     showGroupInfo.value = false;
-    router.get(`/chat/${type}/${id}`);
+
+    // Оптимистичное обновление (визуально скрываем сразу)
+    if (type === 'user') {
+        const u = props.colleagues.find(c => c.id === id);
+        if (u) u.unread_count = 0;
+    } else {
+        const g = props.groups.find(group => group.id === id);
+        if (g) g.unread_count = 0;
+    }
+
+    // Переходим в чат
+    router.get(`/chat/${type}/${id}`, {}, {
+        preserveScroll: true,
+        // onSuccess тут не нужен для reload, так как GET и так обновит всё.
+        // Но если кружок в САЙДБАРЕ не исчезает, можно оставить:
+        onFinish: () => {
+            // Используем на всякий случай, если сайтбар — отдельный компонент
+            // Но unreadChatCount пересчитается сервером при router.get автоматически
+        }
+    });
 };
 
 const sendMessage = () => {

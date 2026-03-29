@@ -145,6 +145,7 @@ public function store(Request $request)
                 'project:id,name,company_id',
                 'project.managers:id,name',
                 'project.company:id,name',
+                'project.watchers:id,name',
                 'files:id,task_id,file_path,user_id,file_name,status,rejection_reason,created_at',
                 'watcherstask:id,name',
                 'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',

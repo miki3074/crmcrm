@@ -147,7 +147,9 @@ public function supportMessagesAssigned()
     }
 
 
-
+    public function flutterMessages() {
+        return $this->hasMany(FlutterMessage::class);
+    }
 
 
 }

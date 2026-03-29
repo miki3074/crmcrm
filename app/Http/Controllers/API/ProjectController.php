@@ -166,7 +166,8 @@ public function store(Request $request)
         // 2. Определяем, есть ли у пользователя ПОЛНЫЙ доступ
         $hasFullAccess = (
             $project->company->user_id === $user->id ||
-            $project->managers->contains('id', $user->id)
+            $project->managers->contains('id', $user->id) ||
+            $project->executors->contains('id', $user->id)
         );
 
         // 3. Догружаем (load) задачи с условием
@@ -191,6 +192,8 @@ public function store(Request $request)
                     $q->where('creator_id', $user->id) // Создатель
                     ->orWhereHas('executors', fn($sq) => $sq->where('users.id', $user->id)) // Исполнитель
                     ->orWhereHas('responsibles', fn($sq) => $sq->where('users.id', $user->id)) // Ответственный
+
+                    ->orWhereHas('project.watchers', fn($sq) => $sq->where('users.id', $user->id))
 
                     // 🔥 НОВОЕ: Исполнитель подзадачи
                     ->orWhereHas('subtasks.executors', function($sq) use ($user) {

@@ -415,7 +415,8 @@ class TaskSummaryController extends Controller
             $tasksQuery->where(function($q) use ($userId) {
                 $q->where('creator_id', $userId) // Создатель
                 ->orWhereHas('executors', fn($e) => $e->where('users.id', $userId)) // Исполнитель
-                ->orWhereHas('responsibles', fn($r) => $r->where('users.id', $userId)); // Ответственный
+                ->orWhereHas('responsibles', fn($r) => $r->where('users.id', $userId)) // Ответственный
+                ->orWhereHas('watcherstask', fn($w) => $w->where('users.id', $userId)); //наблюдатель
             });
         }
 
@@ -429,6 +430,10 @@ class TaskSummaryController extends Controller
                 'title' => $task->title,
                 'due_date' => $task->due_date,
                 'company' => $task->company->name ?? '—',
+                'project' => [ // Добавляем структуру проекта для фронтенда
+                    'name' => $task->project->name ?? '—',
+                    'company' => ['name' => $task->company->name ?? '—']
+                ],
                 'link' => "/tasks/{$task->id}",
             ];
         }

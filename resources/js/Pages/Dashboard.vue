@@ -117,6 +117,8 @@ onMounted(() => {
                     </div>
                 </div>
 
+
+
                 <aside class="space-y-6">
                     <ProjectsSummary :projects="summary.managing_projects" />
                     <div class="space-y-4">

@@ -57,7 +57,12 @@ private function participates(User $user, Task $task): bool
     if ($task->project->executors->contains('id', $user->id)) return true;
 
     // Наблюдатели
-    if ($task->project->watchers->contains('id', $user->id)) return true;
+    if ($task->project->watchers->contains('id', $user->id)) {
+        \Log::info('Project watcher access', ['user_id' => $user->id, 'task_id' => $task->id]);
+        return true;
+    }
+
+
     if ($task->watcherstask->contains('id', $user->id)) return true;
 
     // Участие в задаче
