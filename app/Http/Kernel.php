@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
         \App\Http\Middleware\HandleInertiaRequests::class,
         \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+
         ],
 
         'api' => [
@@ -61,7 +62,7 @@ class Kernel extends HttpKernel
         'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
 
-        
+
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
@@ -76,5 +77,5 @@ class Kernel extends HttpKernel
          'support' => \App\Http\Middleware\SupportOnly::class,
     ];
 
- 
-} 
+
+}

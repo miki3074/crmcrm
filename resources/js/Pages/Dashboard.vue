@@ -13,10 +13,13 @@ import TasksSummary from './AAA/Components/Dashboard/TasksSummary.vue'
 import SubtasksSection from './AAA/Components/Dashboard/SubtasksSection.vue'
 import SearchOverlay from './AAA/Components/Dashboard/SearchOverlay.vue'
 import CreateCompanyModal from './AAA/Components/Dashboard/CreateCompanyModal.vue'
+import EmailVerificationModal from './AAA/Components/Dashboard/EmailVerificationModal.vue'
 
 const { props } = usePage()
 const isAdmin = computed(() => props.auth?.roles?.includes('admin'))
 const userId = props.auth?.user?.id
+const userEmail = props.auth?.user?.email
+const emailVerified = ref(props.auth?.user?.email_verified_at !== null)
 
 const companies = ref([])
 const summary = ref({ managing_projects: [], all_tasks: [], all_subtasks: [], due_today: [], overdue: [] })
@@ -24,6 +27,19 @@ const loading = ref(true)
 const isSearchOpen = ref(false)
 const showCreateModal = ref(false)
 const activeTab = ref('tasks')
+
+const showEmailVerificationModal = ref(!emailVerified.value) // Показываем если email не подтвержден
+
+console.log('emailVerified.value:', emailVerified.value)
+console.log('showEmailVerificationModal:', showEmailVerificationModal.value)
+console.log('userEmail:', userEmail)
+console.log('props.auth?.user?.email_verified_at:', props.auth?.user?.email_verified_at)
+
+// Также можно добавить watch для отслеживания
+import { watch } from 'vue'
+watch(showEmailVerificationModal, (newVal) => {
+    console.log('showEmailVerificationModal changed:', newVal)
+})
 
 const fetchData = async () => {
     loading.value = true
@@ -39,6 +55,12 @@ const fetchData = async () => {
     } finally {
         loading.value = false
     }
+}
+
+const handleEmailVerified = () => {
+    emailVerified.value = true
+    // Обновляем данные пользователя
+    router.reload({ only: ['auth'] })
 }
 
 onMounted(() => {
@@ -59,6 +81,14 @@ onMounted(() => {
     <AuthenticatedLayout>
         <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
+            <EmailVerificationModal
+                :show="showEmailVerificationModal"
+                :user-email="userEmail"
+                :is-verified="emailVerified"
+                @close="showEmailVerificationModal = false"
+                @verified="handleEmailVerified"
+            />
+
             <!-- Верхняя панель: Телеграм -->
             <TelegramBinding :user="props.auth.user" />
 
@@ -70,6 +100,8 @@ onMounted(() => {
                 <StatCard v-if="isAdmin" title="Клиенты" icon="🤝" color="amber" @click="router.visit('/klients')" />
                 <StatCard title="Схема" icon="🗺️" color="emerald" @click="router.visit('/mapdiagram')" />
                 <StatCard v-if="isAdmin" title="Создать" icon="➕" color="rose" @click="showCreateModal = true" />
+
+
             </div>
 
             <!-- Поиск -->

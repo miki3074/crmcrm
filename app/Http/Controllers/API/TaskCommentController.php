@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Jobs\SendCommentNotification;
 use App\Models\Task;
 use App\Models\TaskComment;
-use App\Models\User; // Добавим для удобства
-use Illuminate\Support\Facades\DB; // Добавим для удобства
+use App\Models\User;
+use App\Services\TelegramService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TaskCommentController extends Controller
 {
@@ -19,7 +21,6 @@ class TaskCommentController extends Controller
         $this->authorize('view', $task);
 
         $comments = $task->comments()
-            // [ИЗМЕНЕНО] Загружаем автора комментария И, если это ответ, родительский коммент и его автора.
             ->with(['user:id,name', 'parent.user:id,name'])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -34,7 +35,6 @@ class TaskCommentController extends Controller
     {
         $this->authorize('comment', $task);
 
-        // [ИЗМЕНЕНО] Добавлена валидация для parent_id
         $data = $request->validate([
             'body'      => 'required|string|max:5000',
             'parent_id' => 'nullable|exists:task_comments,id',
@@ -44,73 +44,78 @@ class TaskCommentController extends Controller
             'task_id'   => $task->id,
             'user_id'   => $request->user()->id,
             'body'      => $data['body'],
-            'parent_id' => $data['parent_id'] ?? null, // Сохраняем ID родителя
+            'parent_id' => $data['parent_id'] ?? null,
         ]);
 
-        // Загружаем связи для ответа API и для логики уведомлений
         $comment->load(['user:id,name', 'parent.user:id,name']);
 
-
-        // [ИЗМЕНЕНО] Улучшенная логика уведомлений
+        // Отправляем уведомления (Telegram + Email)
         $this->sendNotifications($task, $comment);
-
 
         return response()->json($comment, 201);
     }
 
     /**
      * Обработка и отправка уведомлений о новом комментарии.
-     * Вынесено в отдельный метод для чистоты кода.
      */
     private function sendNotifications(Task $task, TaskComment $comment): void
     {
         $authorId = $comment->user_id;
         $taskUrl = url("/tasks/{$task->id}");
 
-        // Коллекция для хранения ID уже уведомленных пользователей, чтобы не спамить
+        // Коллекция для хранения ID уже уведомленных пользователей
         $notifiedUserIds = collect([$authorId]);
 
-        // 1. Приоритет №1: Уведомление об ОТВЕТЕ
+        // 1. Уведомление об ОТВЕТЕ
         if ($comment->parent && $comment->parent->user_id !== $authorId) {
             $parentAuthor = $comment->parent->user;
-            if ($parentAuthor && $parentAuthor->telegram_chat_id) {
-                \App\Services\TelegramService::sendMessage(
-                    $parentAuthor->telegram_chat_id,
-                    "↩️ <b>Вам ответили</b> в задаче: <b>{$task->title}</b>\n".
-                    "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n".
-                    "<b>{$comment->user->name}:</b>\n{$comment->body}"
-                );
-                $notifiedUserIds->push($parentAuthor->id); // Добавляем в список, чтобы не уведомить дважды
+            if ($parentAuthor) {
+                // Telegram
+                if ($parentAuthor->telegram_chat_id) {
+                    TelegramService::sendMessage(
+                        $parentAuthor->telegram_chat_id,
+                        "↩️ <b>Вам ответили</b> в задаче: <b>{$task->title}</b>\n" .
+                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n" .
+                        "<b>{$comment->user->name}:</b>\n{$comment->body}"
+                    );
+                }
+
+                // Email через Job
+                SendCommentNotification::dispatch($task, $comment, $parentAuthor->id, 'reply');
+                $notifiedUserIds->push($parentAuthor->id);
             }
         }
 
-        // 2. Приоритет №2: Уведомление об УПОМИНАНИЯХ
+        // 2. Уведомление об УПОМИНАНИЯХ
         preg_match_all('/@([\p{L}_]+)/u', $comment->body, $matches);
         $usernames = array_map(fn($u) => str_replace('_', ' ', $u), $matches[1]);
 
         if (!empty($usernames)) {
             $mentionedUsers = User::whereIn('name', $usernames)
-                ->whereNotIn('id', $notifiedUserIds) // Исключаем уже уведомленных
+                ->whereNotIn('id', $notifiedUserIds)
                 ->get();
 
             foreach ($mentionedUsers as $mentioned) {
+                // Telegram
                 if ($mentioned->telegram_chat_id) {
-                    \App\Services\TelegramService::sendMessage(
+                    TelegramService::sendMessage(
                         $mentioned->telegram_chat_id,
-                        "📣 <b>Вас упомянули</b> в задаче: <b>{$task->title}</b>\n".
-                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n".
+                        "📣 <b>Вас упомянули</b> в задаче: <b>{$task->title}</b>\n" .
+                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n" .
                         "<b>{$comment->user->name}:</b>\n{$comment->body}"
                     );
-                    $notifiedUserIds->push($mentioned->id);
                 }
+
+                // Email через Job
+                SendCommentNotification::dispatch($task, $comment, $mentioned->id, 'mention');
+                $notifiedUserIds->push($mentioned->id);
             }
-            // Если были упоминания, прекращаем дальнейшую рассылку остальным.
-            // Если вы хотите, чтобы остальные тоже получали уведомления, закомментируйте следующую строку.
+
+            // Если были упоминания, прекращаем дальнейшую рассылку
             return;
         }
 
-        // 3. Приоритет №3: Уведомление ВСЕХ ОСТАЛЬНЫХ участников (если не было ответа и упоминаний)
-        // Этот блок сработает, только если это обычное сообщение в чат
+        // 3. Уведомление ВСЕХ ОСТАЛЬНЫХ участников (если не было ответа и упоминаний)
         if ($comment->parent_id === null) {
             $participants = collect([]);
             $participants = $participants->merge(DB::table('task_responsibles')->where('task_id', $task->id)->pluck('user_id'));
@@ -120,21 +125,26 @@ class TaskCommentController extends Controller
             // Получаем уникальные ID пользователей, которых еще не уведомили
             $participantIds = $participants->unique()->diff($notifiedUserIds);
 
-            $usersToNotify = User::whereIn('id', $participantIds)->get();
+            foreach ($participantIds as $participantId) {
+                $user = User::find($participantId);
 
-            foreach ($usersToNotify as $user) {
-                if ($user->telegram_chat_id) {
-                    \App\Services\TelegramService::sendMessage(
-                        $user->telegram_chat_id,
-                        "💬 Новое сообщение в задаче: <b>{$task->title}</b>\n".
-                        "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n".
-                        "<b>{$comment->user->name}:</b>\n{$comment->body}"
-                    );
+                if ($user) {
+                    // Telegram
+                    if ($user->telegram_chat_id) {
+                        TelegramService::sendMessage(
+                            $user->telegram_chat_id,
+                            "💬 Новое сообщение в задаче: <b>{$task->title}</b>\n" .
+                            "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>\n\n" .
+                            "<b>{$comment->user->name}:</b>\n{$comment->body}"
+                        );
+                    }
+
+                    // Email через Job
+                    SendCommentNotification::dispatch($task, $comment, $participantId, 'new');
                 }
             }
         }
     }
-
 
     /**
      * Удаление комментария.

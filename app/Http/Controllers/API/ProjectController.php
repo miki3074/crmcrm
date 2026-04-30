@@ -8,11 +8,18 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Company;
 
+use App\Jobs\SendProjectManagerNotification;
+
 use App\Models\TaskFile;
 use Illuminate\Support\Facades\Storage;
 
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+
+use App\Jobs\SendProjectExecutorAddedNotification;
+use App\Jobs\SendProjectManagerAddedNotification;
+use App\Jobs\SendProjectManagerReplacedNotification;
+use App\Jobs\SendProjectWatcherAddedNotification;
 
 
 class ProjectController extends Controller
@@ -59,87 +66,87 @@ public function index()
 
 
 
-public function store(Request $request)
-{
-    $messages = [
-        'name.required' => 'Введите название проекта.',
-        'name.string'   => 'Название проекта должно быть строкой.',
-        'name.max'      => 'Название проекта не может быть длиннее 255 символов.',
+    public function store(Request $request)
+    {
+        $messages = [
+            'name.required' => 'Введите название проекта.',
+            'name.string'   => 'Название проекта должно быть строкой.',
+            'name.max'      => 'Название проекта не может быть длиннее 255 символов.',
 
-        'manager_ids.required' => 'Выберите хотя бы одного менеджера.',
-        'manager_ids.array'    => 'Поле менеджеров должно быть списком.',
-        'manager_ids.min'      => 'Выберите хотя бы одного менеджера.',
-        'manager_ids.*.exists' => 'Один из выбранных менеджеров не найден.',
-        'start_date.required'  => 'Укажите дату начала проекта.',
-        'start_date.date'      => 'Дата начала должна быть корректной.',
-        'duration_days.required' => 'Укажите длительность проекта.',
-        'duration_days.integer'  => 'Длительность должна быть числом.',
-        'duration_days.min'      => 'Минимальная длительность — 1 день.',
-        'company_id.required'  => 'Компания обязательна для выбора.',
-        'company_id.exists'    => 'Указанная компания не найдена.',
-    ];
+            'manager_ids.required' => 'Выберите хотя бы одного менеджера.',
+            'manager_ids.array'    => 'Поле менеджеров должно быть списком.',
+            'manager_ids.min'      => 'Выберите хотя бы одного менеджера.',
+            'manager_ids.*.exists' => 'Один из выбранных менеджеров не найден.',
+            'start_date.required'  => 'Укажите дату начала проекта.',
+            'start_date.date'      => 'Дата начала должна быть корректной.',
+            'duration_days.required' => 'Укажите длительность проекта.',
+            'duration_days.integer'  => 'Длительность должна быть числом.',
+            'duration_days.min'      => 'Минимальная длительность — 1 день.',
+            'company_id.required'  => 'Компания обязательна для выбора.',
+            'company_id.exists'    => 'Указанная компания не найдена.',
+        ];
 
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'manager_ids' => 'required|array|min:1',
-        'manager_ids.*' => 'exists:users,id',
-        'start_date' => 'required|date',
-        'duration_days' => 'required|integer|min:1',
-        'company_id' => 'required|exists:companies,id',
-    ], $messages);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'manager_ids' => 'required|array|min:1',
+            'manager_ids.*' => 'exists:users,id',
+            'start_date' => 'required|date',
+            'duration_days' => 'required|integer|min:1',
+            'company_id' => 'required|exists:companies,id',
+        ], $messages);
 
-    $company = Company::findOrFail($request->company_id);
-    $user = $request->user();
+        $company = Company::findOrFail($request->company_id);
+        $user = $request->user();
 
-    $isOwner = $company->user_id === $user->id;
+        $isOwner = $company->user_id === $user->id;
 
-    $isManager = $company->users()
-        ->wherePivot('role', 'manager')
-        ->where('users.id', $user->id)
-        ->exists();
+        $isManager = $company->users()
+            ->wherePivot('role', 'manager')
+            ->where('users.id', $user->id)
+            ->exists();
 
-    if (!$isOwner && !$isManager) {
-        return response()->json([
-            'message' => 'Только владелец компании или менеджер компании могут создавать проекты.',
-        ], 403);
-    }
-
-  $project = Project::create([
-    'name'           => $request->name,
-    'start_date'     => $request->start_date,
-    'duration_days'  => $request->duration_days,
-    'company_id'     => $request->company_id,
-    'initiator_id'   => $user->id,
-]);
-
-// Добавляем выбранных руководителей
-// $project->managers()->syncWithoutDetaching($request->manager_ids);
-
-// 📌 Если создатель — менеджер компании, тоже добавляем его
-// if ($isManager && !$isOwner) {
-//     $project->managers()->syncWithoutDetaching([$user->id]);
-// }
-
-    // ---------------
-
-    // Добавляем выбранных руководителей
-    $project->managers()->attach($request->manager_ids);
-
-    foreach ($request->manager_ids as $userId) {
-        $user = User::find($userId);
-        if ($user && $user->telegram_chat_id) {
-            \App\Services\TelegramService::sendMessage(
-                $user->telegram_chat_id,
-                "📢 Вы назначены руководителем проекта: <b>{$project->name}</b>\n".
-                "Компания: {$company->name}\n".
-                "Дата начала: {$project->start_date}\n".
-                "Длительность: {$project->duration_days} дней"
-            );
+        if (!$isOwner && !$isManager) {
+            return response()->json([
+                'message' => 'Только владелец компании или менеджер компании могут создавать проекты.',
+            ], 403);
         }
-    }
 
-    return response()->json($project->load('managers'), 201);
-}
+        $project = Project::create([
+            'name'           => $request->name,
+            'start_date'     => $request->start_date,
+            'duration_days'  => $request->duration_days,
+            'company_id'     => $request->company_id,
+            'initiator_id'   => $user->id,
+        ]);
+
+        // Добавляем выбранных руководителей
+        $project->managers()->attach($request->manager_ids);
+
+        // ========= ОТПРАВКА УВЕДОМЛЕНИЙ =========
+        foreach ($request->manager_ids as $userId) {
+            $manager = User::find($userId);
+
+            if ($manager) {
+                // 1. Telegram уведомление
+                if ($manager->telegram_chat_id) {
+                    \App\Services\TelegramService::sendMessage(
+                        $manager->telegram_chat_id,
+                        "📢 Вы назначены руководителем проекта: <b>{$project->name}</b>\n" .
+                        "🏢 Компания: {$company->name}\n" .
+                        "📅 Дата начала: " . date('d.m.Y', strtotime($project->start_date)) . "\n" .
+                        "⏱ Длительность: {$project->duration_days} дней\n" .
+                        "🔗 <a href=\"" . url("/projects/{$project->id}") . "\">Перейти к проекту</a>"
+                    );
+                }
+
+                // 2. Email уведомление через Job
+                \App\Jobs\SendProjectManagerNotification::dispatch($manager, $project, $company);
+            }
+        }
+        // ========= КОНЕЦ ОТПРАВКИ УВЕДОМЛЕНИЙ =========
+
+        return response()->json($project->load('managers'), 201);
+    }
 
 
 
@@ -301,75 +308,86 @@ public function updateName(Request $request, Project $project)
             'user_id' => 'required|exists:users,id',
         ]);
 
-        // Проверим, не добавлен ли уже этот руководитель
-        // Здесь тоже лучше уточнить, чтобы избежать будущих ошибок, хотя exists() обычно умный
         if ($project->managers()->where('users.id', $validated['user_id'])->exists()) {
             return response()->json(['message' => 'Этот пользователь уже является руководителем проекта'], 422);
         }
 
         $project->managers()->attach($validated['user_id']);
 
-        $user = \App\Models\User::find($validated['user_id']);
+        $user = User::find($validated['user_id']);
         $company = $project->company;
 
+        // Telegram уведомление
         if ($user && $user->telegram_chat_id) {
             \App\Services\TelegramService::sendMessage(
                 $user->telegram_chat_id,
-                "👋 Вы добавлены в качестве руководителя проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
+                "👋 Вы добавлены в качестве руководителя проекта: <b>{$project->name}</b>\nКомпания: {$company->name}\n🔗 " . url("/projects/{$project->id}")
             );
+        }
+
+        // Email уведомление
+        if ($user && $user->email) {
+            SendProjectManagerAddedNotification::dispatch($user, $project, $company);
         }
 
         return response()->json([
             'message' => 'Руководитель успешно добавлен',
-            // 👇 Явно указываем таблицу users
             'managers' => $project->managers()->get(['users.id', 'users.name']),
         ]);
     }
 
 // Заменить (изменить) руководителя
-public function replaceManager(Request $request, Project $project)
-{
-    $this->authorize('updateman', $project);
+    public function replaceManager(Request $request, Project $project)
+    {
+        $this->authorize('updateman', $project);
 
-      $messages = [
-        'old_manager_id.required' => 'Укажите текущего руководителя.',
-        'old_manager_id.exists' => 'Текущий руководитель не найден.',
+        $messages = [
+            'old_manager_id.required' => 'Укажите текущего руководителя.',
+            'old_manager_id.exists' => 'Текущий руководитель не найден.',
+            'new_manager_id.required' => 'Укажите нового руководителя.',
+            'new_manager_id.exists' => 'Новый руководитель не найден.',
+            'new_manager_id.different' => 'Новый руководитель должен отличаться от старого.',
+        ];
 
-        'new_manager_id.required' => 'Укажите нового руководителя.',
-        'new_manager_id.exists' => 'Новый руководитель не найден.',
-        'new_manager_id.different' => 'Новый руководитель должен отличаться от старого.',
-    ];
+        $validated = $request->validate([
+            'old_manager_id' => 'required|exists:users,id',
+            'new_manager_id' => 'required|exists:users,id|different:old_manager_id',
+        ], $messages);
 
-    $validated = $request->validate([
-        'old_manager_id' => 'required|exists:users,id',
-        'new_manager_id' => 'required|exists:users,id|different:old_manager_id',
-    ], $messages);
+        if (!$project->managers()->where('user_id', $validated['old_manager_id'])->exists()) {
+            return response()->json(['message' => 'Этот пользователь не является руководителем проекта'], 404);
+        }
 
-    // Проверим, что старый руководитель действительно прикреплён
-    if (!$project->managers()->where('user_id', $validated['old_manager_id'])->exists()) {
-        return response()->json(['message' => 'Этот пользователь не является руководителем проекта'], 404);
+        // Получаем имя старого руководителя для уведомления
+        $oldManager = User::find($validated['old_manager_id']);
+        $oldManagerName = $oldManager ? $oldManager->name : 'предыдущий руководитель';
+
+        // Удаляем старого и добавляем нового
+        $project->managers()->detach($validated['old_manager_id']);
+        $project->managers()->attach($validated['new_manager_id']);
+
+        // Уведомляем нового руководителя
+        $user = User::find($validated['new_manager_id']);
+        $company = $project->company;
+
+        // Telegram уведомление
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "👔 Вы назначены руководителем проекта: <b>{$project->name}</b>\nКомпания: {$company->name}\n🔗 " . url("/projects/{$project->id}")
+            );
+        }
+
+        // Email уведомление
+        if ($user && $user->email) {
+            SendProjectManagerReplacedNotification::dispatch($user, $project, $company, $oldManagerName);
+        }
+
+        return response()->json([
+            'message' => 'Руководитель успешно изменён',
+            'managers' => $project->managers()->get(['id', 'name']),
+        ]);
     }
-
-    // Удаляем старого и добавляем нового
-    $project->managers()->detach($validated['old_manager_id']);
-    $project->managers()->attach($validated['new_manager_id']);
-
-    // Уведомляем нового руководителя
-    $user = \App\Models\User::find($validated['new_manager_id']);
-    $company = $project->company;
-
-    if ($user && $user->telegram_chat_id) {
-        \App\Services\TelegramService::sendMessage(
-            $user->telegram_chat_id,
-            "👔 Вы назначены руководителем проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
-        );
-    }
-
-    return response()->json([
-        'message' => 'Руководитель успешно изменён',
-        'managers' => $project->managers()->get(['id', 'name']),
-    ]);
-}
 
 
 public function destroy(Project $project)
@@ -408,43 +426,47 @@ public function destroy(Project $project)
 
 
 // Добавить наблюдателя проекта
-public function addWatcher(Request $request, Project $project)
-{
-    $this->authorize('updatewat', $project); // только владелец компании или менеджер
+    public function addWatcher(Request $request, Project $project)
+    {
+        $this->authorize('updatewat', $project);
 
-    $validated = $request->validate([
-        'user_id' => 'required|exists:users,id',
-    ]);
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
 
-    $userId = $validated['user_id'];
+        $userId = $validated['user_id'];
 
-    // 🚫 Нельзя добавить владельца компании как наблюдателя
-    if ($userId == $project->company->user_id) {
-        return response()->json(['message' => 'Владелец компании не может быть наблюдателем проекта'], 422);
+        if ($userId == $project->company->user_id) {
+            return response()->json(['message' => 'Владелец компании не может быть наблюдателем проекта'], 422);
+        }
+
+        if ($project->watchers()->where('user_id', $userId)->exists()) {
+            return response()->json(['message' => 'Этот пользователь уже является наблюдателем'], 422);
+        }
+
+        $project->watchers()->attach($userId);
+
+        $user = User::find($userId);
+        $company = $project->company;
+
+        // Telegram уведомление
+        if ($user && $user->telegram_chat_id) {
+            \App\Services\TelegramService::sendMessage(
+                $user->telegram_chat_id,
+                "👁 Вы добавлены как наблюдатель проекта: <b>{$project->name}</b>\nКомпания: {$company->name}\n🔗 " . url("/projects/{$project->id}")
+            );
+        }
+
+        // Email уведомление
+        if ($user && $user->email) {
+            SendProjectWatcherAddedNotification::dispatch($user, $project, $company);
+        }
+
+        return response()->json([
+            'message' => 'Наблюдатель успешно добавлен',
+            'watchers' => $project->watchers()->select('users.id', 'users.name')->get(),
+        ]);
     }
-
-    // Проверим, не добавлен ли уже
-    if ($project->watchers()->where('user_id', $userId)->exists()) {
-        return response()->json(['message' => 'Этот пользователь уже является наблюдателем'], 422);
-    }
-
-    $project->watchers()->attach($userId);
-
-    $user = User::find($userId);
-    $company = $project->company;
-
-    if ($user && $user->telegram_chat_id) {
-        \App\Services\TelegramService::sendMessage(
-            $user->telegram_chat_id,
-            "👁 Вы добавлены как наблюдатель проекта: <b>{$project->name}</b>\nКомпания: {$company->name}"
-        );
-    }
-
-    return response()->json([
-        'message' => 'Наблюдатель успешно добавлен',
-        'watchers' => $project->watchers()->select('users.id', 'users.name')->get(),
-    ]);
-}
 
 
 
@@ -485,34 +507,41 @@ public function download($id)
     }
 
     // ✅ Добавить исполнителя в проект
-public function addExecutor(Request $request, Project $project)
-{
-    $this->authorize('update', $project); // только менеджер/владелец
+    public function addExecutor(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
 
-    $validated = $request->validate([
-        'user_ids' => 'required|array|min:1',
-        'user_ids.*' => 'exists:users,id',
-    ]);
+        $validated = $request->validate([
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'exists:users,id',
+        ]);
 
-    // Добавляем без удаления старых
-    $project->executors()->syncWithoutDetaching($validated['user_ids']);
+        $project->executors()->syncWithoutDetaching($validated['user_ids']);
 
-    // Telegram уведомления
-    foreach ($validated['user_ids'] as $id) {
-        $user = \App\Models\User::find($id);
-        if ($user && $user->telegram_chat_id) {
-            \App\Services\TelegramService::sendMessage(
-                $user->telegram_chat_id,
-                "👷‍♂️ Вы добавлены как исполнитель проекта: <b>{$project->name}</b>\nКомпания: {$project->company->name}"
-            );
+        $company = $project->company;
+
+        foreach ($validated['user_ids'] as $id) {
+            $user = User::find($id);
+
+            // Telegram уведомление
+            if ($user && $user->telegram_chat_id) {
+                \App\Services\TelegramService::sendMessage(
+                    $user->telegram_chat_id,
+                    "👷‍♂️ Вы добавлены как исполнитель проекта: <b>{$project->name}</b>\nКомпания: {$company->name}\n🔗 " . url("/projects/{$project->id}")
+                );
+            }
+
+            // Email уведомление
+            if ($user && $user->email) {
+                SendProjectExecutorAddedNotification::dispatch($user, $project, $company);
+            }
         }
-    }
 
-    return response()->json([
-        'message' => 'Исполнители успешно добавлены',
-        'executors' => $project->executors()->select('users.id', 'users.name')->get(),
-    ]);
-}
+        return response()->json([
+            'message' => 'Исполнители успешно добавлены',
+            'executors' => $project->executors()->select('users.id', 'users.name')->get(),
+        ]);
+    }
 
 // ✅ Удалить исполнителя
 public function removeExecutor(Request $request, Project $project)

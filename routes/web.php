@@ -23,6 +23,9 @@ use App\Models\User;
 use App\Http\Controllers\Auth\NewPasswordController;
 
 use App\Http\Controllers\Support\AdminSupportController;
+
+//use App\Http\Controllers\EmailVerificationController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -45,6 +48,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/groups/{group}/add', [ChatController::class, 'addMember']);
     Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
 });
+
+
+
 
 
 
@@ -450,9 +456,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])
-    ->middleware('guest')
-    ->name('password.reset');
+Route::get('/forgot-password', function () {
+    return Inertia::render('Auth/ForgotPassword');
+})->name('password.request');
+
+// Страница сброса пароля
+Route::get('/reset-password/{token}', function ($token) {
+    return Inertia::render('Auth/ResetPassword', [
+        'token' => $token,
+        'email' => request('email')
+    ]);
+})->name('password.reset');
 
 Route::post('/reset-password', [NewPasswordController::class, 'store'])
     ->middleware('guest')
@@ -464,6 +478,8 @@ Route::post('/reset-password', [NewPasswordController::class, 'store'])
         return inertia('MeetingDocuments/Index');
     })->name('meeting-documents.index');
 });
+
+
 
 
 

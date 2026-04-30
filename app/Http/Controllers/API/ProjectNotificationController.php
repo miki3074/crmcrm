@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendStagnantTaskReminderNotification;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Subtask;
 use App\Notifications\StagnantTaskReminder;
+use App\Services\TelegramService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\Request;
 use App\Models\Company;
+
+use Illuminate\Support\Facades\Log;
 class ProjectNotificationController extends Controller
 {
 //    public function remindStagnantTasks(Project $project)
@@ -217,6 +221,7 @@ class ProjectNotificationController extends Controller
         return response()->json($filtered);
     }
 
+
 // 2. Рассылка по выбранным ID
     public function remindCompanyStagnant(Request $request, Company $company)
     {
@@ -228,9 +233,14 @@ class ProjectNotificationController extends Controller
         $taskIds = $validated['task_ids'] ?? [];
         $subtaskIds = $validated['subtask_ids'] ?? [];
 
+        if (empty($taskIds) && empty($subtaskIds)) {
+            return response()->json(['message' => 'Не выбраны задачи или подзадачи для напоминания'], 422);
+        }
+
         // Получаем проекты компании, чтобы итерироваться по ним
         $projects = $company->projects()->get();
         $totalUsersNotified = 0;
+        $notificationLog = [];
 
         foreach ($projects as $project) {
             // Берем только те задачи из проекта, которые выбрал пользователь
@@ -240,7 +250,7 @@ class ProjectNotificationController extends Controller
                 ->get();
 
             // Берем только те подзадачи из проекта, которые выбрал пользователь
-            $stagnantSubtasks = Subtask::with(['executors', 'responsibles'])
+            $stagnantSubtasks = Subtask::with(['executors', 'responsibles', 'task'])
                 ->whereIn('id', $subtaskIds)
                 ->whereHas('task', fn($q) => $q->where('project_id', $project->id))
                 ->get();
@@ -258,23 +268,101 @@ class ProjectNotificationController extends Controller
                 ->concat($stagnantSubtasks->flatMap->responsibles)
                 ->unique('id');
 
+            $usersNotifiedInProject = 0;
+
             foreach ($projectUsers as $user) {
                 $isManager = $project->managers->contains('id', $user->id);
-                $hisTasks = $isManager ? $stagnantTasks : $stagnantTasks->filter(fn($t) =>
-                    $t->executors->contains('id', $user->id) || $t->responsibles->contains('id', $user->id)
-                );
-                $hisSubtasks = $isManager ? $stagnantSubtasks : $stagnantSubtasks->filter(fn($s) =>
-                    $s->executors->contains('id', $user->id) || $s->responsibles->contains('id', $user->id)
-                );
+
+                // Фильтруем задачи пользователя
+                $hisTasks = $isManager
+                    ? $stagnantTasks
+                    : $stagnantTasks->filter(fn($t) =>
+                        $t->executors->contains('id', $user->id) ||
+                        $t->responsibles->contains('id', $user->id)
+                    );
+
+                // Фильтруем подзадачи пользователя
+                $hisSubtasks = $isManager
+                    ? $stagnantSubtasks
+                    : $stagnantSubtasks->filter(fn($s) =>
+                        $s->executors->contains('id', $user->id) ||
+                        $s->responsibles->contains('id', $user->id)
+                    );
 
                 if ($hisTasks->isNotEmpty() || $hisSubtasks->isNotEmpty()) {
-                    $user->notify(new \App\Notifications\StagnantTaskReminder($project, $hisTasks, $hisSubtasks));
-                    $totalUsersNotified++;
+                    $taskCount = $hisTasks->count();
+                    $subtaskCount = $hisSubtasks->count();
+
+                    // 1. EMAIL уведомление через Job
+                    SendStagnantTaskReminderNotification::dispatch($user, $project, $hisTasks, $hisSubtasks);
+
+                    // 2. TELEGRAM уведомление
+                    if ($user->telegram_chat_id) {
+                        $message = "⚠️ <b>Напоминание о зависших задачах!</b>\n";
+                        $message .= "🏢 <b>Проект:</b> {$project->name}\n";
+                        $message .= "📊 <b>Статистика:</b>\n";
+
+                        if ($taskCount > 0) {
+                            $message .= "📋 Задач без прогресса: {$taskCount}\n";
+                            // Показываем первые 3 задачи
+                            $taskTitles = $hisTasks->take(3)->pluck('title')->implode(', ');
+                            if ($taskTitles) {
+                                $message .= "   • {$taskTitles}\n";
+                                if ($taskCount > 3) {
+                                    $message .= "   • и еще " . ($taskCount - 3) . " задач...\n";
+                                }
+                            }
+                        }
+
+                        if ($subtaskCount > 0) {
+                            $message .= "📌 Подзадач без прогресса: {$subtaskCount}\n";
+                            $subtaskTitles = $hisSubtasks->take(3)->pluck('title')->implode(', ');
+                            if ($subtaskTitles) {
+                                $message .= "   • {$subtaskTitles}\n";
+                                if ($subtaskCount > 3) {
+                                    $message .= "   • и еще " . ($subtaskCount - 3) . " подзадач...\n";
+                                }
+                            }
+                        }
+
+                        $message .= "\n🔗 <a href=\"" . url("/projects/{$project->id}") . "\">Перейти к проекту</a>";
+
+                        TelegramService::sendMessage($user->telegram_chat_id, $message);
+                    }
+
+                    $usersNotifiedInProject++;
+
+                    // Логируем для отчета
+                    $notificationLog[] = [
+                        'user' => $user->name,
+                        'email' => $user->email,
+                        'project' => $project->name,
+                        'tasks_count' => $taskCount,
+                        'subtasks_count' => $subtaskCount,
+                    ];
                 }
             }
+
+            $totalUsersNotified += $usersNotifiedInProject;
+
+            // Логируем результат для проекта
+            Log::info("Stagnant reminder sent for project {$project->name}", [
+                'project_id' => $project->id,
+                'users_notified' => $usersNotifiedInProject,
+                'tasks' => $stagnantTasks->pluck('id'),
+                'subtasks' => $stagnantSubtasks->pluck('id'),
+            ]);
         }
 
-        return response()->json(['message' => "Уведомления отправлены. Всего получателей: {$totalUsersNotified}"]);
+        return response()->json([
+            'message' => "Уведомления отправлены. Всего получателей: {$totalUsersNotified}",
+            'details' => [
+                'total_users_notified' => $totalUsersNotified,
+                'notification_log' => $notificationLog,
+                'task_ids' => $taskIds,
+                'subtask_ids' => $subtaskIds,
+            ]
+        ]);
     }
 
 }

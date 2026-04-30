@@ -243,7 +243,7 @@ onMounted(() => {
                             <h3 class="label-section">Инструменты</h3>
                             <div class="grid gap-2">
                                 <button @click="openModal('completedTasks')" class="menu-btn border-emerald-50 text-emerald-600"><span>✅</span> Завершенные задачи</button>
-                                <button @click="openReminderModal" class="menu-btn w-full text-rose-600 border-rose-100 bg-rose-50/50"><span>🔔</span> Напомнить о задачах</button>
+<!--                                <button @click="openReminderModal" class="menu-btn w-full text-rose-600 border-rose-100 bg-rose-50/50"><span>🔔</span> Напомнить о задачах</button>-->
                             </div>
                         </div>
 

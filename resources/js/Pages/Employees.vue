@@ -531,9 +531,9 @@ onMounted(async () => {
                                 <h3 class="text-xl font-semibold text-gray-900 dark:text-white" id="modal-title">
                                     Добавление сотрудника
                                 </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                    Создайте нового или пригласите существующего пользователя
-                                </p>
+<!--                                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">-->
+<!--                                    Создайте нового или пригласите существующего пользователя-->
+<!--                                </p>-->
                             </div>
                             <button @click="showUnifiedModal = false"
                                     class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500">
@@ -580,87 +580,93 @@ onMounted(async () => {
 
                         <!-- Tab 1: Создать нового -->
                         <div v-if="activeEmployeeTab === 'create'" class="p-6">
-                            <form @submit.prevent="submit" class="space-y-5">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Имя <span class="text-red-500">*</span>
-                                    </label>
-                                    <input v-model="form.name"
-                                           class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-                                           placeholder="Иван Иванов" />
-                                    <p v-if="errors.name" class="mt-1.5 text-xs text-red-600">{{ errors.name[0] }}</p>
-                                </div>
+                            <h1  :class="[
+                  'flex-1 py-4 text-sm font-medium transition-colors relative',
+                  activeEmployeeTab === 'attach'
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                ]" >В данный момент функция не доступна</h1>
+<!--                            <form @submit.prevent="submit" class="space-y-5">-->
+<!--                                <div>-->
+<!--                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                        Имя <span class="text-red-500">*</span>-->
+<!--                                    </label>-->
+<!--                                    <input v-model="form.name"-->
+<!--                                           class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"-->
+<!--                                           placeholder="Иван Иванов" />-->
+<!--                                    <p v-if="errors.name" class="mt-1.5 text-xs text-red-600">{{ errors.name[0] }}</p>-->
+<!--                                </div>-->
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Email <span class="text-red-500">*</span>
-                                    </label>
-                                    <input v-model="form.email" type="email"
-                                           class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                           placeholder="ivan@example.com" />
-                                    <p v-if="errors.email" class="mt-1.5 text-xs text-red-600">{{ errors.email[0] }}</p>
-                                </div>
+<!--                                <div>-->
+<!--                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                        Email <span class="text-red-500">*</span>-->
+<!--                                    </label>-->
+<!--                                    <input v-model="form.email" type="email"-->
+<!--                                           class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"-->
+<!--                                           placeholder="ivan@example.com" />-->
+<!--                                    <p v-if="errors.email" class="mt-1.5 text-xs text-red-600">{{ errors.email[0] }}</p>-->
+<!--                                </div>-->
 
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Пароль <span class="text-red-500">*</span>
-                                        </label>
-                                        <input v-model="form.password" type="password"
-                                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                               placeholder="••••••••" />
-                                        <p v-if="errors.password" class="mt-1.5 text-xs text-red-600">{{ errors.password[0] }}</p>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Подтверждение
-                                        </label>
-                                        <input v-model="form.password_confirmation" type="password"
-                                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                               placeholder="••••••••" />
-                                    </div>
-                                </div>
+<!--                                <div class="grid md:grid-cols-2 gap-4">-->
+<!--                                    <div>-->
+<!--                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                            Пароль <span class="text-red-500">*</span>-->
+<!--                                        </label>-->
+<!--                                        <input v-model="form.password" type="password"-->
+<!--                                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"-->
+<!--                                               placeholder="••••••••" />-->
+<!--                                        <p v-if="errors.password" class="mt-1.5 text-xs text-red-600">{{ errors.password[0] }}</p>-->
+<!--                                    </div>-->
+<!--                                    <div>-->
+<!--                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                            Подтверждение-->
+<!--                                        </label>-->
+<!--                                        <input v-model="form.password_confirmation" type="password"-->
+<!--                                               class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"-->
+<!--                                               placeholder="••••••••" />-->
+<!--                                    </div>-->
+<!--                                </div>-->
 
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Компания <span class="text-red-500">*</span>
-                                        </label>
-                                        <select v-model="form.company_id" required
-                                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                            <option disabled value="">Выберите компанию</option>
-                                            <option v-for="c in ownerCompanies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                                        </select>
-                                        <p v-if="errors.company_id" class="mt-1.5 text-xs text-red-600">{{ errors.company_id[0] }}</p>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            Роль
-                                        </label>
-                                        <select v-model="form.role"
-                                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                            <option value="employee">Сотрудник</option>
-                                            <option value="manager">Менеджер</option>
-                                        </select>
-                                    </div>
-                                </div>
+<!--                                <div class="grid md:grid-cols-2 gap-4">-->
+<!--                                    <div>-->
+<!--                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                            Компания <span class="text-red-500">*</span>-->
+<!--                                        </label>-->
+<!--                                        <select v-model="form.company_id" required-->
+<!--                                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">-->
+<!--                                            <option disabled value="">Выберите компанию</option>-->
+<!--                                            <option v-for="c in ownerCompanies" :key="c.id" :value="c.id">{{ c.name }}</option>-->
+<!--                                        </select>-->
+<!--                                        <p v-if="errors.company_id" class="mt-1.5 text-xs text-red-600">{{ errors.company_id[0] }}</p>-->
+<!--                                    </div>-->
+<!--                                    <div>-->
+<!--                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->
+<!--                                            Роль-->
+<!--                                        </label>-->
+<!--                                        <select v-model="form.role"-->
+<!--                                                class="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">-->
+<!--                                            <option value="employee">Сотрудник</option>-->
+<!--                                            <option value="manager">Менеджер</option>-->
+<!--                                        </select>-->
+<!--                                    </div>-->
+<!--                                </div>-->
 
-                                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                    <button type="button"
-                                            class="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                                            @click="showUnifiedModal = false">
-                                        Отмена
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-sm hover:shadow-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                        :disabled="saving"
-                                    >
-                                        <span v-if="saving" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                                        {{ saving ? 'Создание...' : 'Создать сотрудника' }}
-                                    </button>
-                                </div>
-                            </form>
+<!--                                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">-->
+<!--                                    <button type="button"-->
+<!--                                            class="px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"-->
+<!--                                            @click="showUnifiedModal = false">-->
+<!--                                        Отмена-->
+<!--                                    </button>-->
+<!--                                    <button-->
+<!--                                        type="submit"-->
+<!--                                        class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-sm hover:shadow-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"-->
+<!--                                        :disabled="saving"-->
+<!--                                    >-->
+<!--                                        <span v-if="saving" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>-->
+<!--                                        {{ saving ? 'Создание...' : 'Создать сотрудника' }}-->
+<!--                                    </button>-->
+<!--                                </div>-->
+<!--                            </form>-->
                         </div>
 
                         <!-- Tab 2: Прикрепить существующего -->

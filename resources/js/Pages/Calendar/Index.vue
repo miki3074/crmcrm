@@ -645,9 +645,265 @@ onMounted(async () => {
             </div>
         </Transition>
 
+
+
         <!-- View Modal (без изменений) -->
         <!-- Task Modal (без изменений) -->
         <!-- More Modal (без изменений) -->
+
+
+        <!-- View Modal (Просмотр события) -->
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95">
+
+            <div v-if="showViewModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md" @click="showViewModal=false"></div>
+
+                <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+
+                    <!-- Header -->
+                    <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-lg shadow-lg">
+                                    📅
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                                        {{ selectedEvent?.title || 'Детали события' }}
+                                    </h3>
+                                    <p class="text-xs text-slate-500 mt-1">Просмотр информации о событии</p>
+                                </div>
+                            </div>
+                            <button @click="showViewModal=false"
+                                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            <!-- Тип события -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Тип:</span>
+                                <span class="px-2 py-1 rounded-lg text-xs font-medium" :class="badgeFor(selectedEvent?.visibility)">
+                            {{ selectedEvent?.visibility === 'personal' ? 'Личное' :
+                                    selectedEvent?.visibility === 'company_selected' ? 'Компания (выборочно)' : 'Компания (всем)' }}
+                        </span>
+                            </div>
+
+                            <!-- Компания -->
+                            <div v-if="selectedEvent?.company_id" class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Компания:</span>
+                                <span class="text-slate-700 dark:text-slate-300">{{ selectedEvent?.company_name || 'Не указана' }}</span>
+                            </div>
+
+                            <!-- Дата и время -->
+                            <div class="grid grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Начало</div>
+                                    <div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        {{ selectedEvent?.start_at ? new Date(selectedEvent.start_at).toLocaleString() : 'Не указано' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Окончание</div>
+                                    <div class="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        {{ selectedEvent?.end_at ? new Date(selectedEvent.end_at).toLocaleString() : 'Не указано' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Участники (для company_selected) -->
+                            <div v-if="selectedEvent?.visibility === 'company_selected' && selectedEvent?.attendees?.length" class="pt-2">
+                                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Участники</div>
+                                <div class="flex flex-wrap gap-2">
+                            <span v-for="a in selectedEvent.attendees" :key="a.id"
+                                  class="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs">
+                                {{ a.name }}
+                            </span>
+                                </div>
+                            </div>
+
+                            <!-- Описание -->
+                            <div v-if="selectedEvent?.description" class="pt-2">
+                                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Описание</div>
+                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap">
+                                    {{ selectedEvent.description }}
+                                </div>
+                            </div>
+
+                            <!-- Информация о создателе -->
+                            <div class="pt-2 text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800">
+                                Создано: {{ selectedEvent?.creator?.name || 'Неизвестно' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                        <button @click="showViewModal=false"
+                                class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            Закрыть
+                        </button>
+                        <button @click="editEvent"
+                                class="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:scale-105 transition-all">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Редактировать
+                            </div>
+                        </button>
+                        <button @click="deleteEvent"
+                                class="px-6 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 text-white font-medium shadow-lg shadow-rose-500/30 hover:shadow-xl hover:scale-105 transition-all">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Удалить
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+
+        <!-- Task Modal (Просмотр задачи) -->
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 scale-95"
+            enter-to-class="opacity-100 scale-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 scale-100"
+            leave-to-class="opacity-0 scale-95">
+
+            <div v-if="showTaskModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md" @click="showTaskModal=false"></div>
+
+                <div class="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+
+                    <!-- Header -->
+                    <div class="px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white text-lg shadow-lg">
+                                    📋
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">
+                                        {{ selectedTask?.title || 'Детали задачи' }}
+                                    </h3>
+                                    <p class="text-xs text-slate-500 mt-1">Просмотр информации о задаче</p>
+                                </div>
+                            </div>
+                            <button @click="showTaskModal=false"
+                                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="p-6">
+                        <div class="space-y-4">
+                            <!-- Приоритет -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Приоритет:</span>
+                                <span class="px-2 py-1 rounded-lg text-xs font-medium"
+                                      :class="{
+                                'bg-rose-100 text-rose-700': selectedTask?.priority === 'high',
+                                'bg-amber-100 text-amber-700': selectedTask?.priority === 'medium',
+                                'bg-emerald-100 text-emerald-700': selectedTask?.priority === 'low'
+                              }">
+                            {{ selectedTask?.priority === 'high' ? 'Высокий' :
+                                    selectedTask?.priority === 'medium' ? 'Средний' : 'Низкий' }}
+                        </span>
+                                <span v-if="selectedTask?.is_overdue"
+                                      class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-xs font-medium">
+                            ❗ Просрочено
+                        </span>
+                            </div>
+
+                            <!-- Компания и проект -->
+                            <div v-if="selectedTask?.company" class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Компания:</span>
+                                <span class="text-slate-700 dark:text-slate-300">{{ selectedTask.company }}</span>
+                            </div>
+
+                            <div v-if="selectedTask?.project" class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Проект:</span>
+                                <span class="text-slate-700 dark:text-slate-300">{{ selectedTask.project }}</span>
+                            </div>
+
+                            <!-- Даты -->
+                            <div class="grid grid-cols-2 gap-4 pt-2">
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Начало</div>
+                                    <div class="text-slate-700 dark:text-slate-300">
+                                        {{ selectedTask?.start ? new Date(selectedTask.start).toLocaleDateString() : 'Не указано' }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Окончание</div>
+                                    <div class="text-slate-700 dark:text-slate-300">
+                                        {{ selectedTask?.end ? new Date(selectedTask.end).toLocaleDateString() : 'Не указано' }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Описание -->
+                            <div v-if="selectedTask?.description" class="pt-2">
+                                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Описание</div>
+                                <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap">
+                                    {{ selectedTask.description }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                        <button @click="showTaskModal=false"
+                                class="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            Закрыть
+                        </button>
+                        <a :href="`/tasks/${selectedTask?.id}`" target="_blank"
+                           class="px-6 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:scale-105 transition-all">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                Перейти к задаче
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
 
     </AuthenticatedLayout>
 </template>

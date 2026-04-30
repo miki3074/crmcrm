@@ -4,6 +4,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendMeetingCreatedNotification;
 use App\Models\Company;
 use App\Models\Meeting;
 use App\Models\Subtask;
@@ -113,62 +114,43 @@ class MeetingController extends Controller
             'participants'   => 'array',
         ]);
 
-        // 2. Логика фильтрации участников (исправленная)
+        // 2. Логика фильтрации участников
         $allowedUserIds = [];
         $restrictParticipants = false;
 
         if (!empty($validated['subtask_id'])) {
-            // --- ЕСЛИ ВЫБРАНА ПОДЗАДАЧА ---
-            // Загружаем реальные связи: исполнители, ответственные
             $subtask = Subtask::with(['executors', 'responsibles'])->find($validated['subtask_id']);
-
-            // Собираем коллекцию ID
             $collection = collect();
             if ($subtask->creator_id) {
                 $collection->push($subtask->creator_id);
             }
-            // Добавляем ID из связей
             $collection = $collection->merge($subtask->executors->pluck('id'));
             $collection = $collection->merge($subtask->responsibles->pluck('id'));
-
             $allowedUserIds = $collection->unique()->toArray();
             $restrictParticipants = true;
-
         } elseif (!empty($validated['task_id'])) {
-            // --- ЕСЛИ ВЫБРАНА ЗАДАЧА ---
-            // Загружаем реальные связи: исполнители, ответственные, наблюдатели
             $task = Task::with(['executors', 'responsibles', 'watchers'])->find($validated['task_id']);
-
-            // Собираем коллекцию ID
             $collection = collect();
             if ($task->creator_id) {
                 $collection->push($task->creator_id);
             }
             $collection = $collection->merge($task->executors->pluck('id'));
             $collection = $collection->merge($task->responsibles->pluck('id'));
-            $collection = $collection->merge($task->watchers->pluck('id')); // У вас связь называется watchers
-
+            $collection = $collection->merge($task->watchers->pluck('id'));
             $allowedUserIds = $collection->unique()->toArray();
             $restrictParticipants = true;
         }
 
         // 3. Валидация списка участников
         if ($restrictParticipants) {
-            // Добавляем ответственного за совещание в список разрешенных,
-            // чтобы не было ошибки, если секретарь не участвует в задаче
             $allowedUserIds[] = $validated['responsible_id'];
-
-            // Превращаем массив в коллекцию и обратно для гарантии уникальности и индексов
             $allowedUserIds = array_values(array_unique($allowedUserIds));
 
-            if (empty($allowedUserIds)) {
-                // Если вдруг в задаче вообще никого нет, даем предупреждение или разрешаем всех (на ваш выбор)
-                // return back()->withErrors(['participants' => 'В выбранной задаче нет участников.']);
-            } else {
+            if (!empty($allowedUserIds)) {
                 $request->validate([
                     'participants.*' => [
                         'exists:users,id',
-                        Rule::in($allowedUserIds) // Разрешаем только тех, кто в списке
+                        Rule::in($allowedUserIds)
                     ]
                 ], [
                     'participants.*.in' => 'Один из участников не относится к выбранной задаче.'
@@ -181,7 +163,9 @@ class MeetingController extends Controller
         }
 
         // --- Транзакция и Создание ---
-        DB::transaction(function () use ($validated, $request) {
+        $meeting = null;
+
+        DB::transaction(function () use ($validated, $request, &$meeting) {
             $meeting = Meeting::create([
                 'company_id'     => $validated['company_id'],
                 'creator_id'     => Auth::id(),
@@ -199,48 +183,55 @@ class MeetingController extends Controller
             if (!empty($participantIds)) {
                 $meeting->participants()->attach($participantIds);
             }
-
-            // --- ОТПРАВКА УВЕДОМЛЕНИЙ ---
-
-            // Собираем всех получателей: участники + ответственный
-            $recipientIds = collect($participantIds)
-                ->push($validated['responsible_id'])
-                ->unique();
-
-            // Берем тех, у кого есть telegram_chat_id
-            $usersToNotify = User::whereIn('id', $recipientIds)
-                ->whereNotNull('telegram_chat_id')
-                ->where('telegram_chat_id', '!=', '')
-                ->get();
-
-            // Формируем сообщение
-            $formattedDate = Carbon::parse($meeting->start_time)->format('d.m.Y H:i');
-
-            $message = "<b>📅 Новое совещание:</b> {$meeting->title}\n";
-            $message .= "🕒 <b>Время:</b> {$formattedDate}\n";
-
-            // Доп. инфо о задаче для сообщения
-            if (!empty($validated['task_id'])) {
-                // Тут мы просто берем заголовок, with() не нужен
-                $t = Task::find($validated['task_id']);
-                if($t) $message .= "📌 <b>По задаче:</b> {$t->title}\n";
-            }
-
-            if (!empty($meeting->agenda)) {
-                $agendaShort = \Illuminate\Support\Str::limit($meeting->agenda, 100);
-                $message .= "\n📝 <b>Повестка:</b> {$agendaShort}";
-            }
-
-
-         $url = route('meetings.show', $meeting->id);
-         $message .= "\n🔗 <a href='{$url}'>Открыть подробности</a>";
-
-            foreach ($usersToNotify as $user) {
-                TelegramService::sendMessage($user->telegram_chat_id, $message);
-            }
         });
 
-        return redirect()->route('meetings.index')->with('success', 'Совещание создано');
+        // ========= ОТПРАВКА УВЕДОМЛЕНИЙ =========
+
+        // Собираем всех получателей: участники + ответственный
+        $participantIds = $request->input('participants', []);
+        $recipientIds = collect($participantIds)
+            ->push($validated['responsible_id'])
+            ->unique();
+
+        // Загружаем пользователей с их данными
+        $usersToNotify = User::whereIn('id', $recipientIds)->get();
+
+        foreach ($usersToNotify as $user) {
+            // 1. TELEGRAM УВЕДОМЛЕНИЕ
+            if ($user->telegram_chat_id) {
+                $formattedDate = Carbon::parse($meeting->start_time)->format('d.m.Y H:i');
+                $role = ($user->id == $validated['responsible_id']) ? 'ответственный' : 'участник';
+
+                $message = "📅 <b>Новое совещание:</b> {$meeting->title}\n";
+                $message .= "🕒 <b>Время:</b> {$formattedDate}\n";
+                $message .= "👤 <b>Ваша роль:</b> {$role}\n";
+
+                if (!empty($validated['task_id'])) {
+                    $t = Task::find($validated['task_id']);
+                    if($t) $message .= "📌 <b>По задаче:</b> {$t->title}\n";
+                }
+
+                if (!empty($meeting->agenda)) {
+                    $agendaShort = \Illuminate\Support\Str::limit($meeting->agenda, 100);
+                    $message .= "\n📝 <b>Повестка:</b> {$agendaShort}\n";
+                }
+
+                $url = route('meetings.show', $meeting->id);
+                $message .= "\n🔗 <a href='{$url}'>Открыть подробности</a>";
+
+                TelegramService::sendMessage($user->telegram_chat_id, $message);
+            }
+
+            // 2. EMAIL УВЕДОМЛЕНИЕ
+            if ($user->email) {
+                $role = ($user->id == $validated['responsible_id']) ? 'responsible' : 'participant';
+                SendMeetingCreatedNotification::dispatch($user, $meeting, $role);
+            }
+        }
+
+        // ========= КОНЕЦ УВЕДОМЛЕНИЙ =========
+
+        return redirect()->route('meetings.index')->with('success', 'Совещание создано и уведомления отправлены');
     }
 
     public function show(Meeting $meeting)

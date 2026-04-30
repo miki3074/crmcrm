@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAssignedNotifications;
+use App\Jobs\SendRemovedNotifications;
+use App\Jobs\SendTaskAssignedNotifications;
 use Illuminate\Http\Request;
 
 use App\Models\Task;
@@ -105,6 +108,8 @@ public function store(Request $request)
             );
         }
     }
+
+    SendTaskAssignedNotifications::dispatch($task, $recipients);
 
     // Файлы
     if ($request->hasFile('files')) {
@@ -403,6 +408,8 @@ public function addWatcher(Request $request, Task $task)
 
     $task->watcherstask()->syncWithoutDetaching([$validated['user_id']]);
 
+    SendAssignedNotifications::dispatch($task, [$validated['user_id']], 'watcher');
+
     return response()->json([
         'message' => 'Наблюдатель добавлен',
         'watcherstask' => $task->watcherstask()->get(['id', 'name']),
@@ -518,6 +525,8 @@ public function addExecutors(Request $request, Task $task)
     // ✅ добавляем, не заменяя существующих
     $task->executors()->syncWithoutDetaching($validated['user_ids']);
 
+    SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'executor');
+
     return response()->json([
         'message' => 'Исполнители добавлены',
         'executors' => $task->executors()->select('users.id', 'users.name')->get(),
@@ -536,6 +545,8 @@ public function addResponsibles(Request $request, Task $task)
 
     // ✅ добавляем, не заменяя существующих
     $task->responsibles()->syncWithoutDetaching($validated['user_ids']);
+
+    SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'responsible');
 
     return response()->json([
         'message' => 'Ответственные добавлены',
@@ -559,7 +570,11 @@ public function removeExecutor(Task $task, Request $request)
         ]);
     }
 
+    $userId = $validated['user_id'];
+
     $task->executors()->detach($validated['user_id']);
+
+    SendRemovedNotifications::dispatch($task, $userId, 'executor');
 
     return response()->json([
         'message' => 'Исполнитель удалён',
@@ -584,7 +599,11 @@ public function removeResponsible(Task $task, Request $request)
         ]);
     }
 
+    $userId = $validated['user_id'];
+
     $task->responsibles()->detach($validated['user_id']);
+
+    SendRemovedNotifications::dispatch($task, $userId, 'responsible');
 
     return response()->json([
         'message' => 'Ответственный удалён',
@@ -602,7 +621,11 @@ public function removeWatcher(Task $task, Request $request)
         'user_id' => 'required|exists:users,id',
     ]);
 
+    $userId = $validated['user_id'];
+
     $task->watcherstask()->detach($validated['user_id']);
+
+    SendRemovedNotifications::dispatch($task, $userId, 'watcher');
 
     return response()->json([
         'message' => 'Наблюдатель удалён',
@@ -635,38 +658,45 @@ public function withSubtasks()
 
     public function startWork(Request $request, Task $task)
     {
-        // Проверка: брать в работу может только исполнитель или админ
-        // Можно создать отдельный gate 'startWork' или использовать существующую логику
-        // Обычно allow, если user существует в executors
         $user = $request->user();
 
+        // Проверка: пользователь должен быть либо исполнителем, либо ответственным
         $isExecutor = $task->executors()->where('user_id', $user->id)->exists();
+        $isResponsible = $task->responsibles()->where('user_id', $user->id)->exists();
 
-        // Если у вас нет отдельной политики, проверяем тут:
-        abort_unless($isExecutor || $this->authorize('update', $task), 403, 'Вы не являетесь исполнителем этой задачи.');
+        abort_unless($isExecutor || $isResponsible, 403, 'Вы не являетесь участником этой задачи.');
 
+        // Проверка текущего статуса
         if ($task->status === 'in_work') {
             return response()->json(['message' => 'Задача уже в работе.'], 422);
         }
 
+        // Если пользователь ответственный, но не исполнитель - добавляем его в исполнители
+        if ($isResponsible && !$isExecutor) {
+            $task->executors()->attach($user->id, ['assigned_at' => now()]);
+        }
+
         $task->update([
             'status' => 'in_work',
-            // 'started_at' => now(), // если добавите такое поле в БД, будет полезно для аналитики
+            'started_at' => now(), // рекомендую добавить это поле в БД
+            'started_by' => $user->id // кто начал выполнение
         ]);
 
-        // УВЕДОМЛЕНИЕ ОТВЕТСТВЕННЫМ (Менеджерам)
-        // Собираем всех ответственных
-        $responsibles = $task->responsibles;
+        // УВЕДОМЛЕНИЕ ВСЕМ УЧАСТНИКАМ (кроме того, кто взял в работу)
+        $participants = $task->executors
+            ->merge($task->responsibles)
+            ->unique('id');
 
         $taskUrl = url("/tasks/{$task->id}");
 
-        foreach ($responsibles as $resp) {
-            if ($resp->telegram_chat_id && $resp->id !== $user->id) {
+        foreach ($participants as $participant) {
+            if ($participant->telegram_chat_id && $participant->id !== $user->id) {
                 \App\Services\TelegramService::sendMessage(
-                    $resp->telegram_chat_id,
-                    "🚀 <b>Задача взята в работу!</b>\n".
-                    "Задача: <b>{$task->title}</b>\n".
-                    "Исполнитель: {$user->name}\n".
+                    $participant->telegram_chat_id,
+                    "🚀 <b>Задача взята в работу!</b>\n" .
+                    "Задача: <b>{$task->title}</b>\n" .
+                    "Взял(а): {$user->name}\n" .
+                    "Роль: " . ($isExecutor ? "Исполнитель" : "Ответственный") . "\n" .
                     "🔗 <a href=\"{$taskUrl}\">Перейти к задаче</a>"
                 );
             }
@@ -674,7 +704,7 @@ public function withSubtasks()
 
         return response()->json([
             'message' => 'Статус задачи изменен на "В работе"',
-            'task' => $task->fresh(), // возвращаем обновленную задачу
+            'task' => $task->fresh(['executors', 'responsibles']),
         ]);
     }
 

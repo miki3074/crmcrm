@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CompletedTasksController;
+use App\Http\Controllers\API\EmailVerificationController;
 use App\Http\Controllers\API\ProducerBuyerController;
 use App\Http\Controllers\Api\ProjectNotificationController;
 use App\Http\Controllers\API\TaskSummaryController;
 use App\Http\Controllers\API\TaskTemplateController;
 
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\MeetingController;
 use App\Models\Project;
 use App\Models\Subtask;
@@ -79,11 +81,19 @@ use App\Http\Controllers\API\FlutterMessageController;
 */
 
 
+Route::post('/email/verification/send', [EmailVerificationController::class, 'sendVerificationCode']);
+Route::post('/email/verification/verify', [EmailVerificationController::class, 'verifyCode']);
+Route::get('/email/verification/status', [EmailVerificationController::class, 'checkVerificationStatus'])->middleware('auth:sanctum');
+
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+
+
+
 
 //Route::middleware('auth:sanctum')->group(function () {
 //    Route::post('/login', [AuthController::class, 'login']);
@@ -303,6 +313,9 @@ Route::middleware('auth:sanctum')->post('/user/telegram-token', [\App\Http\Contr
 Route::middleware('auth:sanctum')->post('/user/save-chat-id', [UserController::class, 'saveChatId']);
 
 Route::post('/password/telegram', [PasswordResetController::class, 'sendResetLinkViaTelegram']);
+
+Route::post('/password/email', [PasswordResetController::class, 'sendResetLinkViaEmail']);
+Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
 
 Route::get('/owner-companies', [\App\Http\Controllers\API\EmployeeController::class, 'ownerCompanies']);
 
@@ -669,6 +682,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 });
+
+Route::post('/register/send-code', [RegisteredUserController::class, 'sendVerificationCode']);
+Route::post('/register/verify', [RegisteredUserController::class, 'verifyAndRegister']);
 
 Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request) {
     $user = $request->user();

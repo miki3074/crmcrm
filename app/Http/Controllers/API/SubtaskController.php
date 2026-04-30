@@ -12,6 +12,9 @@ use App\Models\SubtaskFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+use App\Jobs\SendSubtaskAssignedNotification;
+
+
 use App\Models\User;
 
 use App\Services\TelegramService;
@@ -30,65 +33,82 @@ class SubtaskController extends Controller
         return response()->json($subtasks);
     }
 
-public function store(Request $request, Task $task)
-{
-    $this->authorize('createSubtask', $task);
+    public function store(Request $request, Task $task)
+    {
+        $this->authorize('createSubtask', $task);
 
-    // Преобразуем одиночные ID в массивы
-    $data = $request->all();
-    if (!is_array($data['executor_id'] ?? null)) {
-        $data['executor_id'] = [$data['executor_id']];
-    }
-    if (!is_array($data['responsible_id'] ?? null)) {
-        $data['responsible_id'] = [$data['responsible_id']];
-    }
-
-    $validated = validator($data, [
-        'title'           => 'required|string|max:255',
-        'executor_id'     => 'required|array|min:1',
-        'executor_id.*'   => 'exists:users,id',
-        'responsible_id'  => 'required|array|min:1',
-        'responsible_id.*'=> 'exists:users,id',
-        'start_date'      => 'required|date',
-        'due_date'        => 'required|date|after_or_equal:start_date',
-        'parent_id'       => 'nullable|exists:subtasks,id',
-    ])->validate();
-
-    $subtask = $task->subtasks()->create([
-        'title'      => $validated['title'],
-        'start_date' => $validated['start_date'],
-        'due_date'   => $validated['due_date'],
-        'creator_id' => auth()->id(),
-        'parent_id'  => $data['parent_id'] ?? null,
-    ]);
-
-    // Привязываем пользователей
-    $subtask->executors()->sync($validated['executor_id']);
-    $subtask->responsibles()->sync($validated['responsible_id']);
-
-    // Уведомления
-    $recipients = array_unique(array_merge(
-        $validated['executor_id'],
-        $validated['responsible_id']
-    ));
-
-    foreach ($recipients as $userId) {
-        $user = \App\Models\User::find($userId);
-        if ($user && $user->telegram_chat_id) {
-            \App\Services\TelegramService::sendMessage(
-                $user->telegram_chat_id,
-                "🆕 Вам назначена новая подзадача: <b>{$subtask->title}</b>\n".
-                "Задача: {$task->title}\n".
-                "Срок: {$subtask->due_date}"
-            );
+        // Преобразуем одиночные ID в массивы
+        $data = $request->all();
+        if (!is_array($data['executor_id'] ?? null)) {
+            $data['executor_id'] = [$data['executor_id']];
         }
-    }
+        if (!is_array($data['responsible_id'] ?? null)) {
+            $data['responsible_id'] = [$data['responsible_id']];
+        }
 
-    return response()->json(
-        $subtask->load(['executors:id,name', 'responsibles:id,name', 'creator:id,name']),
-        201
-    );
-}
+        $validated = validator($data, [
+            'title'           => 'required|string|max:255',
+            'executor_id'     => 'required|array|min:1',
+            'executor_id.*'   => 'exists:users,id',
+            'responsible_id'  => 'required|array|min:1',
+            'responsible_id.*'=> 'exists:users,id',
+            'start_date'      => 'required|date',
+            'due_date'        => 'required|date|after_or_equal:start_date',
+            'parent_id'       => 'nullable|exists:subtasks,id',
+        ])->validate();
+
+        $subtask = $task->subtasks()->create([
+            'title'      => $validated['title'],
+            'start_date' => $validated['start_date'],
+            'due_date'   => $validated['due_date'],
+            'creator_id' => auth()->id(),
+            'parent_id'  => $data['parent_id'] ?? null,
+        ]);
+
+        // Привязываем пользователей
+        $subtask->executors()->sync($validated['executor_id']);
+        $subtask->responsibles()->sync($validated['responsible_id']);
+
+        // ========= УВЕДОМЛЕНИЯ =========
+        $recipients = array_unique(array_merge(
+            $validated['executor_id'],
+            $validated['responsible_id']
+        ));
+
+        $taskUrl = url("/tasks/{$task->id}");
+
+        foreach ($recipients as $userId) {
+            $user = \App\Models\User::find($userId);
+
+            if (!$user) {
+                continue;
+            }
+
+            // Определяем роль пользователя
+            $role = in_array($userId, $validated['executor_id']) ? 'executor' : 'responsible';
+            $roleText = $role === 'executor' ? 'исполнителем' : 'ответственным';
+
+            // 1. TELEGRAM УВЕДОМЛЕНИЕ
+            if ($user->telegram_chat_id) {
+                \App\Services\TelegramService::sendMessage(
+                    $user->telegram_chat_id,
+                    "🆕 Вас назначили {$roleText} подзадачи: <b>{$subtask->title}</b>\n" .
+                    "📌 Задача: {$task->title}\n" .
+                    "📅 Срок: " . date('d.m.Y', strtotime($subtask->due_date)) . "\n" .
+                    "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>"
+                );
+            }
+
+            // 2. EMAIL УВЕДОМЛЕНИЕ (через Job)
+            \App\Jobs\SendSubtaskAssignedNotification::dispatch($user, $subtask, $task, $role);
+        }
+        // ========= КОНЕЦ УВЕДОМЛЕНИЙ =========
+
+        return response()->json(
+            $subtask->load(['executors:id,name', 'responsibles:id,name', 'creator:id,name']),
+            201
+        );
+    }
 
 
 

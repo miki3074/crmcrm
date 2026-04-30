@@ -10,6 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
@@ -27,6 +28,8 @@ class User extends Authenticatable
         'created_by',
         'company_id',
          'telegram_chat_id',
+        'email_verified_at',
+        'is_active',
     ];
 
     /**
@@ -46,7 +49,34 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+
     ];
+
+    public function canLogin(): bool
+    {
+        // Если email_verified_at заполнен - значит пользователь уже подтвержден
+        if ($this->email_verified_at) {
+            return true;
+        }
+
+        // Если is_active = true - пользователь активирован
+        if ($this->is_active) {
+            return true;
+        }
+
+        // Для старых пользователей без этих полей - разрешаем вход
+        // (обратная совместимость)
+        if (is_null($this->email_verified_at) && is_null($this->is_active)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Проверка активен ли пользователь
+     */
+
 
     public function companies()
         {
@@ -149,6 +179,18 @@ public function supportMessagesAssigned()
 
     public function flutterMessages() {
         return $this->hasMany(FlutterMessage::class);
+    }
+
+    public function hasVerifiedEmail()
+    {
+        return !is_null($this->email_verified_at);
+    }
+
+    public function markEmailAsVerified()
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+        ])->save();
     }
 
 
