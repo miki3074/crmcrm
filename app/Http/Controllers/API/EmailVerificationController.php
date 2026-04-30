@@ -15,54 +15,71 @@ class EmailVerificationController extends Controller
     // Отправка кода подтверждения
     public function sendVerificationCode(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Пользователь не найден'
-            ], 404);
-        }
-
-        // Проверяем, не подтвержден ли уже email
-        if ($user->email_verified_at) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email уже подтвержден'
-            ], 422);
-        }
-
-        // Генерируем 6-значный код
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Сохраняем код в кэш на 10 минут
-        Cache::put('email_verification_' . $user->id, $code, now()->addMinutes(10));
-
-        // Также сохраняем в БД для надежности
-        $user->email_verification_code = $code;
-        $user->email_verification_code_expires_at = now()->addMinutes(10);
-        $user->save();
-
-        // Отправляем письмо с кодом
         try {
-            $this->sendVerificationEmail($user, $code);
+            Log::info('Email verification request received', ['email' => $request->email]);
 
-            Log::info("Verification code sent to user {$user->id} ({$user->email})");
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Код подтверждения отправлен на email'
+            $request->validate([
+                'email' => 'required|email|exists:users,email'
+            ], [
+                'email.required' => 'Введите email адрес',
+                'email.email' => 'Введите корректный email адрес',
+                'email.exists' => 'Пользователь с таким email не найден'
             ]);
+
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Пользователь не найден'
+                ], 404);
+            }
+
+            // Проверяем, не подтвержден ли уже email
+            if ($user->email_verified_at) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email уже подтвержден'
+                ], 422);
+            }
+
+            // Генерируем 6-значный код
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            // Сохраняем код в кэш на 10 минут (используем email как ключ)
+            Cache::put('email_verification_' . $user->email, $code, now()->addMinutes(10));
+
+            // Отправляем письмо с кодом
+            try {
+                $this->sendVerificationEmail($user, $code);
+
+                Log::info("Verification code sent to user {$user->id} ({$user->email})");
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Код подтверждения отправлен на email'
+                ]);
+            } catch (\Exception $e) {
+                Log::error("Failed to send verification email: " . $e->getMessage());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при отправке письма. Проверьте настройки почты.'
+                ], 500);
+            }
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first()
+            ], 422);
         } catch (\Exception $e) {
-            Log::error("Failed to send verification email: " . $e->getMessage());
+            Log::error("Unexpected error in sendVerificationCode: " . $e->getMessage());
+            Log::error($e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ошибка при отправке письма: ' . $e->getMessage()
+                'message' => 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже.'
             ], 500);
         }
     }
@@ -70,71 +87,73 @@ class EmailVerificationController extends Controller
     // Проверка кода подтверждения
     public function verifyCode(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-            'code' => 'required|string|size:6',
-        ]);
+        try {
+            Log::info('Email verification attempt', ['email' => $request->email]);
 
-        Log::info("Verification attempt for email: {$request->email}");
+            $request->validate([
+                'email' => 'required|email|exists:users,email',
+                'code' => 'required|string|size:6',
+            ]);
 
-        $user = User::where('email', $request->email)->first();
+            $user = User::where('email', $request->email)->first();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Пользователь не найден'
+                ], 404);
+            }
+
+            // Проверяем, не подтвержден ли уже email
+            if ($user->email_verified_at) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email уже подтвержден'
+                ], 422);
+            }
+
+            // Получаем код из кэша
+            $cachedCode = Cache::get('email_verification_' . $user->email);
+
+            if (!$cachedCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Код подтверждения истек. Запросите новый код.'
+                ], 422);
+            }
+
+            if ($cachedCode !== $request->code) {
+                Log::warning("Invalid verification code for user {$user->id}");
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Неверный код подтверждения'
+                ], 422);
+            }
+
+            // Подтверждаем email
+            $user->email_verified_at = Carbon::now();
+            $user->save();
+
+            Log::info("User {$user->id} verified email successfully");
+
+            // Удаляем код из кэша
+            Cache::forget('email_verification_' . $user->email);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email успешно подтвержден'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("Error in verifyCode: " . $e->getMessage());
+            Log::error($e->getTraceAsString());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Пользователь не найден'
-            ], 404);
+                'message' => 'Произошла ошибка на сервере. Пожалуйста, попробуйте позже.'
+            ], 500);
         }
-
-        // Проверяем, не подтвержден ли уже email
-        if ($user->email_verified_at) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email уже подтвержден'
-            ], 422);
-        }
-
-        // Проверяем код из кэша
-        $cachedCode = Cache::get('email_verification_' . $user->id);
-
-        // Проверяем код из БД
-        $dbCode = $user->email_verification_code;
-        $dbExpires = $user->email_verification_code_expires_at;
-
-        $isValid = false;
-
-        // Проверяем сначала кэш, потом БД
-        if ($cachedCode && $cachedCode === $request->code) {
-            $isValid = true;
-        } elseif ($dbCode && $dbCode === $request->code && $dbExpires && now()->lessThan($dbExpires)) {
-            $isValid = true;
-        }
-
-        if (!$isValid) {
-            Log::warning("Invalid verification code for user {$user->id}. Expected: {$cachedCode}, got: {$request->code}");
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Неверный или просроченный код подтверждения'
-            ], 422);
-        }
-
-        // Подтверждаем email
-        $user->email_verified_at = Carbon::now();
-        $user->email_verification_code = null;
-        $user->email_verification_code_expires_at = null;
-        $user->save();
-
-        Log::info("User {$user->id} verified email successfully at {$user->email_verified_at}");
-
-        // Удаляем код из кэша
-        Cache::forget('email_verification_' . $user->id);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Email успешно подтвержден',
-            'verified_at' => $user->email_verified_at
-        ]);
     }
 
     // Отправка email с кодом
@@ -142,25 +161,69 @@ class EmailVerificationController extends Controller
     {
         $subject = 'Подтверждение email адреса';
 
-        Mail::send('emails.verification', [
-            'user' => $user,
-            'code' => $code
-        ], function ($message) use ($user, $subject) {
+        // Простой текст письма
+        $html = "
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <title>Подтверждение email</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .code { background: #f0f9ff; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }
+                    .code-number { font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7; }
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <h2>Подтверждение email адреса</h2>
+                    <p>Здравствуйте, <strong>{$user->name}</strong>!</p>
+                    <p>Ваш код подтверждения:</p>
+                    <div class='code'>
+                        <div class='code-number'>{$code}</div>
+                    </div>
+                    <p>Код действителен в течение <strong>10 минут</strong>.</p>
+                    <p>Если вы не запрашивали подтверждение email, просто проигнорируйте это письмо.</p>
+                    <hr>
+                    <p>С уважением, команда системы управления проектами</p>
+                </div>
+            </body>
+            </html>
+        ";
+
+        Mail::send([], [], function ($message) use ($user, $subject, $html) {
             $message->to($user->email)
                 ->from(config('mail.from.address'), config('mail.from.name'))
-                ->subject($subject);
+                ->subject($subject)
+                ->html($html);
         });
     }
 
     // Проверка статуса верификации
     public function checkVerificationStatus(Request $request)
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        return response()->json([
-            'verified' => !is_null($user->email_verified_at),
-            'email' => $user->email,
-            'verified_at' => $user->email_verified_at
-        ]);
+            if (!$user) {
+                return response()->json([
+                    'verified' => false,
+                    'message' => 'Пользователь не авторизован'
+                ], 401);
+            }
+
+            return response()->json([
+                'verified' => !is_null($user->email_verified_at),
+                'email' => $user->email,
+                'verified_at' => $user->email_verified_at
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Error in checkVerificationStatus: " . $e->getMessage());
+
+            return response()->json([
+                'verified' => false,
+                'message' => 'Ошибка проверки статуса'
+            ], 500);
+        }
     }
 }
