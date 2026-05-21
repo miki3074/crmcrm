@@ -414,27 +414,51 @@ public function update(Request $request, Subtask $subtask)
             'comment' => 'required|string|max:1000',
         ]);
 
-        // 2. Проверка прав: только Ответственный (responsible) может отправлять на доработку
-        // Получаем подзадачу через связь
+        // 2. Проверка прав: Ответственный ИЛИ Исполнитель могут отправлять на доработку
         $subtask = $file->subtask;
+        $userId = auth()->id();
 
-        // Проверяем, есть ли текущий юзер в списке ответственных этой подзадачи
-        // Предполагается связь responsibles() как belongsToMany
+        // Проверяем, является ли пользователь ответственным
         $isResponsible = $subtask->responsibles()
-            ->where('user_id', auth()->id())
+            ->where('user_id', $userId)
             ->exists();
 
-        if (!$isResponsible) {
-            return response()->json(['message' => 'Только ответственный может отправлять на доработку'], 403);
+        // Проверяем, является ли пользователь исполнителем
+        $isExecutor = $subtask->executors()
+            ->where('user_id', $userId)
+            ->exists();
+
+        // Проверяем, является ли пользователь создателем (опционально)
+        $isCreator = $subtask->creator_id === $userId;
+
+        // Если не ответственный и не исполнитель (и не создатель, если нужно)
+        if (!$isResponsible && !$isExecutor) {
+            return response()->json([
+                'message' => 'Только ответственный или исполнитель может отправлять на доработку'
+            ], 403);
         }
 
-        // 3. Обновление файла
+        // 3. Дополнительная проверка: нельзя отправить на доработку уже согласованный файл
+        if ($file->status === 'approved') {
+            return response()->json([
+                'message' => 'Нельзя отправить на доработку согласованный файл'
+            ], 400);
+        }
+
+        // 4. Обновление файла
         $file->update([
             'status' => 'revision',
-            'revision_comment' => $data['comment']
+            'revision_comment' => $data['comment'],
+            'approved_at' => null,
+            'approved_by' => null,
         ]);
 
-        return response()->json(['message' => 'Файл отправлен на доработку', 'file' => $file]);
+
+
+        return response()->json([
+            'message' => 'Файл отправлен на доработку',
+            'file' => $file
+        ]);
     }
 
     public function replaceFile(Request $request, SubtaskFile $file)
@@ -472,17 +496,33 @@ public function downloadFile(SubtaskFile $file)
     return Storage::disk('public')->download($file->path, $file->filename);
 }
 
-public function deleteFile(SubtaskFile $file)
-{
-    $subtask = $file->subtask;
-    $this->authorize('addFiles', $subtask);
+    public function deleteFile(SubtaskFile $file)
+    {
+        $user = auth()->user();
+        $subtask = $file->subtask;
 
-    Storage::disk('public')->delete($file->path);
-    $file->delete();
+        // Могут удалить:
+        // 1. Создатель файла
+        // 2. Создатель подзадачи (опционально)
 
-    return response()->json(['message' => 'Файл удалён']);
-}
 
+        $isFileCreator = $file->user_id === $user->id;
+        $isSubtaskCreator = $subtask->creator_id === $user->id;
+
+
+        if (!$isFileCreator && !$isSubtaskCreator) {
+            return response()->json([
+                'message' => 'У вас нет прав на удаление этого файла'
+            ], 403);
+        }
+
+        $this->authorize('addFiles', $subtask);
+
+        Storage::disk('public')->delete($file->path);
+        $file->delete();
+
+        return response()->json(['message' => 'Файл удалён']);
+    }
 
 // app/Http/Controllers/SubtaskController.php
 public function storeChild(Request $request, Subtask $subtask)
@@ -783,6 +823,69 @@ public function updateDescription(Request $request, Subtask $subtask)
         ]);
 
         return back()->with('success', 'Подзадача восстановлена');
+    }
+
+
+    public function approve(Request $request, SubtaskFile $file)
+    {
+        $subtask = $file->subtask;
+        $user = $request->user();
+
+        // Проверка, является ли пользователь участником подзадачи
+        $isParticipant = $subtask->creator_id === $user->id ||
+            $subtask->executors()->where('user_id', $user->id)->exists() ||
+            $subtask->responsibles()->where('user_id', $user->id)->exists();
+
+        if (!$isParticipant) {
+            return response()->json(['message' => 'У вас нет прав на согласование'], 403);
+        }
+
+        if ($file->status === 'revision') {
+            return response()->json(['message' => 'Сначала нужно исправить замечания'], 400);
+        }
+
+        if ($file->status === 'approved') {
+            return response()->json(['message' => 'Файл уже согласован'], 400);
+        }
+
+        $file->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+            'approved_by' => $user->id,
+            'revision_comment' => null,
+            'revision_by' => null,
+        ]);
+
+        return response()->json(['message' => 'Файл согласован', 'file' => $file]);
+    }
+
+    /**
+     * Отклонение файла (альтернатива revision)
+     */
+    public function revision(Request $request, SubtaskFile $file)
+    {
+        $request->validate([
+            'comment' => 'required|string|max:1000'
+        ]);
+
+        // Проверка прав
+        $subtask = $file->subtask;
+        $user = $request->user();
+
+        $isResponsible = $subtask->responsibles()->where('user_id', $user->id)->exists();
+
+        if (!$isResponsible) {
+            return response()->json(['message' => 'У вас нет прав'], 403);
+        }
+
+        $file->update([
+            'approval_status' => 'revision',
+            'revision_comment' => $request->comment,
+            'approved_at' => null,
+            'approved_by' => null,
+        ]);
+
+        return response()->json(['message' => 'Файл отправлен на доработку', 'file' => $file]);
     }
 
 

@@ -204,6 +204,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/subtask-files/{file}/revision', [SubtaskController::class, 'sendForRevision']);
     Route::post('/subtask-files/{file}/replace', [SubtaskController::class, 'replaceFile']);
+
+    Route::post('/subtask-files/{file}/approve', [SubtaskController::class, 'approve']);
+    Route::post('/subtask-files/{file}/reject', [SubtaskController::class, 'reject']);
 });
 
 
