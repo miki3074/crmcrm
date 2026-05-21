@@ -141,14 +141,32 @@ const cancelEdit = () => {
 const saveEdit = async () => {
     if (!editBody.value.trim() || !editingComment.value) return
 
+    sending.value = true  // Показываем индикатор загрузки
+    error.value = ''
+
     try {
         await axios.put(`/api/task-comments/${editingComment.value.id}`, {
             body: editBody.value
+        }, {
+            withCredentials: true
         })
+
         await fetchComments()
         cancelEdit()
+
+        // Показываем успешное уведомление (опционально)
+        // toast.success('Сообщение обновлено')
+
     } catch (e) {
-        error.value = 'Не удалось сохранить изменения'
+        console.error(e)
+        error.value = e.response?.data?.error || 'Не удалось сохранить изменения'
+
+        // Если ошибка 403 - показываем понятное сообщение
+        if (e.response?.status === 403) {
+            error.value = 'Вы можете редактировать только свои сообщения'
+        }
+    } finally {
+        sending.value = false
     }
 }
 

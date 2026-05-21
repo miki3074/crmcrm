@@ -155,4 +155,31 @@ class TaskCommentController extends Controller
         $comment->delete();
         return response()->json(['ok' => true]);
     }
+
+
+    public function update(Request $request, TaskComment $comment)
+    {
+        // Проверяем права: только автор может редактировать свой комментарий
+        if ($comment->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'У вас нет прав на редактирование этого комментария'], 403);
+        }
+
+        $data = $request->validate([
+            'body' => 'required|string|max:5000',
+        ]);
+
+        $comment->update([
+            'body' => $data['body'],
+        ]);
+
+        // Загружаем связи для ответа
+        $comment->load(['user:id,name', 'parent.user:id,name']);
+
+        return response()->json($comment);
+    }
+
+
+
+
+
 }

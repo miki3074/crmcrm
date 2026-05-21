@@ -276,6 +276,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tasks/{task}/comments', [TaskCommentController::class, 'store']);
     Route::delete('/task-comments/{comment}', [TaskCommentController::class, 'destroy']);
 
+    Route::put('/task-comments/{comment}', [TaskCommentController::class, 'update'])
+        ->middleware('auth:sanctum');
+
     Route::put('/files/{file}/approve', [TaskController::class, 'approve']);
     Route::put('/files/{file}/reject', [TaskController::class, 'reject']);
     Route::post('/files/{file}/replace', [TaskController::class, 'replace']);
