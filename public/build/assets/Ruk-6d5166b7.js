@@ -1,1 +1,0 @@
-import{o as t,a,s as e,u as r,F as o,Z as s}from"./app-d238fd21.js";import{_ as m}from"./AuthenticatedLayout-81547320.js";import"./ApplicationLogo-918cf484.js";import"./_plugin-vue_export-helper-c27b6911.js";const f={__name:"Ruk",setup(n){return(_,c)=>(t(),a(o,null,[e(r(s),{title:"Руководство "}),e(m)],64))}};export{f as default};
