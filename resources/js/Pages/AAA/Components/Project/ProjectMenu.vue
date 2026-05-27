@@ -339,7 +339,9 @@ onMounted(() => {
                         <div v-if="activeModal === 'addExecutor'">
                             <div class="space-y-2 mb-4 max-h-60 overflow-y-auto p-2 border rounded-xl">
                                 <label v-for="e in employees" :key="e.id" class="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition">
-                                    <input type="checkbox" v-model="selectedUsers" :value="e.id" class="rounded text-indigo-600"><span class="text-sm font-medium">{{ e.name }}</span>
+                                    <input type="checkbox" v-model="selectedUsers" :value="e.id" class="rounded text-indigo-600">
+                                    <span class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ e.name }}</span>
+
                                 </label>
                             </div>
                             <div class="flex gap-2"><button @click="closeModal" class="btn-ghost">Отмена</button><button @click="addRole('executors')" class="btn-primary" :disabled="!selectedUsers.length">Добавить</button></div>

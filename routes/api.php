@@ -178,6 +178,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks', [TaskController::class, 'index']); // если нужна страница всех задач
     Route::patch('/tasks/{task}/progress', [TaskController::class, 'updateProgress']);
 Route::post('/tasks/{task}/files', [TaskController::class, 'addFiles']);
+
 Route::get('/tasks/{task}', [TaskController::class, 'show']);
 
     Route::post('/tasks/{task}/start', [TaskController::class, 'startWork']);

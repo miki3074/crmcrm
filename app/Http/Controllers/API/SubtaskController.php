@@ -377,29 +377,35 @@ public function update(Request $request, Subtask $subtask)
         // Проверка прав
         $this->authorize('addFiles', $subtask);
 
-        // Валидация
+        // Валидация - добавляем аудиоформаты и увеличиваем лимит
         $request->validate([
-            'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:51200', // до 50 МБ
+            'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar,mp3,wav,ogg,flac,m4a,aac,jpg,jpeg,png,gif,webp|max:102400', // до 100 МБ
             'requires_approval' => 'nullable|boolean',
         ], [
-            'file.max' => 'Файл не должен превышать 50 МБ',
-            'file.mimes' => 'Разрешены форматы: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar',
+            'file.max' => 'Файл не должен превышать 100 МБ',
+            'file.mimes' => 'Разрешены форматы: PDF, DOC, XLS, PPT, ZIP, RAR, MP3, WAV, OGG, FLAC, изображения',
         ]);
 
         $file = $request->file('file');
         $requiresApproval = $request->boolean('requires_approval');
         $status = $requiresApproval ? 'pending' : 'none';
 
+        // Сохраняем оригинальное имя и расширение
+        $originalName = $file->getClientOriginalName();
+        $extension = $file->getClientOriginalExtension();
+
         // Уникальное имя файла, чтобы не перезаписывать существующие
-        $filename = time() . '_' . $file->getClientOriginalName();
+        $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $originalName);
         $path = $file->storeAs('subtask_files', $filename, 'public');
 
         // Сохраняем в БД
         $subtaskFile = $subtask->files()->create([
             'user_id' => auth()->id(),
-            'filename' => $file->getClientOriginalName(),
+            'filename' => $originalName,
             'path' => $path,
             'status' => $status,
+            'file_size' => $file->getSize(), // опционально: сохраняем размер
+            'mime_type' => $file->getMimeType(), // опционально: сохраняем MIME тип
         ]);
 
         return response()->json($subtaskFile, 201);

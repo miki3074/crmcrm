@@ -52,16 +52,39 @@ const getFileName = (file) => {
 };
 
 const getFileIcon = (file) => {
-    // Получаем имя через нашу новую функцию (это гарантирует строку)
+    // Получаем имя через нашу новую функцию
     const filename = getFileName(file);
-
     const ext = filename.split('.').pop().toLowerCase();
 
+    // Изображения
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️';
+    // Документы
     if (['pdf'].includes(ext)) return '📕';
-    if (['doc', 'docx'].includes(ext)) return '📘';
-    if (['xls', 'xlsx'].includes(ext)) return '📊';
-    if (['ppt', 'pptx'].includes(ext)) return '📙';
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📘';
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊';
+    if (['ppt', 'pptx', 'odp'].includes(ext)) return '📙';
+    // Архивы
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦';
+    // Аудио 🎵
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵';
+    // Видео
+    if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬';
+
     return '📄';
+};
+
+// Проверка, является ли файл аудио
+const isAudioFile = (file) => {
+    const filename = getFileName(file);
+    const ext = filename.split('.').pop().toLowerCase();
+    return ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext);
+};
+
+// Проверка, является ли файл изображением
+const isImageFile = (file) => {
+    const filename = getFileName(file);
+    const ext = filename.split('.').pop().toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
 };
 
 // === UPLOAD ===
@@ -156,7 +179,7 @@ const getStatusBadge = (status) => {
             <h1 class="font-semibold text-gray-700 dark:text-gray-200">Файлы для которых требуется согласование</h1>
             <input
                 type="file" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
                 @change="handleFileUpload" :disabled="uploading"
             >
 
@@ -170,10 +193,10 @@ const getStatusBadge = (status) => {
                     <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                 </div>
                 <h4 class="font-semibold text-gray-700 dark:text-gray-200">Нажмите или перетащите файлы</h4>
-                <p class="text-xs text-gray-400 mt-1">PDF, Office (до 20MB)</p>
+                <p class="text-xs text-gray-400 mt-1">PDF, Office, аудио, изображения (до 100MB)</p>
             </div>
 
-            <!-- Переключатель (Вынесен поверх инпута через z-index, чтобы был кликабельным) -->
+            <!-- Переключатель -->
             <div class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-white dark:bg-gray-700 px-3 py-1.5 rounded-full shadow-md border border-gray-200 dark:border-gray-600">
                 <input type="checkbox" id="chkApprove" v-model="requiresApproval" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
                 <label for="chkApprove" class="text-xs font-medium text-gray-700 dark:text-gray-200 select-none cursor-pointer">
@@ -197,23 +220,49 @@ const getStatusBadge = (status) => {
                     <div class="flex flex-col sm:flex-row gap-4 justify-between">
 
                         <!-- Инфо о файле -->
-                        <div class="flex gap-3">
+                        <div class="flex gap-3 flex-1">
                             <div class="text-3xl select-none">{{ getFileIcon(file) }}</div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
+                                <!-- Ссылка или плеер для аудио -->
+                                <div v-if="isAudioFile(file)">
+                                    <div class="font-bold truncate block text-gray-900 dark:text-white mb-2" :title="getFileName(file)">
+                                        {{ getFileName(file) }}
+                                    </div>
+                                    <audio
+                                        :src="`/api/tasks/files/${file.id}`"
+                                        controls
+                                        controlslist="nodownload"
+                                        class="w-full max-w-md h-10"
+                                        preload="metadata">
+                                        Ваш браузер не поддерживает аудиоплеер
+                                    </audio>
+                                </div>
 
-                                <a
-                                    :href="`/api/tasks/files/${file.id}`"
-                                    target="_blank"
-                                    class="font-bold hover:underline truncate block text-gray-900 dark:text-white"
-                                    :title="getFileName(file)"
+                                <!-- Для изображений показываем превью -->
+                                <div v-else-if="isImageFile(file)" class="mb-2">
+                                    <img
+                                        :src="`/api/tasks/files/${file.id}`"
+                                        :alt="getFileName(file)"
+                                        class="max-h-32 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
+                                        @click="window.open(`/api/tasks/files/${file.id}`, '_blank')"
+                                    />
+                                </div>
+
+                                <!-- Для остальных файлов - ссылка -->
+                                <a v-else
+                                   :href="`/api/tasks/files/${file.id}`"
+                                   target="_blank"
+                                   class="font-bold hover:underline truncate block text-gray-900 dark:text-white"
+                                   :title="getFileName(file)"
                                 >
-                                    <!-- Вызываем нашу безопасную функцию -->
                                     {{ getFileName(file) }}
                                 </a>
+
                                 <div class="flex flex-wrap items-center gap-2 text-xs opacity-75 mt-1">
                                     <span>👤 {{ file.user?.name }}</span>
                                     <span>•</span>
                                     <span>{{ formatDate(file.created_at) }}</span>
+                                    <span v-if="file.size" class="text-gray-400">• {{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
                                 </div>
 
                                 <!-- Статус бейдж (мобильный) -->
@@ -234,15 +283,6 @@ const getStatusBadge = (status) => {
                             </span>
 
                             <div class="flex items-center gap-2 mt-auto">
-                                <!-- Для Ответственного: Кнопки решения -->
-<!--                                <div v-if="isResponsible && file.status === 'pending'" class="flex gap-2">-->
-<!--                                    <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">-->
-<!--                                        ✔ Принять-->
-<!--                                    </button>-->
-<!--                                    <button @click="openRejectModal(file)" class="btn-action bg-rose-500 hover:bg-rose-600 text-white">-->
-<!--                                        ✖ Вернуть-->
-<!--                                    </button>-->
-<!--                                </div>-->
                                 <div v-if="(isExecutor || isResponsible) && file.status === 'pending'" class="flex gap-2">
                                     <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">
                                         ✔ Принять
@@ -273,7 +313,7 @@ const getStatusBadge = (status) => {
                         </div>
                     </div>
 
-                    <!-- Комментарий отказа (выглядит как чат) -->
+                    <!-- Комментарий отказа -->
                     <div v-if="file.status === 'rejected' && file.rejection_reason" class="mt-3 relative">
                         <div class="absolute -top-1.5 left-6 w-3 h-3 bg-rose-50 border-t border-l border-rose-200 rotate-45"></div>
                         <div class="bg-rose-50/80 border border-rose-200 text-rose-800 text-sm p-3 rounded-lg">
@@ -295,22 +335,6 @@ const getStatusBadge = (status) => {
                 </div>
             </div>
         </div>
-
-        <!-- 3. ПРОЧИЕ ФАЙЛЫ (Опционально) -->
-<!--        <div v-if="regularFiles.length > 0">-->
-<!--            <h3 class="font-bold text-gray-500 text-sm uppercase tracking-wider mb-3">📎 Вложения</h3>-->
-<!--            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">-->
-<!--                <div v-for="file in regularFiles" :key="file.id" class="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm hover:border-blue-300 transition group">-->
-<!--                    <span class="text-xl">{{ getFileIcon(file.file_name) }}</span>-->
-<!--                    <div class="min-w-0 flex-1">-->
-<!--                        <a :href="`/storage/${file.file_path}`" target="_blank" class="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 truncate block">-->
-<!--                            {{ file.file_name }}-->
-<!--                        </a>-->
-<!--                    </div>-->
-<!--                    <button @click="deleteFile(file.id)" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-500 p-1">✕</button>-->
-<!--                </div>-->
-<!--            </div>-->
-<!--        </div>-->
 
         <!-- МОДАЛКА ОТКАЗА -->
         <div v-if="rejectModalOpen" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">

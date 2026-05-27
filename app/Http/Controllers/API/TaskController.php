@@ -195,11 +195,10 @@ public function updateProgress(Request $request, Task $task)
 
         // 1️⃣ Валидация файлов
         $request->validate([
-            'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar|max:51200', // 51200 KB = 50 MB
-            'requires_approval' => 'nullable|boolean',
+            'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar,mp3,wav,ogg,flac,m4a,aac|max:102400', // увеличен лимит до 100 МБ
         ], [
-            'files.*.max' => 'Файл не должен превышать 50 МБ',
-            'files.*.mimes' => 'Разрешены только форматы: pdf, doc, docx, xls, xlsx, ppt, pptx, zip, rar',
+            'files.*.max' => 'Файл не должен превышать 100 МБ',
+            'files.*.mimes' => 'Разрешены форматы: PDF, DOC, XLS, PPT, ZIP, RAR, MP3, WAV, OGG, FLAC, M4A, AAC',
         ]);
 
         $requiresApproval = $request->boolean('requires_approval');
@@ -227,6 +226,8 @@ public function updateProgress(Request $request, Task $task)
 
         return back()->with('success', 'Файлы успешно загружены');
     }
+
+
 
 
 

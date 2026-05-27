@@ -9,6 +9,8 @@ const props = defineProps({
 
 const emit = defineEmits(['updateProgress', 'uploadFiles', 'deleteFile'])
 
+
+
 const handleFile = (e) => emit('uploadFiles', e.target.files)
 
 // 1️⃣ Функция форматирования даты (Вариант 1: Native JS)
@@ -44,11 +46,21 @@ const getFileName = (file) => {
 const getFileIcon = (filename) => {
     if (!filename) return '📎'
     const ext = filename.split('.').pop().toLowerCase()
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '🖼️'
+
+    // Изображения
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️'
+    // Документы
     if (['pdf'].includes(ext)) return '📕'
-    if (['doc', 'docx', 'txt'].includes(ext)) return '📄'
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return '📊'
-    if (['zip', 'rar'].includes(ext)) return '📦'
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📄'
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊'
+    if (['ppt', 'pptx', 'odp'].includes(ext)) return '📽️'
+    // Архивы
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
+    // Аудио 🎵
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵'
+    // Видео (на будущее)
+    if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬'
+
     return '📎'
 }
 </script>
@@ -166,7 +178,7 @@ const getFileIcon = (filename) => {
                     type="file"
                     multiple
                     @change="handleFile"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac"
                     class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     :disabled="loading"
                 />

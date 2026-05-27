@@ -40,21 +40,68 @@ const isExecutor = computed(() => {
     return subtask.executors.some(e => e.id === user.id)
 })
 
-// Может ли пользователь согласовать файл (только ответственный и только если файл не в статусе revision)
+// Может ли пользователь согласовать файл
 const canApprove = (file) => {
-    // Проверяем: пользователь является ответственным ИЛИ исполнителем
-    // И статус не 'revision' И статус не 'approved'
     const isExecutorOrResponsible = isResponsible.value || isExecutor.value;
-
     return isExecutorOrResponsible &&
         file.status !== 'revision' &&
         file.status !== 'approved'
 }
 
-// Дополнительно: проверка, можно ли отправить на доработку
+// Проверка, можно ли отправить на доработку
 const canSendToRevision = (file) => {
-    // Нельзя отправить на доработку, если файл уже согласован
     return (isExecutor.value || isResponsible.value) && file.status !== 'approved'
+}
+
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ФАЙЛОВ ---
+
+// Получить иконку файла
+const getFileIcon = (filename) => {
+    if (!filename) return '📄'
+    const ext = filename.split('.').pop().toLowerCase()
+
+    // Изображения
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️'
+    // Документы
+    if (['pdf'].includes(ext)) return '📕'
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📘'
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊'
+    if (['ppt', 'pptx', 'odp'].includes(ext)) return '📙'
+    // Архивы
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
+    // Аудио 🎵
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵'
+    // Видео
+    if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬'
+
+    return '📄'
+}
+
+// Проверка, является ли файл аудио
+const isAudioFile = (filename) => {
+    if (!filename) return false
+    const ext = filename.split('.').pop().toLowerCase()
+    return ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)
+}
+
+// Проверка, является ли файл изображением
+const isImageFile = (filename) => {
+    if (!filename) return false
+    const ext = filename.split('.').pop().toLowerCase()
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
+}
+
+// Получить URL для просмотра/скачивания
+const getFileUrl = (file) => {
+    return `/api/subtask-files/${file.id}/download`
+}
+
+// Форматирование размера файла
+const formatFileSize = (bytes) => {
+    if (!bytes) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB'
 }
 
 // --- ЛОГИКА ЗАГРУЗКИ / УДАЛЕНИЯ ---
@@ -123,7 +170,6 @@ const approveFile = async (fileId) => {
     try {
         await axios.post(`/api/subtask-files/${fileId}/approve`)
         emit('refresh')
-        // Можно добавить toast уведомление
     } catch (err) {
         alert(err.response?.data?.message || 'Ошибка при согласовании')
     }
@@ -193,11 +239,23 @@ const showRevisionComment = (file) => {
             <h3 class="font-semibold text-lg text-gray-800 dark:text-gray-100">📎 Файлы</h3>
 
             <!-- Скрытый инпут для ЗАМЕНЫ файла -->
-            <input type="file" ref="replaceInput" class="hidden" @change="handleReplaceFile" />
+            <input
+                type="file"
+                ref="replaceInput"
+                class="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
+                @change="handleReplaceFile"
+            />
 
             <!-- Кнопка загрузки нового -->
             <div v-if="canUpload">
-                <input type="file" @change="uploadFile" class="hidden" ref="fileInput" />
+                <input
+                    type="file"
+                    @change="uploadFile"
+                    class="hidden"
+                    ref="fileInput"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
+                />
                 <button
                     @click="$refs.fileInput.click()"
                     class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition shadow"
@@ -221,13 +279,50 @@ const showRevisionComment = (file) => {
                     <!-- Информация о файле -->
                     <div class="flex flex-col overflow-hidden flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <a
-                                :href="`/api/subtask-files/${file.id}/download`"
-                                class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium truncate"
-                                :title="file.filename"
+                            <!-- Иконка файла -->
+                            <span class="text-xl">{{ getFileIcon(file.filename) }}</span>
+
+                            <!-- Ссылка или аудиоплеер -->
+                            <div v-if="isAudioFile(file.filename)" class="flex-1 min-w-0">
+                                <div class="text-sm font-medium truncate text-gray-700 dark:text-gray-300 mb-1" :title="file.filename">
+                                    {{ file.filename }}
+                                </div>
+                                <audio
+                                    :src="getFileUrl(file)"
+                                    controls
+                                    controlslist="nodownload"
+                                    class="w-full max-w-md h-10"
+                                    preload="metadata">
+                                    Ваш браузер не поддерживает аудиоплеер
+                                </audio>
+                            </div>
+
+                            <!-- Изображение с превью -->
+                            <div v-else-if="isImageFile(file.filename)" class="flex-1">
+                                <img
+                                    :src="getFileUrl(file)"
+                                    :alt="file.filename"
+                                    class="max-h-20 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
+                                    @click="window.open(getFileUrl(file), '_blank')"
+                                />
+                                <a
+                                    :href="getFileUrl(file)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium truncate block mt-1"
+                                    :title="file.filename"
+                                >
+                                    {{ file.filename }}
+                                </a>
+                            </div>
+
+                            <!-- Обычная ссылка для остальных файлов -->
+                            <a v-else
+                               :href="getFileUrl(file)"
+                               class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium truncate"
+                               :title="file.filename"
                             >
-                                📄 {{ file.filename }}
+                                {{ file.filename }}
                             </a>
+
                             <!-- Бейдж статуса -->
                             <span
                                 :class="getStatusBadge(file.status).class"
@@ -236,20 +331,22 @@ const showRevisionComment = (file) => {
                                 {{ getStatusBadge(file.status).text }}
                             </span>
                         </div>
-                        <span class="text-[11px] text-gray-400 mt-1">
+
+                        <div class="text-[11px] text-gray-400 mt-1">
                             {{ new Date(file.updated_at).toLocaleString() }}
+                            <span v-if="file.file_size" class="ml-2">({{ formatFileSize(file.file_size) }})</span>
                             <span v-if="file.created_at !== file.updated_at && file.status !== 'revision'" class="ml-1 text-gray-400/70">
                                 <strong style="color: green">(обновлен)</strong>
                             </span>
                             <span v-if="file.approved_at" class="ml-2">
                                 ✓ Согласован: {{ new Date(file.approved_at).toLocaleString() }}
                             </span>
-                        </span>
+                        </div>
                     </div>
 
                     <!-- Панель действий -->
                     <div class="flex items-center gap-2 shrink-0">
-                        <!-- Кнопка СОГЛАСОВАТЬ (только для файлов со статусом 'ok') -->
+                        <!-- Кнопка СОГЛАСОВАТЬ -->
                         <button
                             v-if="canApprove(file)"
                             @click="approveFile(file.id)"
@@ -259,8 +356,7 @@ const showRevisionComment = (file) => {
                             ✓ Согласовать
                         </button>
 
-                        <!-- Кнопка ОБНОВИТЬ (доступна загрузчикам) -->
-                        <!-- Особенно важна для файлов со статусом 'revision' -->
+                        <!-- Кнопка ОБНОВИТЬ -->
                         <button
                             v-if="canUpload"
                             @click="triggerReplace(file.id)"
@@ -272,7 +368,7 @@ const showRevisionComment = (file) => {
                             </svg>
                         </button>
 
-                        <!-- Кнопка НА ДОРАБОТКУ (доступна ответственным, только для не согласованных файлов) -->
+                        <!-- Кнопка НА ДОРАБОТКУ -->
                         <button
                             v-if="canSendToRevision(file)"
                             @click="openRevisionInput(file.id)"
@@ -304,8 +400,6 @@ const showRevisionComment = (file) => {
                     class="mt-3 text-sm text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 p-3 rounded-md border border-red-200 dark:border-red-800"
                 >
                     <div class="font-bold text-xs uppercase tracking-wide mb-1 opacity-80">⚠ Требуется доработка</div>
-
-                    <!-- Текст с обрезкой -->
                     <div class="whitespace-pre-wrap break-words text-sm">
                         {{
                             (expandedComments.has(file.id) || !file.revision_comment || file.revision_comment.length <= 150)
@@ -313,8 +407,6 @@ const showRevisionComment = (file) => {
                                 : file.revision_comment.slice(0, 150) + '...'
                         }}
                     </div>
-
-                    <!-- Кнопка "Показать все" -->
                     <button
                         v-if="file.revision_comment && file.revision_comment.length > 150"
                         @click.prevent="toggleComment(file.id)"
@@ -324,7 +416,7 @@ const showRevisionComment = (file) => {
                     </button>
                 </div>
 
-                <!-- Форма ввода замечания (показывается при клике "На доработку") -->
+                <!-- Форма ввода замечания -->
                 <div v-if="activeFileId === file.id" class="mt-3 animate-slideDown">
                     <textarea
                         v-model="revisionComment"
@@ -361,9 +453,6 @@ const showRevisionComment = (file) => {
                 Загрузить первый файл
             </button>
         </div>
-
-        <!-- Пояснение для ответственных -->
-
     </div>
 </template>
 
