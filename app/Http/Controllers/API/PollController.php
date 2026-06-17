@@ -15,8 +15,7 @@ use App\Models\User;
 
 class PollController extends Controller
 {
-// app/Http/Controllers/Api/PollController.php
-    // app/Http/Controllers/Api/PollController.php
+
     public function getCompanyUsers($companyId)
     {
         $company = Company::findOrFail($companyId);
