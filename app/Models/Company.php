@@ -13,9 +13,7 @@ class Company extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class)
-        ->withPivot('role', 'created_by')
-                ->withTimestamps();
+        return $this->belongsTo(User::class);
     }
 
     public function projects()
@@ -23,42 +21,56 @@ class Company extends Model
         return $this->hasMany(Project::class);
     }
 
-//     public function employees()
-// {
-//     return $this->hasMany(\App\Models\User::class);
-// }
+    public function users()
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'company_user')
+            ->withPivot('role', 'created_by')
+            ->withTimestamps();
+    }
 
-//  public function employees()
-//     {
-//         return $this->hasMany(User::class, 'company_id', 'id');
-//     }
+    public function storageManagers()
+    {
+        return $this->belongsToMany(User::class, 'company_storage_managers')
+            ->withTimestamps();
+    }
 
-public function users()
-{
-    return $this->belongsToMany(\App\Models\User::class, 'company_user')
-                ->withPivot('role', 'created_by')
-                ->withTimestamps();
-}
+    public function storageFiles()
+    {
+        return $this->hasMany(StorageFile::class);
+    }
 
+    public function managers()
+    {
+        return $this->belongsToMany(User::class, 'company_user')
+            ->wherePivot('role', 'manager')
+            ->select('users.id', 'users.name')
+            ->withTimestamps();
+    }
 
-public function storageManagers()
-{
-    return $this->belongsToMany(User::class, 'company_storage_managers')
-        ->withTimestamps();
-}
+    // 🔥 Добавляем метод для проверки, является ли пользователь участником компании
+    public function isUserMember($userId)
+    {
+        // Проверяем, является ли пользователь владельцем
+        if ($this->user_id === $userId) {
+            return true;
+        }
 
-public function storageFiles()
-{
-    return $this->hasMany(StorageFile::class);
-}
+        // Проверяем, есть ли пользователь в таблице company_user
+        return $this->users()->where('user_id', $userId)->exists();
+    }
 
-public function managers()
-{
-    return $this->belongsToMany(User::class, 'company_user')
-        ->wherePivot('role', 'manager')
-        ->select('users.id', 'users.name')
-        ->withTimestamps();
-}
+    // 🔥 Добавляем метод для получения роли пользователя в компании
+    public function getUserRole($userId)
+    {
+        // Если пользователь - владелец
+        if ($this->user_id === $userId) {
+            return 'owner';
+        }
+
+        // Проверяем роль в pivot таблице
+        $pivot = $this->users()->where('user_id', $userId)->first()?->pivot;
+        return $pivot?->role ?? null;
+    }
 
     public function allParticipants()
     {
@@ -67,7 +79,7 @@ public function managers()
 
         // Добавляем владельца, если его нет в списке
         $owner = \App\Models\User::find($this->user_id);
-        if (!$users->contains('id', $owner->id)) {
+        if ($owner && !$users->contains('id', $owner->id)) {
             $users->push($owner);
         }
 
@@ -86,7 +98,7 @@ public function managers()
             });
     }
 
-// Авто-удаление связанных файлов при удалении компании
+    // Авто-удаление связанных файлов при удалении компании
     protected static function booted()
     {
         static::deleting(function ($company) {
@@ -103,6 +115,4 @@ public function managers()
             });
         });
     }
-
-
 }

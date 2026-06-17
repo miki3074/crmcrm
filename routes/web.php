@@ -23,7 +23,7 @@ use App\Models\User;
 use App\Http\Controllers\Auth\NewPasswordController;
 
 use App\Http\Controllers\Support\AdminSupportController;
-
+use App\Http\Controllers\PollController;
 //use App\Http\Controllers\EmailVerificationController;
 
 /*
@@ -49,6 +49,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
 });
 
+
+Route::middleware(['auth'])->group(function () {
+    // Маршруты для опросов
+    Route::resource('polls', PollController::class);
+
+    // Дополнительные маршруты
+    Route::post('/polls/{poll}/close', [PollController::class, 'close'])->name('polls.close');
+    Route::post('/polls/{poll}/reopen', [PollController::class, 'reopen'])->name('polls.reopen');
+    Route::post('/polls/{poll}/respond', [PollController::class, 'respond'])->name('polls.respond');
+
+    // Маршруты для проблем
+    Route::post('/polls/problems/{problem}/comment', [PollController::class, 'addProblemComment'])->name('polls.problems.comment');
+    Route::post('/polls/problems/{problem}/resolve', [PollController::class, 'resolveProblem'])->name('polls.problems.resolve');
+});
 
 
 

@@ -193,5 +193,187 @@ public function supportMessagesAssigned()
         ])->save();
     }
 
+    // ============ НОВЫЕ МЕТОДЫ ДЛЯ ОПРОСОВ ============
+
+    /**
+     * Связь с опросами, которые создал пользователь
+     */
+    public function createdPolls(): HasMany
+    {
+        return $this->hasMany(Poll::class, 'created_by');
+    }
+
+    /**
+     * Связь с участием в опросах
+     */
+    public function pollParticipants(): HasMany
+    {
+        return $this->hasMany(PollParticipant::class);
+    }
+
+    /**
+     * Связь с проблемами, которые создал пользователь
+     */
+    public function pollProblems(): HasMany
+    {
+        return $this->hasMany(PollProblem::class);
+    }
+
+    /**
+     * Связь с комментариями к проблемам
+     */
+    public function pollProblemComments(): HasMany
+    {
+        return $this->hasMany(PollProblemComment::class);
+    }
+
+    /**
+     * Получить активные опросы, в которых участвует пользователь
+     */
+    public function activePolls()
+    {
+        return Poll::whereHas('participants', function ($query) {
+            $query->where('user_id', $this->id);
+        })->where('status', 'active')->get();
+    }
+
+    /**
+     * Получить завершенные опросы, в которых участвовал пользователь
+     */
+    public function completedPolls()
+    {
+        return Poll::whereHas('participants', function ($query) {
+            $query->where('user_id', $this->id);
+        })->where('status', 'closed')->get();
+    }
+
+    /**
+     * Проверить, участвует ли пользователь в опросе
+     */
+    public function isPollParticipant(int $pollId): bool
+    {
+        return PollParticipant::where('poll_id', $pollId)
+            ->where('user_id', $this->id)
+            ->exists();
+    }
+
+    /**
+     * Проверить, ответил ли пользователь на опрос
+     */
+    public function hasRespondedToPoll(int $pollId): bool
+    {
+        return PollParticipant::where('poll_id', $pollId)
+            ->where('user_id', $this->id)
+            ->where('has_responded', true)
+            ->exists();
+    }
+
+    /**
+     * Получить все опросы компании пользователя
+     */
+    public function getCompanyPolls()
+    {
+        if ($this->company_id) {
+            return Poll::where('company_id', $this->company_id)->get();
+        }
+        return collect();
+    }
+
+    /**
+     * Получить количество опросов, в которых участвует пользователь
+     */
+    public function getPollParticipationCountAttribute(): int
+    {
+        return $this->pollParticipants()->count();
+    }
+
+    /**
+     * Получить количество созданных опросов
+     */
+    public function getCreatedPollsCountAttribute(): int
+    {
+        return $this->createdPolls()->count();
+    }
+
+    /**
+     * Получить количество решенных проблем
+     */
+    public function getResolvedProblemsCountAttribute(): int
+    {
+        return $this->pollProblems()->where('is_resolved', true)->count();
+    }
+
+    /**
+     * Получить роль пользователя в компании
+     */
+    public function getRoleInCompany(int $companyId): ?string
+    {
+        $companyUser = \DB::table('company_user')
+            ->where('company_id', $companyId)
+            ->where('user_id', $this->id)
+            ->first();
+
+        return $companyUser ? $companyUser->role : null;
+    }
+
+    /**
+     * Проверить, является ли пользователь владельцем компании
+     */
+    public function isOwnerOfCompany(int $companyId): bool
+    {
+        return $this->getRoleInCompany($companyId) === 'owner';
+    }
+
+    /**
+     * Проверить, является ли пользователь менеджером компании
+     */
+    public function isManagerOfCompany(int $companyId): bool
+    {
+        $role = $this->getRoleInCompany($companyId);
+        return $role === 'manager' || $role === 'owner';
+    }
+
+    /**
+     * Получить всех пользователей компании (кроме себя)
+     */
+    public function getCompanyMembers(int $companyId)
+    {
+        return User::whereHas('attachedCompanies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId);
+        })->where('id', '!=', $this->id)->get();
+    }
+
+    /**
+     * Проверить, является ли пользователь участником компании
+     */
+    public function isMemberOfCompany(int $companyId): bool
+    {
+        return $this->attachedCompanies()
+            ->where('company_id', $companyId)
+            ->exists();
+    }
+
+    /**
+     * Получить всех сотрудников компании (без владельца)
+     */
+    public function getCompanyEmployees(int $companyId)
+    {
+        return User::whereHas('attachedCompanies', function ($query) use ($companyId) {
+            $query->where('company_id', $companyId)
+                ->where('role', '!=', 'owner');
+        })->get();
+    }
+
+    /**
+     * Получить данные о компании пользователя
+     */
+    public function getCurrentCompany()
+    {
+        if ($this->company_id) {
+            return Company::find($this->company_id);
+        }
+        return $this->companies()->first();
+    }
+
 
 }

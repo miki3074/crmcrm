@@ -356,6 +356,7 @@ class CompanyController extends Controller
     }
 
 
+// app/Http/Controllers/Api/CompanyController.php
     public function show(Company $company)
     {
         $this->authorize('view', $company);
@@ -368,21 +369,28 @@ class CompanyController extends Controller
                     'managers:id,name',
                     'executors:id,name',
                     'watchers:id,name',
-                    // Грузим задачи
                     'tasks' => function($t) {
                         $t->orderBy('created_at', 'desc');
                     },
-                    // Важно: грузим связи, нужные для проверки прав доступа к задаче
                     'tasks.executors:id,name',
                     'tasks.responsibles:id,name',
                     'tasks.subtasks.executors:id,name',
                     'tasks.subtasks.responsibles:id,name',
-                    // Если есть creator, лучше подгрузить, но обычно id есть в самой таблице tasks
                 ]);
             }
         ]);
 
-        // 2. Фильтрация списка ПРОЕКТОВ (оставляем как было)
+        // 2. Проверяем, является ли пользователь участником компании
+        $isMember = $company->users()->where('user_id', $userId)->exists();
+
+        // Проверяем роли пользователя в компании
+        $userRole = null;
+        if ($isMember) {
+            $pivot = $company->users()->where('user_id', $userId)->first()?->pivot;
+            $userRole = $pivot?->role ?? null;
+        }
+
+        // 3. Фильтрация списка ПРОЕКТОВ
         $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
             if ($company->user_id === $userId) return true;
             if ($project->initiator_id === $userId) return true;
@@ -401,33 +409,32 @@ class CompanyController extends Controller
             return false;
         })->values();
 
-        // 3. Формируем ответ и ФИЛЬТРУЕМ ЗАДАЧИ
+        // 4. Формируем ответ
         return response()->json([
             'id' => $company->id,
             'name' => $company->name,
             'logo' => $company->logo,
             'user_id' => $company->user_id,
 
+            // 🔥 Добавляем информацию о членстве пользователя
+            'is_member' => $isMember,
+            'user_role' => $userRole, // owner, manager, employee, watcher
+
             'projects' => $company->projects->map(function ($project) use ($userId, $company) {
 
-                // --- ЛОГИКА ДОСТУПА К ЗАДАЧАМ ---
                 $hasFullAccess = (
                     $company->user_id === $userId ||
                     $project->initiator_id === $userId ||
                     $project->managers->contains('id', $userId)
                 );
 
-                // Фильтруем коллекцию задач
                 $filteredTasks = $project->tasks->filter(function ($task) use ($userId, $hasFullAccess) {
-                    // Если босс/менеджер — видит всё
                     if ($hasFullAccess) return true;
 
-                    // Иначе проверяем участие в конкретной задаче или её подзадачах
                     $isCreator = $task->creator_id === $userId;
                     $isExecutor = $task->executors->contains('id', $userId);
                     $isResponsible = $task->responsibles->contains('id', $userId);
 
-                    // 🔥 ВАЖНО: Проверяем подзадачи
                     $isSubtaskExecutor = $task->subtasks->contains(function($subtask) use ($userId) {
                         return $subtask->executors->contains('id', $userId);
                     });
@@ -439,8 +446,6 @@ class CompanyController extends Controller
                     return $isCreator || $isExecutor || $isResponsible ||
                         $isSubtaskExecutor || $isSubtaskResponsible;
                 });
-
-                // -----------------------------------------------------------
 
                 $endDate = null;
                 if ($project->start_date && $project->duration_days) {
@@ -473,7 +478,6 @@ class CompanyController extends Controller
                         'name' => $e->name,
                     ]),
 
-                    // Используем отфильтрованные задачи
                     'tasks' => $filteredTasks->values()->map(fn($t) => [
                         'id' => $t->id,
                         'title' => $t->title,
@@ -482,9 +486,6 @@ class CompanyController extends Controller
                         'status' => $t->status,
                         'due_date' => $t->due_date,
                         'responsibles' => $t->responsibles->map(fn($r) => ['id' => $r->id, 'name' => $r->name]),
-
-                        // 🔥 Добавляем информацию о подзадачах, чтобы фронтенд мог показать,
-                        // что пользователь участвует через подзадачи
                         'user_in_subtasks' => $t->subtasks->contains(function($subtask) use ($userId) {
                             return $subtask->executors->contains('id', $userId) ||
                                 $subtask->responsibles->contains('id', $userId);

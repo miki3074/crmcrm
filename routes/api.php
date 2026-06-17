@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\EmailVerificationController;
+use App\Http\Controllers\Api\PollController;
 use App\Http\Controllers\API\ProducerBuyerController;
 use App\Http\Controllers\Api\ProjectNotificationController;
 use App\Http\Controllers\API\TaskSummaryController;
@@ -92,6 +93,101 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
+Route::middleware('auth:sanctum')->group(function () {
+    // Получить участников компании
+    Route::get('/companies/{company}/users', [PollController::class, 'getCompanyUsers']);
+
+    // Опросы
+    Route::get('/companies/{company}/polls', [PollController::class, 'index']);
+    Route::post('/polls', [PollController::class, 'store']);
+    Route::get('/polls/{poll}', [PollController::class, 'show']);
+    Route::delete('/polls/{poll}', [PollController::class, 'destroy']); // 🔥 Добавляем маршрут удаления
+    Route::post('/polls/{poll}/respond', [PollController::class, 'respond']);
+    Route::post('/polls/{poll}/close', [PollController::class, 'close']);
+    Route::post('/polls/{poll}/reopen', [PollController::class, 'reopen']);
+
+    // Проблемы
+    Route::put('/polls/problems/{problem}', [PollController::class, 'updateProblem']);
+    Route::delete('/polls/problems/{problem}', [PollController::class, 'deleteProblem']);
+    Route::post('/polls/problems/{problem}/resolve', [PollController::class, 'resolveProblem']);
+
+    // Комментарии
+    Route::post('/polls/problems/{problem}/comment', [PollController::class, 'addComment']);
+    Route::put('/polls/comments/{comment}', [PollController::class, 'updateComment']);
+    Route::delete('/polls/comments/{comment}', [PollController::class, 'deleteComment']);
+
+    Route::post('/polls/{poll}/respond-multiple', [PollController::class, 'respondMultiple']);
+
+    Route::get('/polls/{poll}/available-participants', [PollController::class, 'getAvailableParticipants']);
+    Route::post('/polls/{poll}/add-participants', [PollController::class, 'addParticipants']);
+});
+
+Route::get('/debug-users/{companyId}', function ($companyId) {
+    $company = \App\Models\Company::findOrFail($companyId);
+    $ownerId = $company->user_id;
+    $owner = \App\Models\User::find($ownerId);
+
+    $pivotUsers = $company->users()
+        ->select('users.id', 'users.name', 'users.email', 'company_user.role')
+        ->get();
+
+    $allUsers = collect();
+
+    foreach ($pivotUsers as $user) {
+        $allUsers->push([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->pivot->role ?? 'member',
+            'is_owner' => ($user->id === $ownerId)
+        ]);
+    }
+
+    if ($owner) {
+        $exists = false;
+        foreach ($allUsers as $user) {
+            if ($user['id'] === $ownerId) {
+                $exists = true;
+                break;
+            }
+        }
+
+        if (!$exists) {
+            $allUsers->push([
+                'id' => $owner->id,
+                'name' => $owner->name,
+                'email' => $owner->email,
+                'role' => 'owner',
+                'is_owner' => true
+            ]);
+        }
+    }
+
+    $sortedUsers = $allUsers->sortBy('name')->values();
+
+    return response()->json([
+        'debug_info' => [
+            'company_id' => $company->id,
+            'company_owner_id' => $company->user_id,
+            'owner_found' => $owner ? true : false,
+            'pivot_users_count' => $pivotUsers->count(),
+            'final_users_count' => $sortedUsers->count(),
+        ],
+        'owner' => $owner ? [
+            'id' => $owner->id,
+            'name' => $owner->name,
+            'email' => $owner->email,
+        ] : null,
+        'pivot_users' => $pivotUsers->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'role' => $u->pivot->role ?? 'member'
+            ];
+        }),
+        'final_users' => $sortedUsers
+    ]);
+});
 
 
 

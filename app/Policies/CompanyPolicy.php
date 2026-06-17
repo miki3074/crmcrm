@@ -24,71 +24,140 @@ class CompanyPolicy
     /**
      * Determine whether the user can view the model.
      */
-public function view(User $user, Company $company): bool
-{
-    // Владелец компании
-    if ($company->user_id === $user->id) {
-        return true;
+//public function view(User $user, Company $company): bool
+//{
+//    // Владелец компании
+//    if ($company->user_id === $user->id) {
+//        return true;
+//    }
+//
+//    if ($company->projects()->where('initiator_id', $user->id)->exists()) {
+//        return true;
+//    }
+//
+//    // Менеджер хотя бы одного проекта в этой компании
+//    if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+//    return true;
+//}
+//
+//if ($company->projects()
+//        ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+//        ->exists()) {
+//        return true;
+//    }
+//
+//
+//    // Исполнитель хотя бы одной задачи
+//    if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
+//    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+//    ->exists()) {
+//    return true;
+//}
+//
+//    // ✅ Ответственный хотя бы одной задачи
+//    if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
+//    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+//    ->exists()) {
+//    return true;
+//}
+//
+//   // Исполнитель подзадачи
+//if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+//        $query->whereIn('project_id', $company->projects()->pluck('id'));
+//    })
+//    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+//    ->exists()
+//) {
+//    return true;
+//}
+//
+//// Ответственный подзадачи
+//if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+//        $query->whereIn('project_id', $company->projects()->pluck('id'));
+//    })
+//    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+//    ->exists()
+//) {
+//    return true;
+//}
+//
+//if ($company->projects()->whereHas('watchers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+//        return true;
+//    }
+//
+//    return false;
+//}
+
+    public function view(User $user, Company $company): bool
+    {
+        // Владелец компании
+        if ($company->user_id === $user->id) {
+            return true;
+        }
+
+        // ✅ ПРОВЕРКА: Является ли пользователь членом компании (добавлен в company_user)
+        if ($company->users()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Инициатор проекта
+        if ($company->projects()->where('initiator_id', $user->id)->exists()) {
+            return true;
+        }
+
+        // Менеджер хотя бы одного проекта в этой компании
+        if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+            return true;
+        }
+
+        // Исполнитель проекта
+        if ($company->projects()
+            ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+            ->exists()) {
+            return true;
+        }
+
+        // Исполнитель хотя бы одной задачи
+        if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
+            ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+            ->exists()) {
+            return true;
+        }
+
+        // Ответственный хотя бы одной задачи
+        if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
+            ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+            ->exists()) {
+            return true;
+        }
+
+        // Исполнитель подзадачи
+        if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+            $query->whereIn('project_id', $company->projects()->pluck('id'));
+        })
+            ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
+            ->exists()
+        ) {
+            return true;
+        }
+
+        // Ответственный подзадачи
+        if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
+            $query->whereIn('project_id', $company->projects()->pluck('id'));
+        })
+            ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
+            ->exists()
+        ) {
+            return true;
+        }
+
+        // Наблюдатель проекта
+        if ($company->projects()->whereHas('watchers', fn($q) => $q->where('users.id', $user->id))->exists()) {
+            return true;
+        }
+
+        return false;
     }
-
-    if ($company->projects()->where('initiator_id', $user->id)->exists()) {
-        return true;
-    }
-
-    // Менеджер хотя бы одного проекта в этой компании
-    if ($company->projects()->whereHas('managers', fn($q) => $q->where('users.id', $user->id))->exists()) {
-    return true;
-}
-
-if ($company->projects()
-        ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
-        ->exists()) {
-        return true;
-    }
-
-
-    // Исполнитель хотя бы одной задачи
-    if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
-    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
-
-    // ✅ Ответственный хотя бы одной задачи
-    if (\App\Models\Task::whereIn('project_id', $company->projects()->pluck('id'))
-    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
-    ->exists()) {
-    return true;
-}
-
-   // Исполнитель подзадачи
-if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
-        $query->whereIn('project_id', $company->projects()->pluck('id'));
-    })
-    ->whereHas('executors', fn($q) => $q->where('users.id', $user->id))
-    ->exists()
-) {
-    return true;
-}
-
-// Ответственный подзадачи
-if (\App\Models\Subtask::whereHas('task', function ($query) use ($company) {
-        $query->whereIn('project_id', $company->projects()->pluck('id'));
-    })
-    ->whereHas('responsibles', fn($q) => $q->where('users.id', $user->id))
-    ->exists()
-) {
-    return true;
-}
-
-if ($company->projects()->whereHas('watchers', fn($q) => $q->where('users.id', $user->id))->exists()) {
-        return true;
-    }
-
-    return false;
-}
-
-
     /**
      * Determine whether the user can create models.
      */

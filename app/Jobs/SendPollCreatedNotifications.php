@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Poll;
+use App\Models\Company;
+use App\Models\User;
+use App\Notifications\PollCreatedNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\Exception\UnexpectedResponseException;
+
+class SendPollCreatedNotifications implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, SerializesModels;
+
+    protected $poll;
+    protected $company;
+    protected $participantIds;
+
+    public function __construct(Poll $poll, Company $company, array $participantIds)
+    {
+        $this->poll = $poll;
+        $this->company = $company;
+        $this->participantIds = $participantIds;
+    }
+
+    public function handle()
+    {
+        foreach ($this->participantIds as $userId) {
+            $user = User::find($userId);
+            if (!$user || !$user->email) {
+                continue;
+            }
+
+            try {
+                $user->notify(new PollCreatedNotification($this->poll, $this->company));
+                Log::info("Poll notification sent to {$user->email} for poll {$this->poll->id}");
+            } catch (UnexpectedResponseException $e) {
+                Log::warning("Email not sent to {$user->email} for poll {$this->poll->id}: " . $e->getMessage());
+            } catch (TransportException $e) {
+                Log::warning("Transport error for {$user->email}: " . $e->getMessage());
+            } catch (\Exception $e) {
+                Log::warning("Failed to send email to {$user->email}: " . $e->getMessage());
+            }
+        }
+    }
+}
