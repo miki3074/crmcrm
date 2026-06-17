@@ -3,7 +3,7 @@
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CompletedTasksController;
 use App\Http\Controllers\API\EmailVerificationController;
-use App\Http\Controllers\Api\PollController;
+use App\Http\Controllers\API\PollController;
 use App\Http\Controllers\API\ProducerBuyerController;
 use App\Http\Controllers\Api\ProjectNotificationController;
 use App\Http\Controllers\API\TaskSummaryController;
