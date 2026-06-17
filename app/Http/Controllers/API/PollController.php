@@ -20,9 +20,9 @@ class PollController extends Controller
     public function getCompanyUsers($companyId)
     {
         $company = Company::findOrFail($companyId);
-        $ownerId = $company->user_id;
+        $ownerId = $company->user_id; // 🔥 Владелец этой конкретной компании
 
-        // Получаем владельца
+        // Получаем владельца этой компании
         $owner = \App\Models\User::find($ownerId);
 
         // Получаем всех пользователей из pivot
@@ -32,7 +32,7 @@ class PollController extends Controller
 
         $result = [];
 
-        // Добавляем владельца первым
+        // 🔥 Добавляем владельца этой компании (если он есть)
         if ($owner) {
             $result[] = [
                 'id' => $owner->id,
@@ -43,7 +43,7 @@ class PollController extends Controller
             ];
         }
 
-        // Добавляем остальных пользователей (исключая владельца)
+        // 🔥 Добавляем остальных пользователей (исключая владельца этой компании)
         foreach ($pivotUsers as $user) {
             if ($user->id !== $ownerId) {
                 $result[] = [

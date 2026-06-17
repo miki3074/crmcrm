@@ -1,6 +1,6 @@
 <!-- resources/js/components/PollCreateModal.vue -->
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
@@ -32,37 +32,64 @@ const deselectAll = () => {
 const loadUsers = async () => {
     isLoading.value = true
     try {
+        // Получаем данные о компании (владельца)
+        const companyResponse = await axios.get(`/api/companies/${props.companyId}`)
+        const ownerId = companyResponse.data.user_id
+        const companyName = companyResponse.data.name
+
+        console.log(`🏢 Компания: ${companyName}`)
+        console.log(`👑 Владелец ID: ${ownerId}`)
+
+        // Получаем всех пользователей компании
         const response = await axios.get(`/api/companies/${props.companyId}/users`)
 
-        // Преобразуем данные
-        let formattedUsers = response.data.map(user => ({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.pivot?.role || 'member',
-            is_owner: user.pivot?.role === 'owner' || user.id === 6 // Если id=6 - это владелец
-        }))
+        console.log('📊 Данные от API:', response.data)
 
-        // 🔥 ПРИНУДИТЕЛЬНО добавляем владельца с ID=6
-        const ownerExists = formattedUsers.some(u => u.id === 6)
-        if (!ownerExists) {
-            formattedUsers.push({
-                id: 6,
-                name: 'miki3',
-                email: 'miki3@mail.ru',
-                role: 'owner',
-                is_owner: true
-            })
+        // 🔥 Преобразуем данные, определяя владельца по ID из компании
+        let formattedUsers = response.data.map(user => {
+            const isOwner = user.id === ownerId
+
+            return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: isOwner ? 'owner' : (user.pivot?.role || user.role || 'member'),
+                is_owner: isOwner
+            }
+        })
+
+        // 🔥 Проверяем, есть ли владелец в списке
+        const ownerExists = formattedUsers.some(u => u.id === ownerId)
+
+        if (!ownerExists && ownerId) {
+            // Если владельца нет в списке - добавляем
+            try {
+                const ownerResponse = await axios.get(`/api/users/${ownerId}`)
+                formattedUsers.push({
+                    id: ownerResponse.data.id,
+                    name: ownerResponse.data.name,
+                    email: ownerResponse.data.email,
+                    role: 'owner',
+                    is_owner: true
+                })
+                console.log('👑 Владелец добавлен вручную:', ownerResponse.data.name)
+            } catch (error) {
+                console.warn('Не удалось получить данные владельца:', error)
+            }
         }
 
+        console.log('📊 Преобразованные пользователи:', formattedUsers)
+
         users.value = formattedUsers
+
+        // По умолчанию выбираем всех участников
         form.value.participants = users.value.map(u => u.id)
 
-        console.log('✅ Пользователи загружены:', users.value)
-        console.log('👑 Владелец:', users.value.find(u => u.is_owner))
+        console.log('✅ Загружено пользователей:', users.value.length)
+        console.log('👑 Владелец компании:', users.value.find(u => u.is_owner)?.name || 'Не найден')
     } catch (error) {
-        console.error('Ошибка:', error)
-        alert('Не удалось загрузить участников')
+        console.error('Ошибка загрузки:', error)
+        alert('Не удалось загрузить участников компании')
     } finally {
         isLoading.value = false
     }
@@ -211,11 +238,14 @@ onMounted(() => {
                                 </label>
                             </div>
 
+                            <div class="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                              
+                            </div>
                         </div>
 
-                        <!-- Отладка: показываем список выбранных -->
+                        <!-- Информация о выбранных участниках -->
                         <div v-if="form.participants.length > 0" class="text-xs text-slate-400 mt-2 p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
-                            Выбрано: {{ form.participants.length }} участников
+                            Выбрано: <span class="font-medium text-slate-700 dark:text-slate-300">{{ form.participants.length }}</span> участников
                             <span class="ml-2">
                                 ({{ users.filter(u => form.participants.includes(u.id)).map(u => u.name).join(', ') }})
                             </span>

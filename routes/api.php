@@ -92,6 +92,22 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::middleware('auth:sanctum')->group(function () {
+    // ... другие маршруты ...
+
+    // 🔥 Добавляем маршрут для получения пользователя по ID
+    Route::get('/users/{id}', function ($id) {
+        $user = \App\Models\User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+        ]);
+    });
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     // Получить участников компании
