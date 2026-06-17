@@ -239,7 +239,7 @@ onMounted(() => {
                             </div>
 
                             <div class="text-xs text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
-                              
+
                             </div>
                         </div>
 
