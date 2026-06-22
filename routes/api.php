@@ -86,7 +86,7 @@ Route::post('/email/verification/send', [EmailVerificationController::class, 'se
 Route::post('/email/verification/verify', [EmailVerificationController::class, 'verifyCode']);
 Route::get('/email/verification/status', [EmailVerificationController::class, 'checkVerificationStatus'])->middleware('auth:sanctum');
 
-
+Route::middleware('auth:sanctum')->get('/users/managers', [UserController::class, 'managers']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -108,6 +108,16 @@ Route::middleware('auth:sanctum')->group(function () {
         ]);
     });
 });
+
+
+
+Route::middleware('auth:sanctum')->post('/projects', [ProjectController::class, 'store']);
+Route::middleware('auth:sanctum')->get('/projects/{id}', [ProjectController::class, 'show']);
+Route::middleware('auth:sanctum')->get('/projects/{project}/employees', [ProjectController::class, 'employees']);
+
+Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyController::class, 'companiesWhereUserIsManager']);
+
+
 
 Route::middleware('auth:sanctum')->group(function () {
     // Получить участников компании
@@ -275,13 +285,13 @@ Route::middleware('auth:sanctum')->get('/employees', [EmployeeController::class,
 Route::middleware('auth:sanctum')->get('/employeesqw', [EmployeeController::class, 'employeesqw']);
 
 
-
-Route::middleware('auth:sanctum')->post('/projects', [ProjectController::class, 'store']);
-Route::middleware('auth:sanctum')->get('/projects/{id}', [ProjectController::class, 'show']);
-Route::middleware('auth:sanctum')->get('/projects/{project}/employees', [ProjectController::class, 'employees']);
-Route::middleware('auth:sanctum')->get('/users/managers', [UserController::class, 'managers']);
-Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyController::class, 'companiesWhereUserIsManager']);
-
+//
+//Route::middleware('auth:sanctum')->post('/projects', [ProjectController::class, 'store']);
+//Route::middleware('auth:sanctum')->get('/projects/{id}', [ProjectController::class, 'show']);
+//Route::middleware('auth:sanctum')->get('/projects/{project}/employees', [ProjectController::class, 'employees']);
+//Route::middleware('auth:sanctum')->get('/users/managers', [UserController::class, 'managers']);
+//Route::middleware('auth:sanctum')->get('/dashboard/companies', [CompanyController::class, 'companiesWhereUserIsManager']);
+//
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/summary', [TaskSummaryController::class, 'index']);
