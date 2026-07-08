@@ -93,6 +93,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/users/for-attach', [EmployeeController::class, 'usersForAttach']);
+    Route::post('/employees/attach', [EmployeeController::class, 'attach']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
     // ... другие маршруты ...
 
     // 🔥 Добавляем маршрут для получения пользователя по ID
@@ -411,10 +416,10 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/users/for-attach', [EmployeeController::class, 'usersForAttach']);
-    Route::post('/employees/attach', [EmployeeController::class, 'attach']);
-});
+//Route::middleware('auth:sanctum')->group(function () {
+//    Route::get('/users/for-attach', [EmployeeController::class, 'usersForAttach']);
+//    Route::post('/employees/attach', [EmployeeController::class, 'attach']);
+//});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{task}/checklists', [TaskChecklistController::class, 'index']);

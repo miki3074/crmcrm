@@ -169,16 +169,37 @@ class PollController extends Controller
         $user = Auth::user();
         $company = $poll->company;
 
-        $poll->responded_count = $poll->participants->where('has_responded', true)->count();
-        $poll->is_creator = $poll->created_by === $user->id;
-        $poll->is_participant = $poll->participants->where('user_id', $user->id)->isNotEmpty();
-        $poll->can_respond = $poll->is_participant &&
-            $poll->status === 'active';
-        $poll->current_user_id = $user->id;
+        // Проверяем права пользователя
+        $isCreator = $poll->created_by === $user->id;
+        $isCompanyOwner = $company->user_id === $user->id;
+        $isParticipant = $poll->participants->where('user_id', $user->id)->isNotEmpty();
 
-        // 🔥 Может ли пользователь управлять опросом (добавлять участников)
-        $poll->can_manage = $poll->created_by === $user->id || $company->user_id === $user->id;
+        // 🔥 ФИЛЬТРУЕМ ПРОБЛЕМЫ:
+        // - Если создатель или владелец компании - видят все проблемы
+        // - Если обычный участник - видит только свои проблемы
+        $problems = $poll->problems;
+
+        if (!$isCreator && !$isCompanyOwner) {
+            // Обычный пользователь видит только свои проблемы
+            $problems = $problems->filter(function ($problem) use ($user) {
+                return $problem->user_id === $user->id;
+            });
+        }
+
+        // Обновляем коллекцию проблем
+        $poll->setRelation('problems', $problems->values());
+
+        // Добавляем дополнительные поля
+        $poll->responded_count = $poll->participants->where('has_responded', true)->count();
+        $poll->is_creator = $isCreator;
+        $poll->is_participant = $isParticipant;
+        $poll->can_respond = $isParticipant && $poll->status === 'active';
+        $poll->current_user_id = $user->id;
+        $poll->can_manage = $isCreator || $isCompanyOwner;
         $poll->can_delete = $poll->can_manage;
+
+        // 🔥 Добавляем флаг, показывает ли пользователь все ответы или только свои
+        $poll->show_all_answers = $isCreator || $isCompanyOwner;
 
         return response()->json($poll);
     }

@@ -46,6 +46,14 @@ const loadPoll = async () => {
                 newComments.value[problem.id] = ''
             })
         }
+
+        console.log('📊 Загружен опрос:', {
+            title: poll.value.title,
+            problems_count: poll.value.problems?.length || 0,
+            show_all_answers: poll.value.show_all_answers,
+            is_creator: poll.value.is_creator,
+            is_participant: poll.value.is_participant
+        })
     } catch (error) {
         console.error('Ошибка загрузки опроса:', error)
         alert('Не удалось загрузить опрос')
@@ -387,9 +395,30 @@ const canManagePoll = computed(() => {
     return poll.value?.can_manage || false
 })
 
+// 🔥 Показывать ли все ответы (для создателя и владельца)
+const showAllAnswers = computed(() => {
+    return poll.value?.show_all_answers || false
+})
+
 // Проверка, является ли пользователь автором
 const isAuthor = (item) => {
     return item.user_id === poll.value?.current_user_id
+}
+
+// 🔥 Получить отображаемое имя для проблемы
+const getProblemDisplayName = (problem) => {
+    if (showAllAnswers.value) {
+        return problem.user?.name || 'Неизвестный'
+    }
+    return 'Вы' // Если пользователь видит только свои ответы
+}
+
+// 🔥 Показать ли проблему (для обычных пользователей - только свои)
+const shouldShowProblem = (problem) => {
+    if (showAllAnswers.value) {
+        return true // Создатель и владелец видят все
+    }
+    return isAuthor(problem) // Обычный пользователь видит только свои
 }
 
 // Обработка Enter для комментариев
@@ -596,7 +625,7 @@ onMounted(() => {
                     <!-- Список проблем -->
                     <div>
                         <h4 class="font-bold text-lg mb-3 flex items-center gap-2">
-                            <span>💡</span> Все проблемы и решения
+                            <span>💡</span> Проблемы и решения
                             <span class="text-sm font-normal text-slate-500">
                                 ({{ poll.problems?.length || 0 }})
                             </span>
