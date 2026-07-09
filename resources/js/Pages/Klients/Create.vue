@@ -168,7 +168,7 @@ const submit = () => {
                     </div>
                 </div>
 
-                <pre class="text-[10px] text-red-500">{{ props.colleagues }}</pre>
+<!--                <pre class="text-[10px] text-red-500">{{ props.colleagues }}</pre>-->
 
                 <div class="bg-white p-6 rounded-lg shadow-sm mt-6 border-l-4 border-yellow-500">
                     <h2 class="text-lg font-semibold mb-4 text-gray-700">Настройка доступа</h2>

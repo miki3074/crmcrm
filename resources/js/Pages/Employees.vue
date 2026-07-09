@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, Link, usePage } from '@inertiajs/vue3' // 🔥 Добавляем Link и usePage
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import axios from 'axios'
-import { usePage } from '@inertiajs/vue3'
+
+// 🔥 Исправляем - получаем page через usePage()
+const page = usePage()
 
 // базовые настройки
 axios.defaults.withCredentials = true
@@ -11,10 +13,18 @@ axios.defaults.withCredentials = true
 // ===== state
 const { props } = usePage()
 
+const user = computed(() => page.props.auth.user)
+const userEmail = computed(() => user.value?.email || '')
+
 const loading = ref(false)
-const saving  = ref(false)
-const list    = ref([])          // сотрудники
-const companies = ref([])        // компании владельца
+const saving = ref(false)
+const list = ref([])
+const companies = ref([])
+
+// 🔥 Проверка прав на управление пользователями
+const canManageUsers = computed(() => {
+    return ['dir@npoenergoteh.ru', 'miki23074@gmail.com'].includes(userEmail.value)
+})
 
 // фильтры / поиск
 const q = ref('')
@@ -47,7 +57,6 @@ const filtered = computed(() => {
         rows = rows.filter(u => (u.role ?? 'employee') === roleFilter.value)
     }
     if (companyFilter.value !== 'all') {
-        // Фильтрация по company_id
         rows = rows.filter(u => String(u.company?.id) === String(companyFilter.value))
     }
     return rows
@@ -71,11 +80,11 @@ const fetchCompanies = async () => {
     const { data } = await axios.get('/api/companies')
     companies.value = data
 }
+
 const fetchEmployees = async () => {
     loading.value = true
     try {
         const { data } = await axios.get('/api/employees')
-
         list.value = data
     } finally {
         loading.value = false
@@ -275,7 +284,6 @@ const openUnifiedModal = async () => {
 }
 
 onMounted(async () => {
-    // await Promise.all([fetchCompanies(), fetchEmployees()])
     await Promise.all([loadOwnerCompanies(), fetchEmployees()])
 })
 </script>
@@ -293,6 +301,19 @@ onMounted(async () => {
                         Управление сотрудниками и их ролями
                     </p>
                 </div>
+
+                <Link
+                    v-if="canManageUsers"
+                    :href="route('admin.users.index')"
+                    class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-md hover:shadow-lg"
+                >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    Управление пользователями
+                </Link>
+
+
                 <button
                     class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-5 py-2.5 hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-sm hover:shadow-md font-medium"
                     @click="openUnifiedModal"
@@ -586,6 +607,16 @@ onMounted(async () => {
                     ? 'text-indigo-600 dark:text-indigo-400'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 ]" >В данный момент функция не доступна</h1>
+                            <Link
+                                v-if="canManageUsers"
+                                :href="route('admin.users.index')"
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-2"
+                            >
+
+                                Управление пользователями
+                            </Link>
+
+
 <!--                            <form @submit.prevent="submit" class="space-y-5">-->
 <!--                                <div>-->
 <!--                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">-->

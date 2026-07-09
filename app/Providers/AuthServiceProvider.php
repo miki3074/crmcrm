@@ -6,6 +6,8 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use App\Policies\KlientDealPolicy;
 use App\Models\KlientDeal;
+use App\Models\User;
+use App\Policies\UserPolicy;
 class AuthServiceProvider extends ServiceProvider
 {
     /**
@@ -21,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Subtask::class => \App\Policies\SubtaskPolicy::class,
         \App\Models\StorageFile::class => \App\Policies\StorageFilePolicy::class,
          \App\Models\SupportMessage::class => \App\Policies\SupportPolicy::class,
+        User::class => UserPolicy::class,
         KlientDeal::class => KlientDealPolicy::class,
 
     ];

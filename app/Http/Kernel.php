@@ -75,6 +75,7 @@ class Kernel extends HttpKernel
 
         'admin.only' => \App\Http\Middleware\AdminOnly::class,
          'support' => \App\Http\Middleware\SupportOnly::class,
+        'check.email' => \App\Http\Middleware\CheckUserEmail::class,
     ];
 
 

@@ -25,6 +25,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Support\AdminSupportController;
 use App\Http\Controllers\PollController;
 //use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +48,35 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/chat/groups/{group}/add', [ChatController::class, 'addMember']);
     Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('admin')->name('admin.')->group(function () {
+        // 🔥 Используем политику
+        Route::resource('users', AdminUserController::class)
+            ->middleware('can:viewAny,App\Models\User');
+
+        // Отдельные проверки для действий
+        Route::get('/users/create', [AdminUserController::class, 'create'])
+            ->name('users.create')
+            ->middleware('can:create,App\Models\User');
+
+        Route::post('/users', [AdminUserController::class, 'store'])
+            ->name('users.store')
+            ->middleware('can:create,App\Models\User');
+
+        Route::get('/users/{user}/edit', [AdminUserController::class, 'edit'])
+            ->name('users.edit')
+            ->middleware('can:update,user');
+
+        Route::put('/users/{user}', [AdminUserController::class, 'update'])
+            ->name('users.update')
+            ->middleware('can:update,user');
+
+        Route::delete('/users/{user}', [AdminUserController::class, 'destroy'])
+            ->name('users.destroy')
+            ->middleware('can:delete,user');
+    });
 });
 
 
