@@ -9,22 +9,16 @@ const props = defineProps({
 
 const emit = defineEmits(['updateProgress', 'uploadFiles', 'deleteFile'])
 
-
-
 const handleFile = (e) => emit('uploadFiles', e.target.files)
 
-// 1️⃣ Функция форматирования даты (Вариант 1: Native JS)
+// 1️⃣ Функция форматирования даты
 const formatDate = (isoString) => {
     if (!isoString) return '—'
     const date = new Date(isoString)
-
-    // Если дата некорректная, вернем как есть
     if (isNaN(date.getTime())) return isoString
-
-    // Настройка формата: "7 января 2026"
     return new Intl.DateTimeFormat('ru-RU', {
         day: 'numeric',
-        month: 'long', // можно заменить на 'numeric' (01) или 'short' (янв.)
+        month: 'long',
         year: 'numeric'
     }).format(date)
 }
@@ -36,7 +30,6 @@ const progressColor = computed(() => {
     return 'bg-emerald-500'
 })
 
-
 const getFileName = (file) => {
     if (file.file_name) return file.file_name
     if (file.file_path) return file.file_path.split('/').pop()
@@ -47,23 +40,68 @@ const getFileIcon = (filename) => {
     if (!filename) return '📎'
     const ext = filename.split('.').pop().toLowerCase()
 
-    // Изображения
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️'
-    // Документы
     if (['pdf'].includes(ext)) return '📕'
     if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📄'
     if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊'
     if (['ppt', 'pptx', 'odp'].includes(ext)) return '📽️'
-    // Архивы
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
-    // Аудио 🎵
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵'
-    // Видео (на будущее)
     if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬'
-
     return '📎'
 }
+
+// 🔥 Функция открытия файла в Яндекс Документах
+const openInYandexViewer = (file) => {
+    // Получаем URL файла
+    const fileUrl = `${window.location.origin}/api/tasks/files/${file.id}`
+
+    // Получаем имя файла
+    const fileName = getFileName(file)
+
+    // Определяем расширение файла
+    const ext = fileName.split('.').pop().toLowerCase()
+
+    // 🔥 Яндекс Документы поддерживают: pdf, doc, docx, xls, xlsx, ppt, pptx, odt, ods, odp, txt, rtf
+    const supportedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'txt', 'rtf']
+
+    if (supportedExts.includes(ext)) {
+        // Открываем в Яндекс Документах
+        const viewerUrl = `https://docviewer.yandex.com/view/0/?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(fileName)}`
+        window.open(viewerUrl, '_blank')
+    } else {
+        // Если формат не поддерживается Яндекс Документами, пытаемся открыть напрямую
+        // Для аудио и изображений используем прямое открытие
+        const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma']
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp']
+
+        if (audioExts.includes(ext) || imageExts.includes(ext)) {
+            window.open(fileUrl, '_blank')
+        } else {
+            // Для остальных показываем предупреждение
+            alert(`Формат ${ext.toUpperCase()} не поддерживается для просмотра в браузере. Файл будет скачан.`)
+            window.open(fileUrl, '_blank')
+        }
+    }
+}
+
+// 🔥 Проверка, поддерживается ли файл Яндекс Документами
+const isSupportedByYandexViewer = (file) => {
+    const fileName = getFileName(file)
+    const ext = fileName.split('.').pop().toLowerCase()
+    const supportedExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'txt', 'rtf']
+    return supportedExts.includes(ext)
+}
 </script>
+
+<style scoped>
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
 
 <template>
     <div class="space-y-6">
@@ -148,6 +186,8 @@ const getFileIcon = (filename) => {
 
             <div v-if="task?.files?.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
                 <div v-for="f in task.files" :key="f.id" class="group relative aspect-square bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center p-4 transition hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500/30">
+
+                    <!-- Кнопка удаления -->
                     <button
                         v-if="canUpload"
                         @click="$emit('deleteFile', f.id)"
@@ -157,15 +197,44 @@ const getFileIcon = (filename) => {
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
 
+                    <!-- 🔥 Кнопка просмотра (Яндекс Документы) -->
+                    <button
+                        @click="openInYandexViewer(f)"
+                        class="absolute top-2 left-2 p-1.5 rounded-full bg-white dark:bg-gray-800 text-gray-400 hover:text-blue-500 shadow-sm opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
+                        title="Открыть в просмотрщике"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+
+                    <!-- Иконка файла -->
                     <div class="text-4xl mb-2 filter drop-shadow-sm transition-transform group-hover:scale-110">
                         {{ getFileIcon(getFileName(f)) }}
                     </div>
 
+                    <!-- Ссылка на скачивание -->
                     <a :href="`/api/tasks/files/${f.id}`" target="_blank"
-                       class="text-xs text-center font-medium text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 break-all stretched-link"
+                       class="text-xs text-center font-medium text-gray-600 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2 break-all"
                        :title="getFileName(f)">
                         {{ getFileName(f) }}
                     </a>
+
+                    <!-- 🔥 Кнопки действий под файлом -->
+                    <div class="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a :href="`/api/tasks/files/${f.id}`" target="_blank"
+                           class="text-xs px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+                           title="Скачать файл">
+                            ⬇️ Скачать
+                        </a>
+                        <button
+                            @click="openInYandexViewer(f)"
+                            class="text-xs px-2 py-1 bg-green-500 hover:bg-green-600 text-white rounded transition"
+                            title="Открыть в браузере">
+                            👁️ Просмотр
+                        </button>
+                    </div>
                 </div>
             </div>
 

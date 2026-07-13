@@ -398,6 +398,19 @@ Route::middleware('auth:sanctum')->prefix('storage')->group(function () {
 
 });
 
+
+Route::get('/public/files/{file}', function ($fileId) {
+    $file = \App\Models\TaskFile::findOrFail($fileId);
+
+    // Проверяем, что файл существует
+    if (!Storage::disk('public')->exists($file->file_path)) {
+        abort(404);
+    }
+
+    // Возвращаем файл для просмотра
+    return Storage::disk('public')->response($file->file_path, $file->file_name);
+})->name('public.file');
+
 // routes/api.php
 Route::patch('/tasks/{task}/complete', [TaskController::class, 'complete'])->middleware('auth:sanctum');
 
@@ -411,7 +424,14 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('auth:sanctum');
 
     Route::put('/files/{file}/approve', [TaskController::class, 'approve']);
+
     Route::put('/files/{file}/reject', [TaskController::class, 'reject']);
+    Route::post('/files/{file}/comments', [TaskController::class, 'addComment']);
+    Route::get('/files/{file}/comments', [TaskController::class, 'getComments']);
+    Route::put('/file-comments/{comment}', [TaskController::class, 'updateComment']);
+    Route::delete('/file-comments/{comment}', [TaskController::class, 'deleteComment']);
+
+
     Route::post('/files/{file}/replace', [TaskController::class, 'replace']);
 });
 

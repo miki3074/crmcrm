@@ -11,19 +11,30 @@ const emit = defineEmits(['refresh'])
 
 // === СОСТОЯНИЕ ===
 const uploading = ref(false)
-const requiresApproval = ref(true) // Чекбокс "На согласование"
+const requiresApproval = ref(true)
 
 // Модалка отказа
 const rejectModalOpen = ref(false)
 const fileToReject = ref(null)
-const rejectReason = ref('')
+const rejectComment = ref('')
+
+// Состояние для комментариев
+const newComment = ref('')
+const commentingFileId = ref(null)
+const isSendingComment = ref(false)
 
 // Логика разворачивания комментариев
-const expandedComments = ref(new Set()) // Используем Set для удобства
+const expandedComments = ref(new Set())
 
 // === ПРАВА ===
 const isExecutor = computed(() => props.task.executors?.some(u => u.id === props.currentUser.id))
 const isResponsible = computed(() => props.task.responsibles?.some(u => u.id === props.currentUser.id))
+const isCreator = computed(() => props.task.creator_id === props.currentUser.id)
+
+// 🔥 Может ли пользователь заменять файл (исполнитель ИЛИ ответственный)
+const canReplaceFile = computed(() => {
+    return isExecutor.value || isResponsible.value
+})
 
 // === COMPUTED: Списки файлов ===
 const approvalFiles = computed(() => props.task.files?.filter(f => f.status !== 'none') || [])
@@ -37,55 +48,41 @@ const formatDate = (dateString) => {
 }
 
 const getFileName = (file) => {
-    // 1. Если есть нормальное имя — возвращаем его
     if (file.file_name && file.file_name.trim() !== '') {
         return file.file_name;
     }
-
-    // 2. Если имени нет, пытаемся вырезать из пути
     if (file.file_path) {
         return file.file_path.split('/').pop();
     }
-
-    // 3. Если и пути нет — заглушка
     return 'Документ без названия';
-};
+}
 
 const getFileIcon = (file) => {
-    // Получаем имя через нашу новую функцию
-    const filename = getFileName(file);
-    const ext = filename.split('.').pop().toLowerCase();
+    const filename = getFileName(file)
+    const ext = filename.split('.').pop().toLowerCase()
 
-    // Изображения
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️';
-    // Документы
-    if (['pdf'].includes(ext)) return '📕';
-    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📘';
-    if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊';
-    if (['ppt', 'pptx', 'odp'].includes(ext)) return '📙';
-    // Архивы
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦';
-    // Аудио 🎵
-    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵';
-    // Видео
-    if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️'
+    if (['pdf'].includes(ext)) return '📕'
+    if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📘'
+    if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊'
+    if (['ppt', 'pptx', 'odp'].includes(ext)) return '📙'
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵'
+    if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬'
+    return '📄'
+}
 
-    return '📄';
-};
-
-// Проверка, является ли файл аудио
 const isAudioFile = (file) => {
-    const filename = getFileName(file);
-    const ext = filename.split('.').pop().toLowerCase();
-    return ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext);
-};
+    const filename = getFileName(file)
+    const ext = filename.split('.').pop().toLowerCase()
+    return ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)
+}
 
-// Проверка, является ли файл изображением
 const isImageFile = (file) => {
-    const filename = getFileName(file);
-    const ext = filename.split('.').pop().toLowerCase();
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
-};
+    const filename = getFileName(file)
+    const ext = filename.split('.').pop().toLowerCase()
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
+}
 
 // === UPLOAD ===
 const handleFileUpload = async (e) => {
@@ -116,31 +113,38 @@ const deleteFile = async (id) => {
 }
 
 const approve = async (file) => {
-    if(!confirm(`Утвердить документ "${file.file_name}"?`)) return
+    if(!confirm(`Утвердить документ "${getFileName(file)}"?`)) return
     try { await axios.put(`/api/files/${file.id}/approve`); emit('refresh') } catch (e) {}
 }
 
 // Отказ
 const openRejectModal = (file) => {
     fileToReject.value = file
-    rejectReason.value = ''
+    rejectComment.value = ''
     rejectModalOpen.value = true
 }
 
 const submitReject = async () => {
-    if(!rejectReason.value.trim()) return
+    if(!rejectComment.value.trim()) return
     try {
-        await axios.put(`/api/files/${fileToReject.value.id}/reject`, { reason: rejectReason.value })
+        await axios.put(`/api/files/${fileToReject.value.id}/reject`, { comment: rejectComment.value })
         rejectModalOpen.value = false
         emit('refresh')
     } catch (e) {}
 }
 
-// Замена файла
+// 🔥 Замена файла (доступна исполнителю и ответственному)
 const handleReplace = async (event, fileId) => {
     const file = event.target.files[0]
     if (!file) return
-    if (!confirm(`Заменить файл на "${file.name}"? Статус сбросится на "Ожидает проверки".`)) {
+
+    const fileName = file.name
+    const fileSize = (file.size / 1024 / 1024).toFixed(2)
+
+    if (!confirm(
+        `Заменить файл на "${fileName}" (${fileSize} MB)?\n\n` +
+        `⚠️ При замене файла будут удалены все комментарии и замечания.`
+    )) {
         event.target.value = null
         return
     }
@@ -149,10 +153,51 @@ const handleReplace = async (event, fileId) => {
     fd.append('file', file)
 
     try {
-        await axios.post(`/api/files/${fileId}/replace`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await axios.post(`/api/files/${fileId}/replace`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
         emit('refresh')
     } catch (e) {
         alert('Ошибка при замене')
+    }
+}
+
+// Добавление комментария к файлу
+const addFileComment = async (fileId) => {
+    if (!newComment.value.trim()) return
+
+    const file = approvalFiles.value.find(f => f.id === fileId)
+    if (!file) return
+
+    if (file.status !== 'rejected') {
+        alert('Комментарии можно оставлять только к файлам на доработке')
+        return
+    }
+
+    isSendingComment.value = true
+    try {
+        await axios.post(`/api/files/${fileId}/comments`, {
+            comment: newComment.value,
+            type: 'feedback'
+        })
+        newComment.value = ''
+        commentingFileId.value = null
+        emit('refresh')
+    } catch (err) {
+        alert('Ошибка добавления комментария')
+    } finally {
+        isSendingComment.value = false
+    }
+}
+
+// Удаление комментария
+const deleteComment = async (commentId) => {
+    if (!confirm('Удалить комментарий?')) return
+    try {
+        await axios.delete(`/api/file-comments/${commentId}`)
+        emit('refresh')
+    } catch (err) {
+        alert('Ошибка удаления комментария')
     }
 }
 
@@ -168,6 +213,12 @@ const getStatusBadge = (status) => {
         case 'rejected': return { text: 'На доработке', classes: 'bg-rose-100 text-rose-700 border-rose-200', icon: '🛑' }
         default: return { text: 'Ждет проверки', classes: 'bg-amber-50 text-amber-600 border-amber-200', icon: '⏳' }
     }
+}
+
+// Проверка, может ли пользователь комментировать
+const canComment = (file) => {
+    const isParticipant = isExecutor.value || isResponsible.value || isCreator.value
+    return isParticipant && file.status === 'rejected'
 }
 </script>
 
@@ -283,7 +334,8 @@ const getStatusBadge = (status) => {
                             </span>
 
                             <div class="flex items-center gap-2 mt-auto">
-                                <div v-if="(isExecutor || isResponsible) && file.status === 'pending'" class="flex gap-2">
+                                <!-- Кнопки утверждения/отказа (для исполнителя, ответственного и создателя) -->
+                                <div v-if="(isExecutor || isResponsible || isCreator) && file.status === 'pending'" class="flex gap-2">
                                     <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">
                                         ✔ Принять
                                     </button>
@@ -292,17 +344,31 @@ const getStatusBadge = (status) => {
                                     </button>
                                 </div>
 
-                                <!-- Для Исполнителя: Исправить -->
-                                <div v-if="isExecutor && file.status === 'rejected'">
-                                    <input type="file" :id="'replace-'+file.id" class="hidden" @change="(e) => handleReplace(e, file.id)">
-                                    <label :for="'replace-'+file.id" class="btn-action bg-blue-600 hover:bg-blue-700 text-white cursor-pointer">
+                                <!-- 🔥 Замена файла (для исполнителя ИЛИ ответственного) -->
+                                <div v-if="canReplaceFile && file.status === 'rejected'">
+                                    <input
+                                        type="file"
+                                        :id="'replace-'+file.id"
+                                        class="hidden"
+                                        @change="(e) => handleReplace(e, file.id)"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
+                                    >
+                                    <label
+                                        :for="'replace-'+file.id"
+                                        class="btn-action bg-blue-600 hover:bg-blue-700 text-white cursor-pointer flex items-center gap-2"
+                                        title="Заменить файл"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
                                         🔄 Заменить
                                     </label>
+
                                 </div>
 
-                                <!-- Удалить (всем, если не утверждено) -->
+                                <!-- Удалить (для исполнителя, ответственного и создателя) -->
                                 <button
-                                    v-if="(isExecutor || isResponsible) && file.status !== 'approved'"
+                                    v-if="(isExecutor || isResponsible || isCreator) && file.status !== 'approved'"
                                     @click="deleteFile(file.id)"
                                     class="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                                     title="Удалить"
@@ -313,8 +379,89 @@ const getStatusBadge = (status) => {
                         </div>
                     </div>
 
-                    <!-- Комментарий отказа -->
-                    <div v-if="file.status === 'rejected' && file.rejection_reason" class="mt-3 relative">
+                    <!-- КОММЕНТАРИИ К ФАЙЛУ -->
+                    <div class="mt-3">
+                        <!-- Существующие комментарии -->
+                        <div v-if="file.comments && file.comments.length > 0" class="space-y-2">
+                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                💬 Комментарии ({{ file.comments.length }}):
+                            </div>
+                            <div v-for="comment in file.comments" :key="comment.id"
+                                 class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-sm">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="font-medium text-gray-700 dark:text-gray-300">
+                                                {{ comment.user?.name || 'Неизвестный' }}
+                                            </span>
+                                            <span class="text-xs text-gray-400">
+                                                {{ formatDate(comment.created_at) }}
+                                            </span>
+                                            <span v-if="comment.type === 'rejection'"
+                                                  class="text-xs px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded-full">
+                                                🛑 Отказ
+                                            </span>
+                                            <span v-else-if="comment.type === 'feedback'"
+                                                  class="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
+                                                💡 Замечание
+                                            </span>
+                                        </div>
+                                        <p class="mt-1 text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ comment.comment }}</p>
+                                    </div>
+                                    <button
+                                        v-if="comment.user_id === currentUser.id"
+                                        @click="deleteComment(comment.id)"
+                                        class="text-gray-400 hover:text-red-500 transition text-xs ml-2 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                        title="Удалить комментарий"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Форма добавления комментария -->
+                        <div v-if="canComment(file)" class="mt-2">
+                            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                                <div class="text-xs text-amber-700 dark:text-amber-300 mb-2 flex items-center gap-1">
+                                    <span>✏️</span>
+                                    <span>Файл на доработке. Оставьте замечания для исполнителя:</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input
+                                        type="text"
+                                        v-model="newComment"
+                                        placeholder="Напишите замечание..."
+                                        class="flex-1 px-3 py-2 text-sm border border-amber-300 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                        @keydown.enter="addFileComment(file.id)"
+                                    />
+                                    <button
+                                        @click="addFileComment(file.id)"
+                                        :disabled="isSendingComment"
+                                        class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {{ isSendingComment ? '...' : 'Отправить' }}
+                                    </button>
+                                </div>
+                                <div class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                    <kbd class="px-1 py-0.5 bg-amber-100 dark:bg-amber-800 rounded text-xs">Enter</kbd> - отправить
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else-if="file.status !== 'rejected' && (isExecutor || isResponsible || isCreator)"
+                             class="text-xs text-gray-400 italic mt-1">
+                            💡 Комментарии можно оставлять только к файлам на доработке
+                        </div>
+
+                        <div v-else-if="!canComment(file) && file.status === 'rejected'"
+                             class="text-xs text-gray-400 italic mt-1">
+                            💡 Только участники задачи могут оставлять комментарии
+                        </div>
+                    </div>
+
+                    <!-- Старый rejection_reason (для обратной совместимости) -->
+                    <div v-if="file.status === 'rejected' && file.rejection_reason && (!file.comments || file.comments.length === 0)" class="mt-3 relative">
                         <div class="absolute -top-1.5 left-6 w-3 h-3 bg-rose-50 border-t border-l border-rose-200 rotate-45"></div>
                         <div class="bg-rose-50/80 border border-rose-200 text-rose-800 text-sm p-3 rounded-lg">
                             <span class="font-bold text-xs uppercase opacity-70 mr-2">Причина возврата:</span>
@@ -343,7 +490,7 @@ const getStatusBadge = (status) => {
                 <p class="text-sm text-gray-500 mb-4">Укажите, что именно нужно исправить.</p>
 
                 <textarea
-                    v-model="rejectReason"
+                    v-model="rejectComment"
                     class="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 h-32 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 dark:bg-gray-700 dark:text-white"
                     placeholder="Например: Неверная дата в шапке документа..."
                     autofocus

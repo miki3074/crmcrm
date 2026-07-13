@@ -10,8 +10,12 @@ use Illuminate\Http\Request;
 
 use App\Models\Task;
 use App\Models\TaskFile;
+use App\Models\FileComment;
+
 
 use Illuminate\Support\Facades\Storage;
+
+use Illuminate\Support\Facades\Auth;
 
 use Illuminate\Validation\ValidationException;
 
@@ -151,7 +155,13 @@ public function store(Request $request)
                 'project.managers:id,name',
                 'project.company:id,name',
                 'project.watchers:id,name',
-                'files:id,task_id,file_path,user_id,file_name,status,rejection_reason,created_at',
+                'files' => function ($query) {
+                    $query->select('id', 'task_id', 'file_path', 'user_id', 'file_name', 'status', 'rejection_reason', 'created_at', 'updated_at')
+                        ->with(['comments' => function ($q) {
+                            $q->with('user:id,name')
+                                ->orderBy('created_at', 'desc');
+                        }, 'user:id,name']);
+                },
                 'watcherstask:id,name',
                 'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
                 'subtasks.executors:id,name',
@@ -729,15 +739,132 @@ public function withSubtasks()
         $this->checkReviewerPermissions($file);
 
         $request->validate([
-            'reason' => 'required|string|max:1000', // Причина обязательна
+            'comment' => 'required|string|max:1000',
         ]);
 
+        // 🔥 Создаем комментарий вместо обновления rejection_reason
+        $comment = FileComment::create([
+            'task_file_id' => $file->id,
+            'user_id' => Auth::id(),
+            'comment' => $request->comment,
+            'type' => 'rejection'
+        ]);
+
+        // Обновляем статус файла
         $file->update([
-            'status' => 'rejected',
-            'rejection_reason' => $request->reason
+            'status' => 'rejected'
         ]);
 
-        return response()->json(['message' => 'Документ отправлен на доработку', 'file' => $file]);
+        return response()->json([
+            'message' => 'Документ отправлен на доработку',
+            'file' => $file->load('comments.user'),
+            'comment' => $comment->load('user')
+        ]);
+    }
+
+    /**
+     * Добавить комментарий к файлу (для всех пользователей)
+     */
+    public function addComment(Request $request, TaskFile $file)
+    {
+        $request->validate([
+            'comment' => 'required|string|max:1000',
+            'type' => 'nullable|in:rejection,feedback,note'
+        ]);
+
+        // Проверяем, может ли пользователь комментировать
+        // (например, если он связан с задачей)
+        $task = $file->task;
+        $user = Auth::user();
+
+        // Проверяем, является ли пользователь участником задачи
+        $isParticipant = $task->executors()->where('user_id', $user->id)->exists() ||
+            $task->responsibles()->where('user_id', $user->id)->exists() ||
+            $task->creator_id === $user->id;
+
+        if (!$isParticipant) {
+            return response()->json([
+                'message' => 'Вы не можете комментировать этот файл'
+            ], 403);
+        }
+
+        $comment = FileComment::create([
+            'task_file_id' => $file->id,
+            'user_id' => $user->id,
+            'comment' => $request->comment,
+            'type' => $request->type ?? 'feedback'
+        ]);
+
+        // Если файл был на доработке и его статус 'rejected',
+        // можно автоматически менять статус при новом комментарии?
+        // Но лучше оставить как есть
+
+        return response()->json([
+            'message' => 'Комментарий добавлен',
+            'comment' => $comment->load('user')
+        ]);
+    }
+
+    /**
+     * Удалить комментарий (только свой)
+     */
+    public function deleteComment($commentId)
+    {
+        $comment = FileComment::findOrFail($commentId);
+        $user = Auth::user();
+
+        if ($comment->user_id !== $user->id) {
+            return response()->json([
+                'message' => 'Вы можете удалить только свои комментарии'
+            ], 403);
+        }
+
+        $comment->delete();
+
+        return response()->json([
+            'message' => 'Комментарий удален'
+        ]);
+    }
+
+    /**
+     * Обновить комментарий (только свой)
+     */
+    public function updateComment(Request $request, $commentId)
+    {
+        $comment = FileComment::findOrFail($commentId);
+        $user = Auth::user();
+
+        if ($comment->user_id !== $user->id) {
+            return response()->json([
+                'message' => 'Вы можете редактировать только свои комментарии'
+            ], 403);
+        }
+
+        $request->validate([
+            'comment' => 'required|string|max:1000'
+        ]);
+
+        $comment->update([
+            'comment' => $request->comment
+        ]);
+
+        return response()->json([
+            'message' => 'Комментарий обновлен',
+            'comment' => $comment->load('user')
+        ]);
+    }
+
+    /**
+     * Получить все комментарии к файлу
+     */
+    public function getComments(TaskFile $file)
+    {
+        $comments = $file->comments()
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($comments);
     }
 
     // Вспомогательный метод проверки прав
@@ -747,20 +874,41 @@ public function withSubtasks()
         $task = $file->task;
 
         // Проверяем, есть ли текущий юзер в списке ответственных задачи
-        // (Предполагается связь task -> belongsToMany -> responsibles)
         $isResponsible = $task->responsibles()->where('users.id', $user->id)->exists();
 
-        if (!$isResponsible) {
-            abort(403, 'Только ответственные за задачу могут согласовывать документы.');
+        // 🔥 Проверяем, есть ли текущий юзер в списке исполнителей задачи
+        $isExecutor = $task->executors()->where('users.id', $user->id)->exists();
+
+        // 🔥 Проверяем, является ли пользователь создателем задачи
+        $isCreator = $task->creator_id === $user->id;
+
+        // Разрешаем доступ если пользователь: ответственный, исполнитель или создатель
+        if (!$isResponsible && !$isExecutor && !$isCreator) {
+            abort(403, 'Только ответственные, исполнители или создатель задачи могут согласовывать документы.');
         }
     }
 
     public function replace(Request $request, TaskFile $file)
     {
         // Проверка прав: менять может только тот, кто загрузил, или исполнитель задачи
-        if (auth()->id() !== $file->user_id) {
-            // Можно добавить проверку на роль исполнителя, если нужно
-            // abort(403, 'Вы не можете заменить этот файл');
+        $user = auth()->user();
+
+        // Проверяем, что пользователь может заменить файл
+        $canReplace = ($file->user_id === $user->id);
+
+        // Если не автор, проверяем, является ли исполнителем задачи
+        if (!$canReplace) {
+            $task = $file->task;
+            $isExecutor = $task->executors()->where('user_id', $user->id)->exists();
+            $isResponsible = $task->responsibles()->where('user_id', $user->id)->exists();
+            $isCreator = $task->creator_id === $user->id;
+            $canReplace = $isExecutor || $isResponsible || $isCreator;
+        }
+
+        if (!$canReplace) {
+            return response()->json([
+                'message' => 'Вы не можете заменить этот файл'
+            ], 403);
         }
 
         $request->validate([
@@ -780,12 +928,21 @@ public function withSubtasks()
         // 3. Обновляем запись в БД
         $file->update([
             'file_path' => $path,
-            'file_name' => $originalName, // Обновляем имя на новое
-            'status' => 'pending',        // 👈 Сбрасываем статус на "На проверке"
-            'rejection_reason' => null,   // Очищаем причину отказа
+            'file_name' => $originalName,
+            'status' => 'pending',
+            'rejection_reason' => null,
         ]);
 
-        return response()->json(['message' => 'Файл обновлен', 'file' => $file]);
+        // 🔥 4. Удаляем все комментарии к этому файлу
+        // Проверяем, существует ли отношение comments
+        if (method_exists($file, 'comments')) {
+            $file->comments()->delete();
+        }
+
+        return response()->json([
+            'message' => 'Файл обновлен. Все комментарии и замечания удалены.',
+            'file' => $file->fresh()->load('comments')
+        ]);
     }
 
 
