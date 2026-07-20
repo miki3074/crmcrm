@@ -86,6 +86,7 @@ Route::post('/email/verification/send', [EmailVerificationController::class, 'se
 Route::post('/email/verification/verify', [EmailVerificationController::class, 'verifyCode']);
 Route::get('/email/verification/status', [EmailVerificationController::class, 'checkVerificationStatus'])->middleware('auth:sanctum');
 
+
 Route::middleware('auth:sanctum')->get('/users/managers', [UserController::class, 'managers']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

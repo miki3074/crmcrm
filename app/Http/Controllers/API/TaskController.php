@@ -200,41 +200,90 @@ public function updateProgress(Request $request, Task $task)
 
     public function addFiles(Request $request, Task $task)
     {
-        // Проверка прав
         $this->authorize('addFiles', $task);
 
-        // 1️⃣ Валидация файлов
+        $allowedExtensions = [
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'ppt',
+            'pptx',
+            'zip',
+            'rar',
+            'mp3',
+            'wav',
+            'ogg',
+            'flac',
+            'm4a',
+            'aac',
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'webp',
+        ];
+
         $request->validate([
-            'files.*' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,zip,rar,mp3,wav,ogg,flac,m4a,aac|max:102400', // увеличен лимит до 100 МБ
+            'files' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'files.*' => [
+                'required',
+                'file',
+                'max:102400',
+
+                function ($attribute, $file, $fail) use ($allowedExtensions) {
+                    $extension = strtolower(
+                        $file->getClientOriginalExtension()
+                    );
+
+                    if (!in_array($extension, $allowedExtensions, true)) {
+                        $fail(
+                            'Недопустимый формат файла: ' .
+                            $file->getClientOriginalName()
+                        );
+                    }
+                },
+            ],
+
+            'requires_approval' => [
+                'nullable',
+                'boolean',
+            ],
         ], [
+            'files.required' => 'Выберите хотя бы один файл',
+            'files.array' => 'Поле files должно быть массивом',
+            'files.min' => 'Выберите хотя бы один файл',
+            'files.*.required' => 'Файл не был передан',
+            'files.*.file' => 'Загруженный объект не является файлом',
             'files.*.max' => 'Файл не должен превышать 100 МБ',
-            'files.*.mimes' => 'Разрешены форматы: PDF, DOC, XLS, PPT, ZIP, RAR, MP3, WAV, OGG, FLAC, M4A, AAC',
         ]);
 
-        $requiresApproval = $request->boolean('requires_approval');
-        $status = $requiresApproval ? 'pending' : 'none';
+        $status = $request->boolean('requires_approval')
+            ? 'pending'
+            : 'none';
 
-        // 2️⃣ Обработка каждого файла
-        if ($request->hasFile('files')) {
-            foreach ($request->file('files') as $file) {
+        foreach ($request->file('files', []) as $file) {
+            $originalName = $file->getClientOriginalName();
 
-                // Оригинальное имя
-                $originalName = $file->getClientOriginalName();
+            $path = $file->store('task_files', 'public');
 
-                // Сохраняем в storage/app/public/task_files
-                $path = $file->storeAs('task_files', $originalName, 'public');
-
-                // Добавляем запись в БД
-                $task->files()->create([
-                    'file_path' => $path,
-                    'file_name' => $originalName,
-                    'user_id' => auth()->id(),
-                    'status' => $status,
-                ]);
-            }
+            $task->files()->create([
+                'file_path' => $path,
+                'file_name' => $originalName,
+                'user_id' => auth()->id(),
+                'status' => $status,
+            ]);
         }
 
-        return back()->with('success', 'Файлы успешно загружены');
+        return response()->json([
+            'message' => 'Файлы успешно загружены',
+        ]);
     }
 
 
@@ -944,6 +993,8 @@ public function withSubtasks()
             'file' => $file->fresh()->load('comments')
         ]);
     }
+
+
 
 
     public function restore($id)

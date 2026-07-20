@@ -4,7 +4,7 @@ import axios from 'axios'
 
 const props = defineProps({
     task: Object,
-    currentUser: Object
+    currentUser: Object,
 })
 
 const emit = defineEmits(['refresh'])
@@ -13,501 +13,997 @@ const emit = defineEmits(['refresh'])
 const uploading = ref(false)
 const requiresApproval = ref(true)
 
-// Модалка отказа
+// Модальное окно отказа
 const rejectModalOpen = ref(false)
 const fileToReject = ref(null)
 const rejectComment = ref('')
 
-// Состояние для комментариев
+// Комментарии
 const newComment = ref('')
 const commentingFileId = ref(null)
 const isSendingComment = ref(false)
 
-// Логика разворачивания комментариев
+// Разворачивание старых комментариев
 const expandedComments = ref(new Set())
 
 // === ПРАВА ===
-const isExecutor = computed(() => props.task.executors?.some(u => u.id === props.currentUser.id))
-const isResponsible = computed(() => props.task.responsibles?.some(u => u.id === props.currentUser.id))
-const isCreator = computed(() => props.task.creator_id === props.currentUser.id)
+const isExecutor = computed(() =>
+    props.task.executors?.some(user => user.id === props.currentUser.id)
+)
 
-// 🔥 Может ли пользователь заменять файл (исполнитель ИЛИ ответственный)
-const canReplaceFile = computed(() => {
-    return isExecutor.value || isResponsible.value
-})
+const isResponsible = computed(() =>
+    props.task.responsibles?.some(user => user.id === props.currentUser.id)
+)
 
-// === COMPUTED: Списки файлов ===
-const approvalFiles = computed(() => props.task.files?.filter(f => f.status !== 'none') || [])
-const regularFiles = computed(() => props.task.files?.filter(f => f.status === 'none') || [])
+const isCreator = computed(() =>
+    props.task.creator_id === props.currentUser.id
+)
+
+const canReplaceFile = computed(() =>
+    isExecutor.value || isResponsible.value
+)
+
+// === СПИСКИ ФАЙЛОВ ===
+const activeFiles = computed(() =>
+    props.task.files?.filter(file =>
+        ['pending', 'rejected'].includes(file.status)
+    ) || []
+)
+
+const pendingFiles = computed(() =>
+    props.task.files?.filter(file => file.status === 'pending') || []
+)
+
+const rejectedFiles = computed(() =>
+    props.task.files?.filter(file => file.status === 'rejected') || []
+)
+
+const approvedFiles = computed(() =>
+    props.task.files?.filter(file => file.status === 'approved') || []
+)
+
+const regularFiles = computed(() =>
+    props.task.files?.filter(file => file.status === 'none') || []
+)
 
 // === FORMATTERS ===
 const formatDate = (dateString) => {
+    if (!dateString) return 'Дата не указана'
+
     return new Date(dateString).toLocaleDateString('ru-RU', {
-        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
     })
 }
 
 const getFileName = (file) => {
-    if (file.file_name && file.file_name.trim() !== '') {
-        return file.file_name;
+    if (file.file_name?.trim()) {
+        return file.file_name
     }
+
     if (file.file_path) {
-        return file.file_path.split('/').pop();
+        return file.file_path.split('/').pop()
     }
-    return 'Документ без названия';
+
+    return 'Документ без названия'
 }
 
 const getFileIcon = (file) => {
     const filename = getFileName(file)
-    const ext = filename.split('.').pop().toLowerCase()
+    const ext = filename.split('.').pop()?.toLowerCase()
 
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return '🖼️'
-    if (['pdf'].includes(ext)) return '📕'
+    if (ext === 'pdf') return '📕'
     if (['doc', 'docx', 'txt', 'rtf', 'odt'].includes(ext)) return '📘'
     if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) return '📊'
     if (['ppt', 'pptx', 'odp'].includes(ext)) return '📙'
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦'
     if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)) return '🎵'
     if (['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext)) return '🎬'
+
     return '📄'
 }
 
 const isAudioFile = (file) => {
-    const filename = getFileName(file)
-    const ext = filename.split('.').pop().toLowerCase()
+    const ext = getFileName(file).split('.').pop()?.toLowerCase()
+
     return ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'opus', 'wma'].includes(ext)
 }
 
 const isImageFile = (file) => {
-    const filename = getFileName(file)
-    const ext = filename.split('.').pop().toLowerCase()
+    const ext = getFileName(file).split('.').pop()?.toLowerCase()
+
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
 }
 
-// === UPLOAD ===
-const handleFileUpload = async (e) => {
-    const files = e.target.files
+const getStatusBadge = (status) => {
+    switch (status) {
+        case 'approved':
+            return {
+                text: 'Согласовано',
+                icon: '✅',
+                cardClasses:
+                    'border-emerald-200 bg-emerald-50/60 dark:border-emerald-900 dark:bg-emerald-900/10',
+                badgeClasses:
+                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+            }
+
+        case 'rejected':
+            return {
+                text: 'На доработке',
+                icon: '🛑',
+                cardClasses:
+                    'border-rose-200 bg-rose-50/60 dark:border-rose-900 dark:bg-rose-900/10',
+                badgeClasses:
+                    'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300',
+            }
+
+        default:
+            return {
+                text: 'Ждёт проверки',
+                icon: '⏳',
+                cardClasses:
+                    'border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-900/10',
+                badgeClasses:
+                    'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+            }
+    }
+}
+
+// === ЗАГРУЗКА ===
+const handleFileUpload = async (event) => {
+    const input = event.target
+    const files = Array.from(input.files || [])
+
     if (!files.length) return
 
     uploading.value = true
-    const fd = new FormData()
-    for (let i = 0; i < files.length; i++) fd.append('files[]', files[i])
-    fd.append('requires_approval', requiresApproval.value ? '1' : '0')
+
+    const formData = new FormData()
+
+    files.forEach(file => {
+        formData.append('files[]', file, file.name)
+    })
+
+    formData.append(
+        'requires_approval',
+        requiresApproval.value ? '1' : '0'
+    )
 
     try {
-        await axios.post(`/api/tasks/${props.task.id}/files`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        await axios.post(
+            `/api/tasks/${props.task.id}/files`,
+            formData
+        )
+
+        input.value = ''
+        requiresApproval.value = true
         emit('refresh')
-        e.target.value = null
-        requiresApproval.value = false
-    } catch (err) {
-        alert('Ошибка загрузки')
+    } catch (error) {
+        console.error('Ошибка загрузки:', error)
+        console.error('Ответ Laravel:', error.response?.data)
+
+        const errors = error.response?.data?.errors
+
+        if (errors) {
+            const messages = []
+
+            Object.entries(errors).forEach(([field, fieldMessages]) => {
+                const match = field.match(/^files\.(\d+)$/)
+                const index = match ? Number(match[1]) : null
+
+                const filename =
+                    index !== null && files[index]
+                        ? files[index].name
+                        : field
+
+                fieldMessages.forEach(message => {
+                    messages.push(`${filename}: ${message}`)
+                })
+            })
+
+            alert(messages.join('\n'))
+        } else {
+            alert(
+                error.response?.data?.message ||
+                'Ошибка загрузки файлов'
+            )
+        }
     } finally {
         uploading.value = false
     }
 }
 
-// === ACTIONS ===
+// === ДЕЙСТВИЯ С ФАЙЛАМИ ===
 const deleteFile = async (id) => {
-    if(!confirm('Удалить файл безвозвратно?')) return
-    try { await axios.delete(`/api/tasks/files/${id}`); emit('refresh') } catch(e) {}
+    if (!confirm('Удалить файл безвозвратно?')) return
+
+    try {
+        await axios.delete(`/api/tasks/files/${id}`)
+        emit('refresh')
+    } catch (error) {
+        console.error(error)
+        alert('Не удалось удалить файл')
+    }
 }
 
 const approve = async (file) => {
-    if(!confirm(`Утвердить документ "${getFileName(file)}"?`)) return
-    try { await axios.put(`/api/files/${file.id}/approve`); emit('refresh') } catch (e) {}
+    if (!confirm(`Утвердить документ "${getFileName(file)}"?`)) return
+
+    try {
+        await axios.put(`/api/files/${file.id}/approve`)
+        emit('refresh')
+    } catch (error) {
+        console.error(error)
+        alert('Не удалось согласовать файл')
+    }
 }
 
-// Отказ
 const openRejectModal = (file) => {
     fileToReject.value = file
     rejectComment.value = ''
     rejectModalOpen.value = true
 }
 
-const submitReject = async () => {
-    if(!rejectComment.value.trim()) return
-    try {
-        await axios.put(`/api/files/${fileToReject.value.id}/reject`, { comment: rejectComment.value })
-        rejectModalOpen.value = false
-        emit('refresh')
-    } catch (e) {}
+const closeRejectModal = () => {
+    rejectModalOpen.value = false
+    fileToReject.value = null
+    rejectComment.value = ''
 }
 
-// 🔥 Замена файла (доступна исполнителю и ответственному)
+const submitReject = async () => {
+    if (!rejectComment.value.trim() || !fileToReject.value) return
+
+    try {
+        await axios.put(
+            `/api/files/${fileToReject.value.id}/reject`,
+            {
+                comment: rejectComment.value.trim(),
+            }
+        )
+
+        closeRejectModal()
+        emit('refresh')
+    } catch (error) {
+        console.error(error)
+        alert('Не удалось вернуть файл на доработку')
+    }
+}
+
 const handleReplace = async (event, fileId) => {
-    const file = event.target.files[0]
+    const input = event.target
+    const file = input.files?.[0]
+
     if (!file) return
 
-    const fileName = file.name
     const fileSize = (file.size / 1024 / 1024).toFixed(2)
 
     if (!confirm(
-        `Заменить файл на "${fileName}" (${fileSize} MB)?\n\n` +
-        `⚠️ При замене файла будут удалены все комментарии и замечания.`
+        `Заменить файл на "${file.name}" (${fileSize} МБ)?\n\n` +
+        'При замене файла будут удалены все комментарии и замечания.'
     )) {
-        event.target.value = null
+        input.value = ''
         return
     }
 
-    const fd = new FormData()
-    fd.append('file', file)
+    const formData = new FormData()
+    formData.append('file', file)
 
     try {
-        await axios.post(`/api/files/${fileId}/replace`, fd, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        })
+        await axios.post(
+            `/api/files/${fileId}/replace`,
+            formData
+        )
+
+        input.value = ''
         emit('refresh')
-    } catch (e) {
-        alert('Ошибка при замене')
+    } catch (error) {
+        console.error(error)
+        alert(
+            error.response?.data?.message ||
+            'Ошибка при замене файла'
+        )
     }
 }
 
-// Добавление комментария к файлу
+// === КОММЕНТАРИИ ===
+const canComment = (file) => {
+    const isParticipant =
+        isExecutor.value ||
+        isResponsible.value ||
+        isCreator.value
+
+    return isParticipant && file.status === 'rejected'
+}
+
 const addFileComment = async (fileId) => {
-    if (!newComment.value.trim()) return
+    const comment = newComment.value.trim()
 
-    const file = approvalFiles.value.find(f => f.id === fileId)
-    if (!file) return
+    if (!comment) return
 
-    if (file.status !== 'rejected') {
+    const file = activeFiles.value.find(item => item.id === fileId)
+
+    if (!file || file.status !== 'rejected') {
         alert('Комментарии можно оставлять только к файлам на доработке')
         return
     }
 
+    commentingFileId.value = fileId
     isSendingComment.value = true
+
     try {
         await axios.post(`/api/files/${fileId}/comments`, {
-            comment: newComment.value,
-            type: 'feedback'
+            comment,
+            type: 'feedback',
         })
+
         newComment.value = ''
         commentingFileId.value = null
         emit('refresh')
-    } catch (err) {
+    } catch (error) {
+        console.error(error)
         alert('Ошибка добавления комментария')
     } finally {
         isSendingComment.value = false
     }
 }
 
-// Удаление комментария
 const deleteComment = async (commentId) => {
     if (!confirm('Удалить комментарий?')) return
+
     try {
         await axios.delete(`/api/file-comments/${commentId}`)
         emit('refresh')
-    } catch (err) {
+    } catch (error) {
+        console.error(error)
         alert('Ошибка удаления комментария')
     }
 }
 
-// === UI HELPERS ===
 const toggleComment = (id) => {
-    if (expandedComments.value.has(id)) expandedComments.value.delete(id)
-    else expandedComments.value.add(id)
-}
+    const updated = new Set(expandedComments.value)
 
-const getStatusBadge = (status) => {
-    switch (status) {
-        case 'approved': return { text: 'Согласовано', classes: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: '✅' }
-        case 'rejected': return { text: 'На доработке', classes: 'bg-rose-100 text-rose-700 border-rose-200', icon: '🛑' }
-        default: return { text: 'Ждет проверки', classes: 'bg-amber-50 text-amber-600 border-amber-200', icon: '⏳' }
+    if (updated.has(id)) {
+        updated.delete(id)
+    } else {
+        updated.add(id)
     }
+
+    expandedComments.value = updated
 }
 
-// Проверка, может ли пользователь комментировать
-const canComment = (file) => {
-    const isParticipant = isExecutor.value || isResponsible.value || isCreator.value
-    return isParticipant && file.status === 'rejected'
+const openFile = (file) => {
+    window.open(`/api/tasks/files/${file.id}`, '_blank')
 }
 </script>
 
 <template>
-    <div class="space-y-8">
-
-        <!-- 1. ЗОНА ЗАГРУЗКИ -->
-        <div class="relative group rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-gray-800 transition-colors p-6 text-center">
-            <h1 class="font-semibold text-gray-700 dark:text-gray-200">Файлы для которых требуется согласование</h1>
+    <div class="space-y-5">
+        <!-- КОМПАКТНАЯ ЗОНА ЗАГРУЗКИ -->
+        <section
+            class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+        >
             <input
-                type="file" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                type="file"
+                multiple
+                class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
-                @change="handleFileUpload" :disabled="uploading"
+                :disabled="uploading"
+                @change="handleFileUpload"
             >
 
-            <div v-if="uploading" class="animate-pulse flex flex-col items-center">
-                <svg class="w-8 h-8 text-blue-500 mb-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-sm text-gray-500">Загрузка файлов...</span>
-            </div>
+            <div class="flex min-h-[100px] items-center gap-4 p-4 sm:p-5">
+                <div
+                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                >
+                    <svg
+                        v-if="uploading"
+                        class="h-6 w-6 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        />
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
+                    </svg>
 
-            <div v-else class="flex flex-col items-center pointer-events-none">
-                <div class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-sm mb-3">
-                    <svg class="w-6 h-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                    <svg
+                        v-else
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 16V4m0 0L8 8m4-4 4 4M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"
+                        />
+                    </svg>
                 </div>
-                <h4 class="font-semibold text-gray-700 dark:text-gray-200">Нажмите или перетащите файлы</h4>
-                <p class="text-xs text-gray-400 mt-1">PDF, Office, аудио, изображения (до 100MB)</p>
+
+                <div class="min-w-0 flex-1">
+                    <h2 class="font-semibold text-gray-900 dark:text-white">
+                        {{ uploading ? 'Загрузка файлов…' : 'Добавить документы' }}
+                    </h2>
+
+                    <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                        Нажмите на блок или перетащите несколько файлов
+                    </p>
+
+                    <p class="truncate text-[11px] text-gray-400">
+                        PDF, Office, архивы, аудио и изображения · до 100 МБ
+                    </p>
+                </div>
+
+                <div
+                    class="hidden shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white sm:block"
+                >
+                    Выбрать файлы
+                </div>
+            </div>
+        </section>
+
+        <!-- СЧЁТЧИКИ -->
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                <div class="text-xs text-gray-500 dark:text-gray-400">В работе</div>
+                <div class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
+                    {{ activeFiles.length }}
+                </div>
             </div>
 
-            <!-- Переключатель -->
-            <div class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-white dark:bg-gray-700 px-3 py-1.5 rounded-full shadow-md border border-gray-200 dark:border-gray-600">
-                <input type="checkbox" id="chkApprove" v-model="requiresApproval" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
-                <label for="chkApprove" class="text-xs font-medium text-gray-700 dark:text-gray-200 select-none cursor-pointer">
-                    Требуется согласование
-                </label>
+            <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-900/10">
+                <div class="text-xs text-amber-700 dark:text-amber-300">Ожидают</div>
+                <div class="mt-1 text-xl font-bold text-amber-700 dark:text-amber-300">
+                    {{ pendingFiles.length }}
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3 dark:border-rose-900 dark:bg-rose-900/10">
+                <div class="text-xs text-rose-700 dark:text-rose-300">На доработке</div>
+                <div class="mt-1 text-xl font-bold text-rose-700 dark:text-rose-300">
+                    {{ rejectedFiles.length }}
+                </div>
+            </div>
+
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-900 dark:bg-emerald-900/10">
+                <div class="text-xs text-emerald-700 dark:text-emerald-300">Согласовано</div>
+                <div class="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-300">
+                    {{ approvedFiles.length }}
+                </div>
             </div>
         </div>
 
-        <!-- 2. ДОКУМЕНТЫ НА СОГЛАСОВАНИИ -->
-        <div v-if="approvalFiles.length > 0">
-            <h3 class="flex items-center gap-2 font-bold text-gray-800 dark:text-gray-200 mb-4">
-                <span>📋</span> Документооборот
-                <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-0.5 rounded-full">{{ approvalFiles.length }}</span>
-            </h3>
+        <!-- ДВЕ КОЛОНКИ -->
+        <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+            <!-- АКТИВНЫЕ ДОКУМЕНТЫ -->
+            <section
+                class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800"
+            >
+                <header
+                    class="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-700"
+                >
+                    <div>
+                        <h3 class="font-bold text-gray-900 dark:text-white">
+                            Документы в работе
+                        </h3>
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            Ожидают проверки или требуют исправлений
+                        </p>
+                    </div>
 
-            <div class="grid gap-4">
-                <div v-for="file in approvalFiles" :key="file.id"
-                     class="group relative bg-white dark:bg-gray-800 border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
-                     :class="getStatusBadge(file.status).classes">
+                    <span
+                        class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                    >
+                        {{ activeFiles.length }}
+                    </span>
+                </header>
 
-                    <div class="flex flex-col sm:flex-row gap-4 justify-between">
+                <div class="max-h-[700px] overflow-y-auto p-4 custom-scrollbar">
+                    <div
+                        v-if="activeFiles.length"
+                        class="space-y-3"
+                    >
+                        <article
+                            v-for="file in activeFiles"
+                            :key="file.id"
+                            class="rounded-xl border p-4 transition hover:shadow-sm"
+                            :class="getStatusBadge(file.status).cardClasses"
+                        >
+                            <div class="flex flex-col gap-4">
+                                <div class="flex items-start gap-3">
+                                    <button
+                                        type="button"
+                                        class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-2xl shadow-sm dark:bg-gray-700"
+                                        title="Открыть файл"
+                                        @click="openFile(file)"
+                                    >
+                                        {{ getFileIcon(file) }}
+                                    </button>
 
-                        <!-- Инфо о файле -->
-                        <div class="flex gap-3 flex-1">
-                            <div class="text-3xl select-none">{{ getFileIcon(file) }}</div>
-                            <div class="min-w-0 flex-1">
-                                <!-- Ссылка или плеер для аудио -->
-                                <div v-if="isAudioFile(file)">
-                                    <div class="font-bold truncate block text-gray-900 dark:text-white mb-2" :title="getFileName(file)">
-                                        {{ getFileName(file) }}
+                                    <div class="min-w-0 flex-1">
+                                        <div v-if="isAudioFile(file)">
+                                            <button
+                                                type="button"
+                                                class="block max-w-full truncate text-left text-sm font-bold text-gray-900 hover:text-blue-600 dark:text-white"
+                                                :title="getFileName(file)"
+                                                @click="openFile(file)"
+                                            >
+                                                {{ getFileName(file) }}
+                                            </button>
+
+                                            <audio
+                                                :src="`/api/tasks/files/${file.id}`"
+                                                controls
+                                                controlslist="nodownload"
+                                                class="mt-2 h-9 w-full"
+                                                preload="metadata"
+                                            >
+                                                Ваш браузер не поддерживает аудиоплеер
+                                            </audio>
+                                        </div>
+
+                                        <div v-else-if="isImageFile(file)">
+                                            <button
+                                                type="button"
+                                                class="block max-w-full truncate text-left text-sm font-bold text-gray-900 hover:text-blue-600 dark:text-white"
+                                                :title="getFileName(file)"
+                                                @click="openFile(file)"
+                                            >
+                                                {{ getFileName(file) }}
+                                            </button>
+
+                                            <img
+                                                :src="`/api/tasks/files/${file.id}`"
+                                                :alt="getFileName(file)"
+                                                class="mt-2 max-h-36 max-w-full cursor-pointer rounded-lg object-cover transition hover:opacity-90"
+                                                @click="openFile(file)"
+                                            >
+                                        </div>
+
+                                        <a
+                                            v-else
+                                            :href="`/api/tasks/files/${file.id}`"
+                                            target="_blank"
+                                            class="block truncate text-sm font-bold text-gray-900 hover:text-blue-600 hover:underline dark:text-white"
+                                            :title="getFileName(file)"
+                                        >
+                                            {{ getFileName(file) }}
+                                        </a>
+
+                                        <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                            <span>{{ file.user?.name || 'Неизвестный' }}</span>
+                                            <span>•</span>
+                                            <span>{{ formatDate(file.created_at) }}</span>
+                                            <template v-if="file.size">
+                                                <span>•</span>
+                                                <span>{{ (file.size / 1024 / 1024).toFixed(2) }} МБ</span>
+                                            </template>
+                                        </div>
                                     </div>
-                                    <audio
-                                        :src="`/api/tasks/files/${file.id}`"
-                                        controls
-                                        controlslist="nodownload"
-                                        class="w-full max-w-md h-10"
-                                        preload="metadata">
-                                        Ваш браузер не поддерживает аудиоплеер
-                                    </audio>
+
+                                    <span
+                                        class="shrink-0 rounded-full px-2 py-1 text-[10px] font-bold"
+                                        :class="getStatusBadge(file.status).badgeClasses"
+                                    >
+                                        {{ getStatusBadge(file.status).icon }}
+                                        {{ getStatusBadge(file.status).text }}
+                                    </span>
                                 </div>
 
-                                <!-- Для изображений показываем превью -->
-                                <div v-else-if="isImageFile(file)" class="mb-2">
-                                    <img
-                                        :src="`/api/tasks/files/${file.id}`"
-                                        :alt="getFileName(file)"
-                                        class="max-h-32 rounded-lg object-cover cursor-pointer hover:opacity-90 transition"
-                                        @click="window.open(`/api/tasks/files/${file.id}`, '_blank')"
-                                    />
+                                <!-- ДЕЙСТВИЯ -->
+                                <div class="flex flex-wrap items-center justify-end gap-2">
+                                    <template
+                                        v-if="(isExecutor || isResponsible || isCreator) && file.status === 'pending'"
+                                    >
+                                        <button
+                                            type="button"
+                                            class="btn-action bg-emerald-600 text-white hover:bg-emerald-700"
+                                            @click="approve(file)"
+                                        >
+                                            ✔ Принять
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="btn-action bg-rose-500 text-white hover:bg-rose-600"
+                                            @click="openRejectModal(file)"
+                                        >
+                                            ✖ Вернуть
+                                        </button>
+                                    </template>
+
+                                    <div
+                                        v-if="canReplaceFile && file.status === 'rejected'"
+                                    >
+                                        <input
+                                            :id="`replace-${file.id}`"
+                                            type="file"
+                                            class="hidden"
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
+                                            @change="event => handleReplace(event, file.id)"
+                                        >
+
+                                        <label
+                                            :for="`replace-${file.id}`"
+                                            class="btn-action cursor-pointer bg-blue-600 text-white hover:bg-blue-700"
+                                        >
+                                            🔄 Заменить
+                                        </label>
+                                    </div>
+
+                                    <button
+                                        v-if="(isExecutor || isResponsible || isCreator) && file.status !== 'approved'"
+                                        type="button"
+                                        class="btn-action bg-white text-rose-600 ring-1 ring-rose-200 hover:bg-rose-50 dark:bg-gray-800 dark:ring-rose-900 dark:hover:bg-rose-900/20"
+                                        @click="deleteFile(file.id)"
+                                    >
+                                        🗑 Удалить
+                                    </button>
                                 </div>
 
-                                <!-- Для остальных файлов - ссылка -->
-                                <a v-else
-                                   :href="`/api/tasks/files/${file.id}`"
-                                   target="_blank"
-                                   class="font-bold hover:underline truncate block text-gray-900 dark:text-white"
-                                   :title="getFileName(file)"
+                                <!-- КОММЕНТАРИИ -->
+                                <div
+                                    v-if="file.comments?.length"
+                                    class="space-y-2 border-t border-black/5 pt-3 dark:border-white/10"
+                                >
+                                    <div class="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        💬 Комментарии: {{ file.comments.length }}
+                                    </div>
+
+                                    <div
+                                        v-for="comment in file.comments"
+                                        :key="comment.id"
+                                        class="rounded-lg bg-white/70 p-3 text-sm dark:bg-gray-800/70"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span class="font-medium text-gray-700 dark:text-gray-200">
+                                                        {{ comment.user?.name || 'Неизвестный' }}
+                                                    </span>
+
+                                                    <span class="text-[11px] text-gray-400">
+                                                        {{ formatDate(comment.created_at) }}
+                                                    </span>
+
+                                                    <span
+                                                        v-if="comment.type === 'rejection'"
+                                                        class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] text-rose-700 dark:bg-rose-900/30 dark:text-rose-300"
+                                                    >
+                                                        Отказ
+                                                    </span>
+
+                                                    <span
+                                                        v-else-if="comment.type === 'feedback'"
+                                                        class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                                    >
+                                                        Замечание
+                                                    </span>
+                                                </div>
+
+                                                <p class="mt-1 whitespace-pre-wrap break-words text-gray-600 dark:text-gray-400">
+                                                    {{ comment.comment }}
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                v-if="comment.user_id === currentUser.id"
+                                                type="button"
+                                                class="rounded p-1 text-gray-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
+                                                title="Удалить комментарий"
+                                                @click="deleteComment(comment.id)"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ДОБАВЛЕНИЕ КОММЕНТАРИЯ -->
+                                <div
+                                    v-if="canComment(file)"
+                                    class="rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-800 dark:bg-amber-900/20"
+                                >
+                                    <div class="mb-2 text-xs text-amber-700 dark:text-amber-300">
+                                        Оставьте замечание для исполнителя
+                                    </div>
+
+                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                        <input
+                                            v-model="newComment"
+                                            type="text"
+                                            placeholder="Напишите замечание..."
+                                            class="min-w-0 flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-amber-500 dark:border-amber-700 dark:bg-gray-700 dark:text-white"
+                                            @keydown.enter="addFileComment(file.id)"
+                                        >
+
+                                        <button
+                                            type="button"
+                                            class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+                                            :disabled="isSendingComment && commentingFileId === file.id"
+                                            @click="addFileComment(file.id)"
+                                        >
+                                            {{
+                                                isSendingComment && commentingFileId === file.id
+                                                    ? 'Отправка...'
+                                                    : 'Отправить'
+                                            }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- СТАРАЯ ПРИЧИНА ОТКАЗА -->
+                                <div
+                                    v-if="
+                                        file.status === 'rejected' &&
+                                        file.rejection_reason &&
+                                        !file.comments?.length
+                                    "
+                                    class="rounded-lg border border-rose-200 bg-white/60 p-3 text-sm text-rose-800 dark:border-rose-800 dark:bg-gray-800/60 dark:text-rose-300"
+                                >
+                                    <span class="font-bold">Причина возврата:</span>
+
+                                    <span class="ml-1 whitespace-pre-wrap">
+                                        {{
+                                            expandedComments.has(file.id)
+                                                ? file.rejection_reason
+                                                : file.rejection_reason.slice(0, 100)
+                                        }}
+                                    </span>
+
+                                    <span
+                                        v-if="
+                                            !expandedComments.has(file.id) &&
+                                            file.rejection_reason.length > 100
+                                        "
+                                    >
+                                        ...
+                                    </span>
+
+                                    <button
+                                        v-if="file.rejection_reason.length > 100"
+                                        type="button"
+                                        class="ml-2 text-xs font-bold text-rose-600 hover:underline dark:text-rose-300"
+                                        @click="toggleComment(file.id)"
+                                    >
+                                        {{
+                                            expandedComments.has(file.id)
+                                                ? 'Свернуть'
+                                                : 'Читать далее'
+                                        }}
+                                    </button>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div
+                        v-else
+                        class="flex min-h-[260px] flex-col items-center justify-center px-4 text-center"
+                    >
+                        <div class="text-4xl">🎉</div>
+                        <div class="mt-3 font-semibold text-gray-700 dark:text-gray-200">
+                            Нет документов в работе
+                        </div>
+                        <p class="mt-1 max-w-xs text-sm text-gray-400">
+                            Все добавленные документы уже обработаны
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- СОГЛАСОВАННЫЕ ДОКУМЕНТЫ -->
+            <section
+                class="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm dark:border-emerald-900 dark:bg-gray-800"
+            >
+                <header
+                    class="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/60 px-5 py-4 dark:border-emerald-900 dark:bg-emerald-900/10"
+                >
+                    <div>
+                        <h3 class="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+                            <span>✅</span>
+                            Согласованные
+                        </h3>
+
+                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            Проверенные и принятые документы
+                        </p>
+                    </div>
+
+                    <span
+                        class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    >
+                        {{ approvedFiles.length }}
+                    </span>
+                </header>
+
+                <div class="max-h-[700px] overflow-y-auto p-4 custom-scrollbar">
+                    <div
+                        v-if="approvedFiles.length"
+                        class="space-y-2"
+                    >
+                        <article
+                            v-for="file in approvedFiles"
+                            :key="file.id"
+                            class="group flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/70 p-3 transition hover:border-emerald-200 hover:bg-emerald-50/60 dark:border-gray-700 dark:bg-gray-900/30 dark:hover:border-emerald-800"
+                        >
+                            <button
+                                type="button"
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-xl shadow-sm dark:bg-gray-700"
+                                title="Открыть файл"
+                                @click="openFile(file)"
+                            >
+                                {{ getFileIcon(file) }}
+                            </button>
+
+                            <div class="min-w-0 flex-1">
+                                <a
+                                    :href="`/api/tasks/files/${file.id}`"
+                                    target="_blank"
+                                    class="block truncate text-sm font-semibold text-gray-800 hover:text-emerald-700 dark:text-gray-100 dark:hover:text-emerald-300"
+                                    :title="getFileName(file)"
                                 >
                                     {{ getFileName(file) }}
                                 </a>
 
-                                <div class="flex flex-wrap items-center gap-2 text-xs opacity-75 mt-1">
-                                    <span>👤 {{ file.user?.name }}</span>
+                                <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
+                                    <span>{{ file.user?.name || 'Неизвестный' }}</span>
                                     <span>•</span>
-                                    <span>{{ formatDate(file.created_at) }}</span>
-                                    <span v-if="file.size" class="text-gray-400">• {{ (file.size / 1024 / 1024).toFixed(2) }} MB</span>
-                                </div>
+                                    <span>{{ formatDate(file.updated_at || file.created_at) }}</span>
 
-                                <!-- Статус бейдж (мобильный) -->
-                                <div class="sm:hidden mt-2">
-                                     <span class="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-white/50 border border-black/5">
-                                        <span class="mr-1">{{ getStatusBadge(file.status).icon }}</span>
-                                        {{ getStatusBadge(file.status).text }}
-                                    </span>
+                                    <template v-if="file.size">
+                                        <span>•</span>
+                                        <span>{{ (file.size / 1024 / 1024).toFixed(2) }} МБ</span>
+                                    </template>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Действия и Статус (Десктоп) -->
-                        <div class="flex flex-col items-end gap-2">
-                            <span class="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-white/50 border border-black/5 shadow-sm">
-                                <span class="mr-1.5">{{ getStatusBadge(file.status).icon }}</span>
-                                {{ getStatusBadge(file.status).text }}
-                            </span>
-
-                            <div class="flex items-center gap-2 mt-auto">
-                                <!-- Кнопки утверждения/отказа (для исполнителя, ответственного и создателя) -->
-                                <div v-if="(isExecutor || isResponsible || isCreator) && file.status === 'pending'" class="flex gap-2">
-                                    <button @click="approve(file)" class="btn-action bg-emerald-600 hover:bg-emerald-700 text-white">
-                                        ✔ Принять
-                                    </button>
-                                    <button @click="openRejectModal(file)" class="btn-action bg-rose-500 hover:bg-rose-600 text-white">
-                                        ✖ Вернуть
-                                    </button>
-                                </div>
-
-                                <!-- 🔥 Замена файла (для исполнителя ИЛИ ответственного) -->
-                                <div v-if="canReplaceFile && file.status === 'rejected'">
-                                    <input
-                                        type="file"
-                                        :id="'replace-'+file.id"
-                                        class="hidden"
-                                        @change="(e) => handleReplace(e, file.id)"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.mp3,.wav,.ogg,.flac,.m4a,.aac,.jpg,.jpeg,.png,.gif,.webp"
-                                    >
-                                    <label
-                                        :for="'replace-'+file.id"
-                                        class="btn-action bg-blue-600 hover:bg-blue-700 text-white cursor-pointer flex items-center gap-2"
-                                        title="Заменить файл"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                        </svg>
-                                        🔄 Заменить
-                                    </label>
-
-                                </div>
-
-                                <!-- Удалить (для исполнителя, ответственного и создателя) -->
-                                <button
-                                    v-if="(isExecutor || isResponsible || isCreator) && file.status !== 'approved'"
-                                    @click="deleteFile(file.id)"
-                                    class="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                    title="Удалить"
-                                >
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- КОММЕНТАРИИ К ФАЙЛУ -->
-                    <div class="mt-3">
-                        <!-- Существующие комментарии -->
-                        <div v-if="file.comments && file.comments.length > 0" class="space-y-2">
-                            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                                💬 Комментарии ({{ file.comments.length }}):
-                            </div>
-                            <div v-for="comment in file.comments" :key="comment.id"
-                                 class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-sm">
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <span class="font-medium text-gray-700 dark:text-gray-300">
-                                                {{ comment.user?.name || 'Неизвестный' }}
-                                            </span>
-                                            <span class="text-xs text-gray-400">
-                                                {{ formatDate(comment.created_at) }}
-                                            </span>
-                                            <span v-if="comment.type === 'rejection'"
-                                                  class="text-xs px-2 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded-full">
-                                                🛑 Отказ
-                                            </span>
-                                            <span v-else-if="comment.type === 'feedback'"
-                                                  class="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
-                                                💡 Замечание
-                                            </span>
-                                        </div>
-                                        <p class="mt-1 text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ comment.comment }}</p>
-                                    </div>
-                                    <button
-                                        v-if="comment.user_id === currentUser.id"
-                                        @click="deleteComment(comment.id)"
-                                        class="text-gray-400 hover:text-red-500 transition text-xs ml-2 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                                        title="Удалить комментарий"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Форма добавления комментария -->
-                        <div v-if="canComment(file)" class="mt-2">
-                            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                                <div class="text-xs text-amber-700 dark:text-amber-300 mb-2 flex items-center gap-1">
-                                    <span>✏️</span>
-                                    <span>Файл на доработке. Оставьте замечания для исполнителя:</span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <input
-                                        type="text"
-                                        v-model="newComment"
-                                        placeholder="Напишите замечание..."
-                                        class="flex-1 px-3 py-2 text-sm border border-amber-300 dark:border-amber-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                                        @keydown.enter="addFileComment(file.id)"
-                                    />
-                                    <button
-                                        @click="addFileComment(file.id)"
-                                        :disabled="isSendingComment"
-                                        class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {{ isSendingComment ? '...' : 'Отправить' }}
-                                    </button>
-                                </div>
-                                <div class="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                                    <kbd class="px-1 py-0.5 bg-amber-100 dark:bg-amber-800 rounded text-xs">Enter</kbd> - отправить
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-else-if="file.status !== 'rejected' && (isExecutor || isResponsible || isCreator)"
-                             class="text-xs text-gray-400 italic mt-1">
-                            💡 Комментарии можно оставлять только к файлам на доработке
-                        </div>
-
-                        <div v-else-if="!canComment(file) && file.status === 'rejected'"
-                             class="text-xs text-gray-400 italic mt-1">
-                            💡 Только участники задачи могут оставлять комментарии
-                        </div>
-                    </div>
-
-                    <!-- Старый rejection_reason (для обратной совместимости) -->
-                    <div v-if="file.status === 'rejected' && file.rejection_reason && (!file.comments || file.comments.length === 0)" class="mt-3 relative">
-                        <div class="absolute -top-1.5 left-6 w-3 h-3 bg-rose-50 border-t border-l border-rose-200 rotate-45"></div>
-                        <div class="bg-rose-50/80 border border-rose-200 text-rose-800 text-sm p-3 rounded-lg">
-                            <span class="font-bold text-xs uppercase opacity-70 mr-2">Причина возврата:</span>
-                            <span class="whitespace-pre-wrap">
-                                {{ expandedComments.has(file.id) ? file.rejection_reason : file.rejection_reason.slice(0, 80) }}
-                            </span>
-                            <span v-if="!expandedComments.has(file.id) && file.rejection_reason.length > 80">...</span>
-
-                            <button
-                                v-if="file.rejection_reason.length > 80"
-                                @click="toggleComment(file.id)"
-                                class="ml-2 text-xs font-bold text-rose-600 hover:underline"
+                            <span
+                                class="hidden shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase text-emerald-700 sm:inline-flex dark:bg-emerald-900/40 dark:text-emerald-300"
                             >
-                                {{ expandedComments.has(file.id) ? 'Свернуть' : 'Читать далее' }}
-                            </button>
+                                Принят
+                            </span>
+
+                            <a
+                                :href="`/api/tasks/files/${file.id}`"
+                                target="_blank"
+                                class="rounded-lg p-2 text-gray-400 transition hover:bg-white hover:text-blue-600 dark:hover:bg-gray-700"
+                                title="Открыть файл"
+                            >
+                                <svg
+                                    class="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M14 3h7m0 0v7m0-7L10 14M5 5h5M5 5v14h14v-5"
+                                    />
+                                </svg>
+                            </a>
+                        </article>
+                    </div>
+
+                    <div
+                        v-else
+                        class="flex min-h-[260px] flex-col items-center justify-center px-4 text-center"
+                    >
+                        <div
+                            class="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-2xl text-gray-400 dark:bg-gray-700"
+                        >
+                            ✓
                         </div>
+
+                        <div class="mt-3 font-semibold text-gray-600 dark:text-gray-300">
+                            Пока нет согласованных файлов
+                        </div>
+
+                        <p class="mt-1 max-w-xs text-sm text-gray-400">
+                            После принятия документы автоматически появятся здесь
+                        </p>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- МОДАЛКА ОТКАЗА -->
-        <div v-if="rejectModalOpen" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl w-full max-w-md shadow-2xl scale-100 transform transition-transform">
-                <h3 class="font-bold text-lg mb-1 dark:text-white">Вернуть на доработку</h3>
-                <p class="text-sm text-gray-500 mb-4">Укажите, что именно нужно исправить.</p>
+        <!-- ОБЫЧНЫЕ ФАЙЛЫ -->
+
+
+        <!-- МОДАЛЬНОЕ ОКНО ОТКАЗА -->
+        <div
+            v-if="rejectModalOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm"
+            @click.self="closeRejectModal"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-800">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                    Вернуть на доработку
+                </h3>
+
+                <p class="mt-1 text-sm text-gray-500">
+                    Укажите, что именно нужно исправить.
+                </p>
 
                 <textarea
                     v-model="rejectComment"
-                    class="w-full border border-gray-300 dark:border-gray-600 rounded-xl p-3 h-32 text-sm focus:ring-2 focus:ring-rose-500 focus:border-rose-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="Например: Неверная дата в шапке документа..."
+                    class="mt-4 h-32 w-full resize-none rounded-xl border border-gray-300 p-3 text-sm focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    placeholder="Например: неверная дата в шапке документа..."
                     autofocus
-                ></textarea>
+                />
 
-                <div class="flex justify-end gap-3 mt-4">
-                    <button @click="rejectModalOpen = false" class="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition dark:text-gray-300 dark:hover:bg-gray-700">Отмена</button>
-                    <button @click="submitReject" class="px-4 py-2 text-sm font-bold bg-rose-600 text-white rounded-lg shadow hover:bg-rose-700 transition">Вернуть документ</button>
+                <div class="mt-4 flex justify-end gap-3">
+                    <button
+                        type="button"
+                        class="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        @click="closeRejectModal"
+                    >
+                        Отмена
+                    </button>
+
+                    <button
+                        type="button"
+                        class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white shadow transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        :disabled="!rejectComment.trim()"
+                        @click="submitReject"
+                    >
+                        Вернуть документ
+                    </button>
                 </div>
             </div>
         </div>
-
     </div>
 </template>
 
 <style scoped>
 .btn-action {
-    @apply px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5;
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0;
+}
+
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(209 213 219) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgb(209 213 219);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(156 163 175);
+}
+
+:global(.dark) .custom-scrollbar {
+    scrollbar-color: rgb(75 85 99) transparent;
+}
+
+:global(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(75 85 99);
 }
 </style>

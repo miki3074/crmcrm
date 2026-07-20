@@ -55,4 +55,9 @@ class TaskFile extends Model
     {
         return $this->comments()->orderBy('created_at', 'desc')->get();
     }
+
+    public function getPublicUrlAttribute()
+    {
+        return url("/api/public/files/{$this->id}");
+    }
 }

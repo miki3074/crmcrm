@@ -297,23 +297,85 @@ class CompanyController extends Controller
             ->concat($memberCompanies)
             ->concat($watcherCompanies)
             ->concat($projectExecutorCompanies)
-            ->unique('id')
+            ->filter(fn ($company) => data_get($company, 'id'))
+            ->unique(fn ($company) => data_get($company, 'id'))
             ->values();
 
-        // !ВАЖНО:
-        // Если ваш Vue компонент ждет массив ПРОЕКТОВ (projects), а не компаний,
-        // нужно раскомментировать код ниже.
-        // Если компонент умеет доставать проекты из компаний сам - оставьте как есть.
-
         /*
-        $flatProjects = $allCompanies->flatMap(function($company) {
-            return $company['projects'] ?? $company->projects;
-        })->unique('id')->values();
-
-        return response()->json($flatProjects);
+        |--------------------------------------------------------------------------
+        | Получаем общие данные компаний
+        |--------------------------------------------------------------------------
+        |
+        | Некоторые компании выше являются моделями, а некоторые массивами.
+        | Здесь одним запросом получаем владельца, дату создания и user_id.
+        |
         */
 
-        return response()->json($allCompanies);
+        $companyIds = $allCompanies
+            ->map(fn ($company) => data_get($company, 'id'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $companyMetadata = Company::query()
+            ->select([
+                'id',
+                'name',
+                'logo',
+                'user_id',
+                'created_at',
+                'updated_at',
+            ])
+            ->with([
+                'owner:id,name,email',
+            ])
+            ->whereIn('id', $companyIds)
+            ->get()
+            ->keyBy('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Приводим ответ API к единой структуре
+        |--------------------------------------------------------------------------
+        */
+
+        $normalizedCompanies = $allCompanies
+            ->map(function ($company) use ($companyMetadata) {
+                $companyId = data_get($company, 'id');
+                $metadata = $companyMetadata->get($companyId);
+
+                if (!$metadata) {
+                    return null;
+                }
+
+                $projects = data_get($company, 'projects', []);
+
+                return [
+                    'id' => $metadata->id,
+                    'name' => $metadata->name,
+                    'logo' => $metadata->logo,
+
+                    // Данные для таблицы и правой панели
+                    'user_id' => $metadata->user_id,
+                    'created_at' => optional($metadata->created_at)->toISOString(),
+                    'updated_at' => optional($metadata->updated_at)->toISOString(),
+
+                    'owner' => $metadata->owner
+                        ? [
+                            'id' => $metadata->owner->id,
+                            'name' => $metadata->owner->name,
+                            'email' => $metadata->owner->email,
+                        ]
+                        : null,
+
+                    // Оставляем проекты, сформированные с учетом роли пользователя
+                    'projects' => collect($projects)->values(),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return response()->json($normalizedCompanies);
     }
 
 

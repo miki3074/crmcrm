@@ -5,6 +5,7 @@ use App\Http\Controllers\API\SubtaskController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\ChatController;
 
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\KlientController;
 use App\Http\Controllers\KlientDealController;
 use App\Http\Controllers\KlientFileController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\KlientTaskController;
 use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingDocumentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TaskFileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -49,6 +51,25 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/groups/{group}/add', [ChatController::class, 'addMember']);
     Route::post('/chat/groups/{group}/remove', [ChatController::class, 'removeMember']);
 });
+
+// routes/web.php
+
+Route::get('/view-file/{id}', function ($id) {
+    $file = \App\Models\TaskFile::findOrFail($id);
+    $fileName = $file->file_name ?? basename($file->file_path);
+
+    return view('file-viewer', [
+        'fileUrl' => url("/api/tasks/files/{$id}"),
+        'fileName' => $fileName,
+        'fileId' => $id
+    ]);
+})->name('file.viewer');
+
+Route::get('/file/view/{id}', [Controller::class, 'viewFile'])->name('file.view');
+
+// 🔥 Маршрут для отдачи файла в iframe (без скачивания)
+Route::get('/file/stream/{id}', [Controller::class, 'streamFile'])->name('file.stream');
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -524,6 +545,10 @@ Route::post('/reset-password', [NewPasswordController::class, 'store'])
 });
 
 
+Route::get('/api/tasks/files/{file}', [
+    TaskFileController::class,
+    'show'
+])->middleware('auth');
 
 
 

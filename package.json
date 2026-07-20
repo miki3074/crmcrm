@@ -41,6 +41,7 @@
         "html2canvas": "^1.4.1",
         "recharts": "^3.3.0",
         "vue-echarts": "^8.0.1",
+        "vue-files-preview": "^1.0.43",
         "vuedraggable": "^4.1.0",
         "ziggy-js": "^2.5.3"
     }
