@@ -109,19 +109,19 @@ const removeMember = async (type, id) => {
 </script>
 
 <template>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="grid sm:grid-cols-2 gap-4 text-sm">
             <div>
-                <p class="text-gray-500 dark:text-gray-400">Автор</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ subtask.creator?.name }}</p>
+                <p class="text-slate-500 dark:text-slate-400">Автор</p>
+                <p class="font-medium text-slate-900 dark:text-white">{{ subtask.creator?.name }}</p>
 
-                <p class="text-gray-500 dark:text-gray-400 mt-4">Исполнитель</p>
-                <p class="font-medium text-gray-900 dark:text-white">
+                <p class="text-slate-500 dark:text-slate-400 mt-4">Исполнитель</p>
+                <p class="font-medium text-slate-900 dark:text-white">
                     {{ subtask.executors?.length ? subtask.executors.map(e => e.name).join(', ') : '—' }}
                 </p>
 
-                <p class="text-gray-500 dark:text-gray-400 mt-4">Ответственный</p>
-                <p class="font-medium text-gray-900 dark:text-white">
+                <p class="text-slate-500 dark:text-slate-400 mt-4">Ответственный</p>
+                <p class="font-medium text-slate-900 dark:text-white">
                     {{ subtask.responsibles?.length ? subtask.responsibles.map(r => r.name).join(', ') : '—' }}
                 </p>
             </div>
@@ -149,10 +149,10 @@ const removeMember = async (type, id) => {
 
     <!-- Модалки (код ниже без изменений, он верный) -->
     <!-- Add Executors -->
-    <div v-if="showAddExecutorModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+    <div v-if="showAddExecutorModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 w-full max-w-md">
             <h3 class="font-bold mb-3 dark:text-white">Добавить исполнителей</h3>
-            <div class="max-h-60 overflow-y-auto border p-2 mb-4 dark:text-white">
+            <div class="max-h-60 overflow-y-auto border p-2 mb-3 dark:text-white">
                 <label v-for="emp in employees" :key="emp.id" class="flex gap-2"><input type="checkbox" v-model="selectedUsers" :value="emp.id">{{ emp.name }}</label>
             </div>
             <div class="flex justify-end gap-2">
@@ -163,10 +163,10 @@ const removeMember = async (type, id) => {
     </div>
 
     <!-- Add Responsibles -->
-    <div v-if="showAddResponsibleModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+    <div v-if="showAddResponsibleModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 w-full max-w-md">
             <h3 class="font-bold mb-3 dark:text-white">Добавить ответственных</h3>
-            <div class="max-h-60 overflow-y-auto border p-2 mb-4 dark:text-white">
+            <div class="max-h-60 overflow-y-auto border p-2 mb-3 dark:text-white">
                 <label v-for="emp in employees" :key="emp.id" class="flex gap-2"><input type="checkbox" v-model="selectedUsers" :value="emp.id">{{ emp.name }}</label>
             </div>
             <div class="flex justify-end gap-2">
@@ -177,8 +177,8 @@ const removeMember = async (type, id) => {
     </div>
 
     <!-- Change Executor Modal -->
-    <div v-if="showExecutorModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+    <div v-if="showExecutorModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 w-full max-w-md">
             <h3 class="font-bold mb-3 dark:text-white">Замена исполнителя</h3>
             <select v-model="replaceUserId" class="w-full border p-2 mb-2"><option :value="null">Кого заменить</option><option v-for="u in subtask.executors" :value="u.id" :key="u.id">{{u.name}}</option></select>
             <select v-model="newUserId" class="w-full border p-2 mb-2"><option :value="null">На кого</option><option v-for="u in availableExecutors" :value="u.id" :key="u.id">{{u.name}}</option></select>
@@ -188,8 +188,8 @@ const removeMember = async (type, id) => {
     </div>
 
     <!-- Change Responsible Modal -->
-    <div v-if="showResponsibleModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+    <div v-if="showResponsibleModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 w-full max-w-md">
             <h3 class="font-bold mb-3 dark:text-white">Замена ответственного</h3>
             <select v-model="replaceUserId" class="w-full border p-2 mb-2"><option :value="null">Кого заменить</option><option v-for="u in subtask.responsibles" :value="u.id" :key="u.id">{{u.name}}</option></select>
             <select v-model="newUserId" class="w-full border p-2 mb-2"><option :value="null">На кого</option><option v-for="u in availableResponsibles" :value="u.id" :key="u.id">{{u.name}}</option></select>
@@ -199,10 +199,10 @@ const removeMember = async (type, id) => {
     </div>
 
     <!-- Manage Members -->
-    <div v-if="showManageMembers" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-3xl">
-            <h3 class="font-bold mb-4 dark:text-white">Управление участниками</h3>
-            <div class="grid sm:grid-cols-2 gap-6">
+    <div v-if="showManageMembers" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 w-full max-w-3xl">
+            <h3 class="font-bold mb-3 dark:text-white">Управление участниками</h3>
+            <div class="grid sm:grid-cols-2 gap-4">
                 <div>
                     <h4 class="font-medium dark:text-white">Исполнители</h4>
                     <ul class="mt-2 space-y-2">

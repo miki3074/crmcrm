@@ -5,6 +5,7 @@ namespace App\Policies;
 use Illuminate\Auth\Access\Response;
 use App\Models\Subtask;
 use App\Models\User;
+use App\Models\Task;
 
 class SubtaskPolicy
 {

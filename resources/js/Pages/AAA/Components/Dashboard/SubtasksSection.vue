@@ -5,105 +5,216 @@ import { router } from '@inertiajs/vue3'
 const props = defineProps({
     subtasks: {
         type: [Array, Object],
-        default: () => []
-    }
+        default: () => [],
+    },
 })
 
+const normalizedSubtasks = computed(() => {
+    if (Array.isArray(props.subtasks)) {
+        return props.subtasks
+    }
+
+    const result = []
+
+    Object.values(props.subtasks || {}).forEach(
+        projects => {
+            Object.values(projects || {}).forEach(
+                tasks => {
+                    Object.values(tasks || {}).forEach(
+                        subtasks => {
+                            result.push(...subtasks)
+                        },
+                    )
+                },
+            )
+        },
+    )
+
+    return result
+})
 
 const groupedSubtasks = computed(() => {
-    const data = props.subtasks
+    return normalizedSubtasks.value.reduce(
+        (groups, subtask) => {
+            const projectName =
+                subtask.task?.project?.name ||
+                'Без проекта'
 
-    if (!data) return {}
+            const taskTitle =
+                subtask.task?.title ||
+                'Без задачи'
 
-    // Если массив — группируем
-    if (Array.isArray(data)) {
-        return data.reduce((acc, st) => {
-            const companyName = st.task?.project?.company?.name || 'Без компании'
-            const projectName = st.task?.project?.name || 'Без проекта'
-            const parentTaskTitle = st.task?.title || 'Без задачи'
+            const key = `${projectName}-${taskTitle}`
 
-            if (!acc[companyName]) acc[companyName] = {}
-            if (!acc[companyName][projectName]) acc[companyName][projectName] = {}
-            if (!acc[companyName][projectName][parentTaskTitle]) acc[companyName][projectName][parentTaskTitle] = []
-
-            if (!acc[companyName][projectName][parentTaskTitle].some(s => s.id === st.id)) {
-                acc[companyName][projectName][parentTaskTitle].push(st)
+            if (!groups[key]) {
+                groups[key] = {
+                    projectName,
+                    taskTitle,
+                    companyName:
+                        subtask.task?.project?.company?.name ||
+                        'Без компании',
+                    items: [],
+                }
             }
 
-            return acc
-        }, {})
+            groups[key].items.push(subtask)
+
+            return groups
+        },
+        {},
+    )
+})
+
+const formatDate = value => {
+    if (!value) {
+        return 'Без срока'
     }
 
-    return data // Если уже объект
-})
+    const date = new Date(value)
 
-const hasSubtasks = computed(() => {
-    return Array.isArray(props.subtasks) ? props.subtasks.length > 0 : Object.keys(props.subtasks).length > 0
-})
+    if (Number.isNaN(date.getTime())) {
+        return value
+    }
+
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+    })
+}
+
+const getProgress = subtask => {
+    return Number(
+        subtask.progress ??
+        subtask.completion_percentage ??
+        0,
+    )
+}
 </script>
 
 <template>
-    <div class="p-6 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all shadow-sm bg-white/70 dark:bg-slate-900/70 backdrop-blur-md">
-
-        <div class="flex items-center justify-between mb-6">
-
-            <span v-if="Array.isArray(subtasks)" class="px-2 py-1 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500">
-                {{ subtasks.length }}
-            </span>
-        </div>
-
-        <div v-if="!hasSubtasks" class="py-10 text-center text-slate-400 italic text-sm">
+    <div>
+        <div
+            v-if="!normalizedSubtasks.length"
+            class="rounded-xl border-2 border-dashed
+                   border-slate-200 py-14 text-center
+                   text-sm text-slate-400
+                   dark:border-slate-800"
+        >
             Подзадач пока нет
         </div>
 
-        <div v-else class="space-y-8">
-            <!-- Группировка по Компании -->
-            <div v-for="(projects, companyName) in groupedSubtasks" :key="companyName" class="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
-<!--                <h4 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 bg-slate-50 dark:bg-slate-800/50 inline-block px-2 py-1 rounded">-->
-<!--                    🏢 {{ companyName }}-->
-<!--                </h4>-->
+        <div v-else class="space-y-3">
+            <section
+                v-for="group in groupedSubtasks"
+                :key="`${group.projectName}-${group.taskTitle}`"
+                class="overflow-hidden rounded-xl border
+                       border-slate-200
+                       dark:border-slate-800"
+            >
+                <header
+                    class="flex flex-col gap-1 border-b
+                           border-slate-100 bg-slate-50/70
+                           px-3 py-2.5 dark:border-slate-800
+                           dark:bg-slate-800/40 sm:flex-row
+                           sm:items-center"
+                >
+                    <span
+                        class="max-w-full truncate rounded-md
+                               bg-indigo-100 px-2 py-1
+                               text-[10px] font-bold
+                               text-indigo-600
+                               dark:bg-indigo-950/60
+                               dark:text-indigo-300"
+                    >
+                        {{ group.projectName }}
+                    </span>
 
-                <div class="space-y-6">
-                    <!-- Группировка по Проекту -->
-                    <div v-for="(tasks, projectName) in projects" :key="projectName">
+                    <span
+                        class="hidden text-slate-300 sm:block"
+                    >
+                        /
+                    </span>
 
-                        <!-- Группировка по Родительской задаче -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-for="(subs, taskTitle) in tasks" :key="taskTitle"
-                                 class="bg-white/50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors">
+                    <h4
+                        class="min-w-0 flex-1 truncate text-xs
+                               font-bold text-slate-700
+                               dark:text-slate-200"
+                    >
+                        {{ group.taskTitle }}
+                    </h4>
 
-                                <div class="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100 dark:border-slate-700/50">
-                                    <span class="text-xs font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
-                                        {{ projectName }}
-                                    </span>
-                                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200 truncate" :title="taskTitle">
-                                        ✅  {{ taskTitle }}
-                                    </span>
-                                </div>
+                    <span
+                        class="text-[10px] text-slate-400"
+                    >
+                        {{ group.items.length }}
+                    </span>
+                </header>
 
-                                <!-- Список подзадач -->
-                                <div class="space-y-2">
-                                    <div v-for="st in subs" :key="st.id"
-                                         @click="router.visit(`/subtasks/${st.id}`)"
-                                         class="group flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 hover:shadow-md cursor-pointer transition-all">
+                <div
+                    class="divide-y divide-slate-100
+                           dark:divide-slate-800"
+                >
+                    <button
+                        v-for="subtask in group.items"
+                        :key="subtask.id"
+                        type="button"
+                        class="group flex w-full items-center
+                               gap-3 px-3 py-2.5 text-left
+                               transition hover:bg-indigo-50/50
+                               dark:hover:bg-indigo-950/20"
+                        @click="
+                            router.visit(
+                                `/subtasks/${subtask.id}`,
+                            )
+                        "
+                    >
+                        <span
+                            class="h-2 w-2 shrink-0 rounded-full"
+                            :class="
+                                getProgress(subtask) >= 100
+                                    ? 'bg-emerald-500'
+                                    : 'bg-indigo-400'
+                            "
+                        />
 
-                                        <div class="flex items-center gap-2 overflow-hidden">
-                                            <div class="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-indigo-500 transition-colors"></div>
-                                            <span class="text-sm text-slate-600 dark:text-slate-300 truncate font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                                {{ st.title }}
-                                            </span>
-                                        </div>
+                        <span
+                            class="min-w-0 flex-1 truncate
+                                   text-sm font-medium
+                                   text-slate-700
+                                   group-hover:text-indigo-600
+                                   dark:text-slate-300"
+                        >
+                            {{ subtask.title }}
+                        </span>
 
-                                        <span class="text-[10px] text-slate-400 whitespace-nowrap ml-2">
-                                            {{ st.due_date || '—' }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <span
+                            class="hidden shrink-0 text-[10px]
+                                   text-slate-400 sm:block"
+                        >
+                            {{ group.companyName }}
+                        </span>
+
+                        <span
+                            class="shrink-0 rounded-md
+                                   bg-slate-100 px-2 py-1
+                                   text-[10px] font-bold
+                                   text-slate-500
+                                   dark:bg-slate-800"
+                        >
+                            {{ formatDate(subtask.due_date) }}
+                        </span>
+
+                        <span
+                            class="w-8 shrink-0 text-right
+                                   text-[10px] font-black
+                                   text-slate-500"
+                        >
+                            {{ getProgress(subtask) }}%
+                        </span>
+                    </button>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 </template>

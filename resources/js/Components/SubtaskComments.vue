@@ -158,9 +158,9 @@ const deleteComment = async (id) => {
 </script>
 
 <template>
-    <div class="mt-4 bg-white dark:bg-slate-800 p-4 rounded-xl shadow relative">
+    <div class="relative mt-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
-        <h3 class="text-lg font-semibold mb-3 dark:text-white">💬 Комментарии</h3>
+        <h3 class="text-base font-bold mb-3 dark:text-white">💬 Комментарии</h3>
 
         <!-- Нет комментариев -->
         <p v-if="!comments || comments.length === 0" class="text-gray-500 text-sm">
@@ -168,11 +168,11 @@ const deleteComment = async (id) => {
         </p>
 
         <!-- Список -->
-        <div v-if="comments && comments.length" class="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+        <div v-if="comments && comments.length" class="space-y-2 max-h-[440px] overflow-y-auto pr-2 custom-scrollbar">
             <div
                 v-for="c in comments"
                 :key="c.id"
-                class="group p-3 border dark:border-slate-700 rounded-lg bg-gray-50/50 dark:bg-slate-700/30"
+                class="group p-2.5 border dark:border-slate-700 rounded-lg bg-gray-50/50 dark:bg-slate-700/30"
             >
                 <div class="flex justify-between items-start mb-1">
                     <div class="flex items-center gap-2">
@@ -204,7 +204,7 @@ const deleteComment = async (id) => {
                     <div class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
                         {{ c.parent.user?.name }}:
                     </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 truncate italic">
+                    <div class="text-xs text-slate-500 dark:text-slate-400 truncate italic">
                         {{ c.parent.comment }}
                     </div>
                 </div>
@@ -233,7 +233,7 @@ const deleteComment = async (id) => {
         </div>
 
         <!-- Область ввода -->
-        <div v-if="canWrite" class="mt-4 relative">
+        <div v-if="canWrite" class="mt-3 relative">
 
             <!-- Панель "В ответ..." -->
             <div
@@ -244,7 +244,7 @@ const deleteComment = async (id) => {
             <span class="font-semibold text-indigo-700 dark:text-indigo-300">
                 В ответ {{ replyingTo.user?.name }}
             </span>
-                    <span class="truncate text-gray-500 dark:text-gray-400 max-w-xs italic">{{ replyingTo.comment }}</span>
+                    <span class="truncate text-slate-500 dark:text-slate-400 max-w-xs italic">{{ replyingTo.comment }}</span>
                 </div>
                 <button @click="cancelReply" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                     ✕

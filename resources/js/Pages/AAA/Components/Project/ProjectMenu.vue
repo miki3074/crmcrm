@@ -45,9 +45,9 @@ const fetchCompleted = async () => {
 }
 
 // --- Права (Permissions) ---
-const isOwner = computed(() => props.project.company?.user_id === props.user.id)
-const isManager = computed(() => props.project.managers?.some(m => m.id === props.user.id))
-const isInitiator = computed(() => props.project.initiator_id === props.user.id)
+const isOwner = computed(() => props.project.company?.user_id === props.user?.id)
+const isManager = computed(() => props.project.managers?.some(m => m.id === props.user?.id))
+const isInitiator = computed(() => props.project.initiator_id === props.user?.id)
 
 const canEdit = computed(() => isOwner.value || isManager.value)
 const canManageTeam = computed(() => isOwner.value || isManager.value || isInitiator.value)
@@ -212,13 +212,13 @@ onMounted(() => {
         <Transition name="slide">
             <div v-if="isSidebarOpen" class="fixed inset-0 z-[60] flex justify-end">
                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" @click="isSidebarOpen = false"></div>
-                <div class="relative w-full max-w-sm bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col border-l dark:border-slate-800">
-                    <div class="p-6 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                <div class="relative w-full max-w-sm bg-white dark:bg-slate-900 h-full shadow-xl flex flex-col border-l dark:border-slate-800">
+                    <div class="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                         <h2 class="text-xl font-black uppercase tracking-tight">Управление</h2>
-                        <button @click="isSidebarOpen = false" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                        <button @click="isSidebarOpen = false" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    <div class="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
                         <div v-if="canEdit">
                             <h3 class="label-section">Основные настройки</h3>
                             <div class="grid gap-2">
@@ -248,7 +248,7 @@ onMounted(() => {
                         </div>
 
                         <div v-if="canDelete" class="pt-6 border-t dark:border-slate-800">
-                            <button @click="deleteProject" class="w-full py-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-rose-500 font-bold hover:bg-rose-500 hover:text-white transition-all">Удалить проект</button>
+                            <button @click="deleteProject" class="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-rose-500 font-bold hover:bg-rose-500 hover:text-white transition-all">Удалить проект</button>
                         </div>
                     </div>
                 </div>
@@ -259,18 +259,18 @@ onMounted(() => {
         <Transition name="fade">
             <div v-if="activeModal" class="fixed inset-0 z-[70] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" @click="closeModal"></div>
-                <div class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
 
-                    <div class="p-6 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex justify-between items-center">
+                    <div class="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex justify-between items-center">
                         <h3 class="font-bold text-lg uppercase tracking-tight">
                             {{ activeModal === 'name' ? 'Название' : activeModal === 'budget' ? 'Бюджет' : activeModal === 'manageList' ? 'Команда' : activeModal === 'completedTasks' ? 'Все завершенные' : 'Редактирование' }}
                         </h3>
                         <button @click="closeModal" class="text-slate-400 hover:text-slate-600">✕</button>
                     </div>
 
-                    <div class="p-6 overflow-y-auto custom-scrollbar">
+                    <div class="p-4 overflow-y-auto custom-scrollbar">
                         <!-- Все завершенные задачи (Модалка) -->
-                        <div v-if="activeModal === 'completedTasks'" class="space-y-8 pb-4">
+                        <div v-if="activeModal === 'completedTasks'" class="space-y-5 pb-4">
                             <div v-if="completedData.tasks.length">
                                 <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><span class="w-4 h-px bg-slate-200"></span> Задачи</h4>
                                 <div class="grid gap-2">
@@ -314,7 +314,7 @@ onMounted(() => {
                         </div>
 
                         <!-- Списки (Управление участниками) -->
-                        <div v-if="activeModal === 'manageList'" class="space-y-6">
+                        <div v-if="activeModal === 'manageList'" class="space-y-3">
                             <div v-for="role in [{key:'managers', label:'Руководители'}, {key:'executors', label:'Исполнители'}, {key:'watchers', label:'Наблюдатели'}]" :key="role.key">
                                 <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">{{ role.label }}</h4>
                                 <div class="space-y-2">
@@ -355,7 +355,7 @@ onMounted(() => {
         <Transition name="fade">
             <div v-if="showReminderModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-md" @click="showReminderModal = false"></div>
-                <div class="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl">
+                <div class="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-xl">
                     <h3 class="text-xl font-black mb-4 uppercase tracking-tight">Задачи без прогресса (0%)</h3>
                     <div class="max-h-80 overflow-y-auto custom-scrollbar mb-6 pr-2 text-slate-700 dark:text-slate-200">
                         <!-- (код напоминаний остается без изменений) -->
@@ -373,14 +373,14 @@ onMounted(() => {
 
 <style scoped>
 .label-section { @apply text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4; }
-.menu-btn { @apply flex items-center gap-3 w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-500 hover:shadow-md active:scale-[0.98]; }
+.menu-btn { @apply flex items-center gap-2 w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-500 hover:shadow-md active:scale-[0.98]; }
 .slide-enter-active, .slide-leave-active { transition: transform 0.3s ease; }
 .slide-enter-from, .slide-leave-to { transform: translateX(100%); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
-.input-primary { @apply w-full px-4 py-3 rounded-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100; }
-.btn-primary { @apply px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50; }
-.btn-ghost { @apply px-6 py-3 text-slate-400 font-bold hover:text-slate-600; }
+.input-primary { @apply w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:bg-slate-900 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-slate-800 dark:text-slate-100; }
+.btn-primary { @apply px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50; }
+.btn-ghost { @apply px-4 py-2.5 text-slate-400 font-bold hover:text-slate-600; }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full; }
 </style>

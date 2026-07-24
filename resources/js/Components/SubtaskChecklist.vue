@@ -92,22 +92,22 @@ const canManageItem = (item) => {
 </script>
 
 <template>
-    <div class="mt-6 p-4 bg-white dark:bg-slate-800 rounded-xl shadow">
-        <h3 class="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">📝 Чек-лист</h3>
+    <div class="mt-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h3 class="text-base font-bold mb-3 text-gray-800 dark:text-gray-100">📝 Чек-лист</h3>
 
         <p v-if="list.length === 0" class="text-gray-500 text-sm">
             Пусто.
         </p>
 
-        <div class="space-y-3" v-else>
+        <div class="space-y-2" v-else>
             <div v-for="item in list" :key="item.id"
-                 class="group p-3 border rounded-lg dark:border-slate-700 flex justify-between items-start bg-gray-50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 transition">
+                 class="group p-2.5 border rounded-xl dark:border-slate-700 flex justify-between items-start bg-gray-50 dark:bg-slate-700/50 hover:bg-white dark:hover:bg-slate-700 transition">
 
                 <div class="flex items-start gap-3 w-full">
                     <input type="checkbox"
                            :checked="item.completed"
                            @change="toggle(item)"
-                           class="mt-1 w-5 h-5 cursor-pointer text-indigo-600 rounded focus:ring-indigo-500"/>
+                           class="mt-1 w-4 h-4 cursor-pointer text-indigo-600 rounded focus:ring-indigo-500"/>
 
                     <div class="flex-1">
                         <p :class="item.completed ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'">
@@ -139,7 +139,7 @@ const canManageItem = (item) => {
         </div>
 
         <!-- Форма добавления -->
-        <div v-if="canWrite" class="mt-4 border-t pt-4 dark:border-slate-700">
+        <div v-if="canWrite" class="mt-3 border-t pt-3 dark:border-slate-700">
             <input v-model="newItem"
                    class="w-full border rounded-lg px-3 py-2 dark:bg-slate-700 dark:text-white dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none"
                    placeholder="Новый пункт..."/>
@@ -161,16 +161,16 @@ const canManageItem = (item) => {
         </div>
 
         <!-- Модальное окно редактирования -->
-        <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div v-if="showEditModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50">
             <div class="bg-white dark:bg-slate-800 p-6 rounded-lg w-96 shadow-xl">
-                <h4 class="text-lg font-bold mb-4 text-gray-800 dark:text-white">Редактировать пункт</h4>
+                <h4 class="text-lg font-bold mb-3 text-gray-800 dark:text-white">Редактировать пункт</h4>
 
                 <input v-model="editForm.title"
                        class="w-full border rounded mb-3 p-2 dark:bg-slate-700 dark:text-white dark:border-slate-600"
                        placeholder="Название" />
 
                 <label class="block text-sm text-gray-500 mb-1">Ответственный</label>
-                <select v-model="editForm.responsible_id" class="w-full border rounded mb-4 p-2 dark:bg-slate-700 dark:text-white dark:border-slate-600">
+                <select v-model="editForm.responsible_id" class="w-full border rounded mb-3 p-2 dark:bg-slate-700 dark:text-white dark:border-slate-600">
                     <option :value="null">Без ответственного</option>
                     <option v-for="u in [...executors, ...responsibles]" :key="u.id" :value="u.id">
                         {{ u.name }}

@@ -116,7 +116,7 @@ onMounted(() => {
             />
 
             <!-- 3. Analytics Section (Desktop only) -->
-            <div v-if="!isMobile && company?.projects?.length" class="space-y-8">
+            <!-- <div v-if="!isMobile && company?.projects?.length" class="space-y-8">
                 <div class="flex items-center gap-4">
                     <div class="h-px flex-1 bg-slate-200 dark:bg-slate-700"></div>
                     <h2 class="text-xl font-bold text-slate-400 uppercase tracking-widest">Аналитика</h2>
@@ -124,13 +124,13 @@ onMounted(() => {
                 </div>
 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    <!-- График 1: Длительность -->
+                   
                     <ProjectDurationChart
                         :projects="company.projects"
                         @project-click="onProjectChartClick"
                     />
 
-                    <!-- График 2: Задачи (появляется при выборе) -->
+                    
                     <div id="task-stats-section">
                         <TaskProgressChart
                             :stats="taskStats"
@@ -139,7 +139,7 @@ onMounted(() => {
                         />
                     </div>
                 </div>
-            </div>
+            </div> -->
 
         </div>
 

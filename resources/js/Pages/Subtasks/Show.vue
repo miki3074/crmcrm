@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, provide } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { usePage, Head } from '@inertiajs/vue3'
 import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
@@ -12,7 +12,7 @@ import SubtaskDescription from '../AAA/Components/Subtask/SubtaskDescription.vue
 import SubtaskFiles from '../AAA/Components/Subtask/SubtaskFiles.vue'
 import SubtaskChildren from '../AAA/Components/Subtask/SubtaskChildren.vue'
 
-import  SubtaskComments from '@/Components/SubtaskComments.vue'
+import SubtaskComments from '@/Components/SubtaskComments.vue'
 import SubtaskChecklist from '@/Components/SubtaskChecklist.vue'
 
 const { props } = usePage()
@@ -37,6 +37,7 @@ const onRefresh = async () => {
 // Логика комментариев и чеклиста осталась специфичной, можно оставить обработчики тут
 // или перенести внутрь компонентов, если они сами умеют обновляться.
 const onCommentsUpdated = ({ type, comment, id }) => {
+    if (!subtask.value) return
     if (!subtask.value.comments) subtask.value.comments = []
     if (type === "add") subtask.value.comments.push(comment)
     if (type === "update") {
@@ -47,6 +48,7 @@ const onCommentsUpdated = ({ type, comment, id }) => {
 }
 
 const onChecklistUpdated = (e) => {
+    if (!subtask.value) return
     if (!subtask.value.checklist) subtask.value.checklist = []
     if (e.type === 'add') subtask.value.checklist.push(e.item)
     if (e.type === 'toggle') {
@@ -56,18 +58,19 @@ const onChecklistUpdated = (e) => {
     if (e.type === 'delete') subtask.value.checklist = subtask.value.checklist.filter(i => i.id !== e.id)
 }
 
-const canWriteComments = () => {
+const canWriteComments = computed(() => {
     if (!subtask.value || !user) return false
     const project = subtask.value.task?.project || {}
-    return (
-        subtask.value.creator_id === user.id ||
-        (project.managers || []).some(m => m.id === user.id) ||
-        (project.executors || []).some(e => e.id === user.id) ||
-        project.company?.user_id === user.id ||
-        (subtask.value.executors || []).some(e => e.id === user.id) ||
-        (subtask.value.responsibles || []).some(r => r.id === user.id)
-    )
-}
+
+    return [
+        subtask.value.creator_id === user.id,
+        project.company?.user_id === user.id,
+        (project.managers || []).some(item => item.id === user.id),
+        (project.executors || []).some(item => item.id === user.id),
+        (subtask.value.executors || []).some(item => item.id === user.id),
+        (subtask.value.responsibles || []).some(item => item.id === user.id),
+    ].some(Boolean)
+})
 
 const onStartWork = async (id) => {
     // id приходит из эмита кнопки, либо берем текущий subtaskId
@@ -91,10 +94,10 @@ onMounted(fetchSubtask)
 </script>
 
 <template>
-    <Head title="Подзадача" />
+    <Head :title="subtask?.title || 'Подзадача'" />
+
     <AuthenticatedLayout>
         <template #header>
-            <!-- Хедер теперь отдельным компонентом -->
             <SubtaskHeader
                 v-if="subtask"
                 :subtask="subtask"
@@ -104,69 +107,80 @@ onMounted(fetchSubtask)
             />
         </template>
 
-        <div class="max-w-4xl mx-auto py-8 px-4">
-            <div v-if="subtask" class="grid gap-6">
+        <main class="min-h-screen bg-slate-50/70 px-3 py-4 dark:bg-slate-950 sm:px-5 lg:px-6">
+            <div class="mx-auto max-w-[1480px]">
+                <div
+                    v-if="subtask"
+                    class="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]"
+                >
+                    <section class="min-w-0 space-y-4">
+                        <SubtaskDescription
+                            :subtask="subtask"
+                            :user="user"
+                            @refresh="onRefresh"
+                        />
 
-                <!-- Информация об участниках + Модалки управления -->
-                <SubtaskMembers
-                    :subtask="subtask"
-                    :user="user"
-                    @refresh="onRefresh"
-                />
+                        <SubtaskProgress
+                            :subtask="subtask"
+                            :user="user"
+                            @refresh="onRefresh"
+                        />
 
-                <!-- Описание -->
-                <SubtaskDescription
-                    :subtask="subtask"
-                    :user="user"
-                    @refresh="onRefresh"
-                />
+                        <SubtaskFiles
+                            :subtask="subtask"
+                            :user="user"
+                            @refresh="onRefresh"
+                        />
 
-                <!-- Прогресс и даты -->
-                <SubtaskProgress
-                    :subtask="subtask"
-                    :user="user"
-                    @refresh="onRefresh"
-                />
+                        <SubtaskChildren
+                            :subtask="subtask"
+                            :user="user"
+                            @refresh="onRefresh"
+                        />
+                    </section>
 
-                <!-- Файлы -->
-                <SubtaskFiles
-                    :subtask="subtask"
-                    :user="user"
-                    @refresh="onRefresh"
-                />
+                    <aside class="space-y-4 xl:sticky xl:top-4">
+                        <SubtaskMembers
+                            :subtask="subtask"
+                            :user="user"
+                            @refresh="onRefresh"
+                        />
 
-                <!-- Дочерние подзадачи -->
-                <SubtaskChildren
-                    :subtask="subtask"
-                    :user="user"
-                    @refresh="onRefresh"
-                />
+                        <SubtaskChecklist
+                            :subtask-id="subtask.id"
+                            :checklist="subtask.checklist"
+                            :user-id="user?.id"
+                            :executors="subtask.executors"
+                            :responsibles="subtask.responsibles"
+                            :can-write="canWriteComments"
+                            @updated="onChecklistUpdated"
+                        />
 
-                <!-- Чеклист и Комментарии (расположение рядом) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <SubtaskChecklist
-                        :subtask-id="subtask.id"
-                        :checklist="subtask.checklist"
-                        :user-id="$page.props.auth.user.id"
-                        :executors="subtask.executors"
-                        :responsibles="subtask.responsibles"
-                        :can-write="canWriteComments()"
-                        @updated="onChecklistUpdated"
-                    />
-
-                    <SubtaskComments
-                        :subtask-id="subtask.id"
-                        :comments="subtask.comments"
-                        :can-write="canWriteComments()"
-                        :members="[...(subtask.executors ?? []), ...(subtask.responsibles ?? [])]"
-                        @updated="onCommentsUpdated"
-                    />
+                        <SubtaskComments
+                            :subtask-id="subtask.id"
+                            :comments="subtask.comments"
+                            :can-write="canWriteComments"
+                            :members="[...(subtask.executors ?? []), ...(subtask.responsibles ?? [])]"
+                            @updated="onCommentsUpdated"
+                        />
+                    </aside>
                 </div>
 
+                <div
+                    v-else
+                    class="grid min-h-[420px] place-items-center rounded-2xl border border-slate-200 bg-white text-center shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                >
+                    <div>
+                        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+                        <p class="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            Загружаем подзадачу
+                        </p>
+                        <p class="mt-1 text-xs text-slate-400">
+                            Или проверяем доступ к ней
+                        </p>
+                    </div>
+                </div>
             </div>
-            <div v-else class="text-gray-600 dark:text-gray-300 text-center py-10">Загрузка...
-                <br/> нет доступа к этой задаче
-            </div>
-        </div>
+        </main>
     </AuthenticatedLayout>
 </template>

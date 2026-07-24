@@ -14,6 +14,7 @@ use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\MeetingDocumentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TaskFileController;
+use App\Http\Controllers\SubtaskFileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,6 +26,7 @@ use App\Models\User;
 use App\Http\Controllers\Auth\NewPasswordController;
 
 use App\Http\Controllers\Support\AdminSupportController;
+
 use App\Http\Controllers\PollController;
 //use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -64,6 +66,20 @@ Route::get('/view-file/{id}', function ($id) {
         'fileId' => $id
     ]);
 })->name('file.viewer');
+
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/api/subtask-files/{subtaskFile}/preview',
+        [SubtaskFileController::class, 'preview']
+    );
+
+    Route::get(
+        '/api/subtask-files/{subtaskFile}/download',
+        [SubtaskFileController::class, 'download']
+    );
+});
+
 
 Route::get('/file/view/{id}', [Controller::class, 'viewFile'])->name('file.view');
 

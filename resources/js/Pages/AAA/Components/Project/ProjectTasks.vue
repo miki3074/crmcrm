@@ -73,11 +73,11 @@ const createTask = async () => {
 </script>
 
 <template>
-    <div class="space-y-6">
+    <div class="space-y-3">
 
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <h2 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <span class="bg-indigo-100 text-indigo-600 p-1.5 rounded-lg">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                 </span>
@@ -91,7 +91,7 @@ const createTask = async () => {
         </div>
 
         <!-- Empty State -->
-        <div v-if="!project.tasks?.length" class="bg-white dark:bg-slate-800 rounded-3xl p-10 text-center border-2 border-dashed border-slate-200 dark:border-slate-700">
+        <div v-if="!project.tasks?.length" class="bg-white dark:bg-slate-800 rounded-2xl p-5 text-center border-2 border-dashed border-slate-200 dark:border-slate-700">
             <div class="w-16 h-16 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">📭</div>
             <h3 class="text-lg font-bold text-slate-700 dark:text-white mb-1">Задач пока нет</h3>
             <p class="text-slate-500 text-sm mb-4">Создайте первую задачу, чтобы начать работу над проектом</p>
@@ -99,10 +99,10 @@ const createTask = async () => {
         </div>
 
         <!-- Task Grid -->
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
 
             <Link v-for="t in project.tasks" :key="t.id" :href="`/tasks/${t.id}`"
-                  class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-[2rem] hover:shadow-2xl hover:border-indigo-500/50 hover:-translate-y-1.5 transition-all duration-300">
+                  class="group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl hover:shadow-xl hover:border-indigo-500/50 hover:-translate-y-1.5 transition-all duration-300">
                 <!-- Top: Header -->
                 <div>
                     <div class="flex justify-between items-start mb-3">
@@ -185,13 +185,13 @@ const createTask = async () => {
         <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModal=false"></div>
 
-            <div class="relative bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-t-2xl">
+            <div class="relative bg-white dark:bg-slate-800 rounded-2xl w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
+                <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-t-2xl">
                     <h3 class="text-lg font-bold text-slate-800 dark:text-white">Новая задача</h3>
                     <button @click="showModal=false" class="text-slate-400 hover:text-slate-600 transition">✕</button>
                 </div>
 
-                <div class="p-6 overflow-y-auto custom-scrollbar">
+                <div class="p-4 overflow-y-auto custom-scrollbar">
                     <form @submit.prevent="createTask" class="space-y-5">
                         <div v-if="errorText" class="p-3 bg-rose-50 text-rose-600 text-sm rounded-lg border border-rose-100">
                             {{ errorText }}
@@ -249,7 +249,7 @@ const createTask = async () => {
                     </form>
                 </div>
 
-                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-b-2xl flex justify-end gap-3">
+                <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-b-2xl flex justify-end gap-3">
                     <button type="button" @click="showModal=false" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium hover:bg-slate-100 transition">Отмена</button>
                     <button type="button" @click="createTask" :disabled="submitting" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 shadow-lg shadow-indigo-500/30 transition disabled:opacity-70 disabled:cursor-wait">
                         {{ submitting ? 'Создание...' : 'Создать задачу' }}
@@ -262,10 +262,10 @@ const createTask = async () => {
 
 <style scoped>
 .btn-primary {
-    @apply flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium shadow-md shadow-indigo-500/20 transition-all active:scale-95;
+    @apply flex items-center bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all active:scale-95;
 }
 .input-primary {
-    @apply w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all;
+    @apply w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all;
 }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

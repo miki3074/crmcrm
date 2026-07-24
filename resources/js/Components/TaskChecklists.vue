@@ -205,21 +205,21 @@ onMounted(load)
 </script>
 
 <template>
-    <div class="checklists-component mt-6">
+    <div class="checklists-component mt-4">
         <!-- Заголовок с счетчиком -->
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-bold">
                 Чек-листы
-                <span v-if="list.length" class="ml-2 text-sm font-normal text-gray-500">
+                <span v-if="list.length" class="ml-2 text-sm font-normal text-slate-500">
                     ({{ list.filter(c => c.completed).length }}/{{ list.length }})
                 </span>
             </h3>
 
             <button
-                class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                class="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 @click="openCreateModal"
             >
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                 </svg>
                 Добавить пункт
@@ -227,13 +227,13 @@ onMounted(load)
         </div>
 
         <!-- Сообщение об успехе -->
-        <div v-if="successMessage" class="mb-4 p-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
+        <div v-if="successMessage" class="mb-3 p-3 bg-green-50 text-green-700 rounded-lg border border-green-200">
             {{ successMessage }}
         </div>
 
         <!-- Состояние загрузки -->
-        <div v-if="loading" class="flex justify-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div v-if="loading" class="flex justify-center py-6">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
         </div>
 
         <!-- Список чек-листов -->
@@ -241,17 +241,17 @@ onMounted(load)
             <div
                 v-for="c in list"
                 :key="c.id"
-                class="group relative bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
-                :class="{ 'border-indigo-200 bg-indigo-50/30': c.important }"
+                class="group relative rounded-xl border border-slate-200 bg-white p-3 transition hover:border-indigo-200 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                :class="{ 'border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/10': c.important }"
             >
-                <div class="flex items-start gap-3">
+                <div class="flex items-start gap-2.5">
                     <!-- Чекбокс -->
                     <div class="flex-shrink-0 pt-0.5">
                         <input
                             type="checkbox"
                             :checked="c.completed"
                             @change="toggle(c)"
-                            class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                            class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
                             :disabled="loading"
                         />
                     </div>
@@ -260,10 +260,10 @@ onMounted(load)
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span
-                                class="text-base"
+                                class="text-sm"
                                 :class="{
                                     'font-semibold text-indigo-700': c.important && !c.completed,
-                                    'line-through text-gray-400': c.completed
+                                    'line-through text-slate-400': c.completed
                                 }"
                             >
                                 {{ c.title }}
@@ -279,7 +279,7 @@ onMounted(load)
                         </div>
 
                         <!-- Мета-информация -->
-                        <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                        <div class="mt-1.5 flex flex-wrap items-center gap-2.5 text-xs text-slate-500">
                             <span v-if="c.assignee" class="flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -300,19 +300,19 @@ onMounted(load)
                         </div>
 
                         <!-- Файлы -->
-                        <div v-if="c.files?.length" class="mt-3 flex flex-wrap gap-2">
+                        <div v-if="c.files?.length" class="mt-2 flex flex-wrap gap-2">
                             <a
                                 v-for="f in c.files"
                                 :key="f.id"
                                 :href="f.url"
                                 target="_blank"
-                                class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                                class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 107.071 7.071l5.414-5.414"/>
                                 </svg>
-                                <span class="truncate max-w-[150px]">{{ f.name }}</span>
-                                <span class="text-gray-400">({{ formatFileSize(f.size) }})</span>
+                                <span class="truncate max-w-[180px]">{{ f.name }}</span>
+                                <span class="text-slate-400">({{ formatFileSize(f.size) }})</span>
                             </a>
                         </div>
                     </div>
@@ -324,19 +324,19 @@ onMounted(load)
                     >
                         <button
                             @click="openEditModal(c)"
-                            class="p-1 text-gray-500 hover:text-indigo-600 rounded hover:bg-gray-100"
+                            class="p-1 text-slate-500 hover:text-indigo-600 rounded hover:bg-gray-100"
                             title="Редактировать"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                         </button>
                         <button
                             @click="remove(c.id)"
-                            class="p-1 text-gray-500 hover:text-red-600 rounded hover:bg-gray-100"
+                            class="p-1 text-slate-500 hover:text-red-600 rounded hover:bg-gray-100"
                             title="Удалить"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
                         </button>
@@ -346,12 +346,12 @@ onMounted(load)
         </div>
 
         <!-- Пустое состояние -->
-        <div v-else class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-else class="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-slate-300">
+            <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">Чек-листов пока нет</h3>
-            <p class="mt-1 text-sm text-gray-500">Начните с создания первого пункта</p>
+            <p class="mt-1 text-sm text-slate-500">Начните с создания первого пункта</p>
         </div>
 
         <!-- Модальное окно -->
@@ -366,20 +366,20 @@ onMounted(load)
 
                 <!-- Модалка -->
                 <div class="relative inline-block bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:max-w-lg sm:w-full">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                                <h3 class="text-lg leading-6 font-semibold text-gray-900 mb-4">
+                                <h3 class="text-lg leading-6 font-semibold text-gray-900 mb-3">
                                     {{ isEditing ? 'Редактирование пункта' : 'Создание нового пункта' }}
                                 </h3>
 
                                 <!-- Ошибки -->
-                                <div v-if="errorText" class="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">
+                                <div v-if="errorText" class="mb-3 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200 text-sm">
                                     {{ errorText }}
                                 </div>
 
                                 <!-- Форма -->
-                                <form @submit.prevent="submit" class="space-y-4">
+                                <form @submit.prevent="submit" class="space-y-3">
                                     <!-- Название -->
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -389,7 +389,7 @@ onMounted(load)
                                             v-model="form.title"
                                             type="text"
                                             required
-                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                             placeholder="Введите название пункта"
                                             :disabled="submitting"
                                         />
@@ -402,7 +402,7 @@ onMounted(load)
                                         </label>
                                         <select
                                             v-model="form.assigned_to"
-                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                            class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                                             :disabled="submitting"
                                         >
                                             <option value="">— Не назначен —</option>
@@ -424,7 +424,7 @@ onMounted(load)
                                         <input
                                             type="checkbox"
                                             v-model="form.important"
-                                            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                                             :disabled="submitting"
                                             id="important"
                                         />
@@ -442,10 +442,10 @@ onMounted(load)
                                             type="file"
                                             multiple
                                             @change="e => form.files = Array.from(e.target.files)"
-                                            class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                            class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                                             :disabled="submitting"
                                         />
-                                        <p v-if="form.files.length" class="mt-1 text-xs text-gray-500">
+                                        <p v-if="form.files.length" class="mt-1 text-xs text-slate-500">
                                             Выбрано файлов: {{ form.files.length }}
                                         </p>
                                     </div>
@@ -458,7 +458,7 @@ onMounted(load)
                     <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
                         <button
                             @click="submit"
-                            class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                            class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-3 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                             :disabled="submitting"
                         >
                             <svg v-if="submitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -469,7 +469,7 @@ onMounted(load)
                         </button>
                         <button
                             @click="showModal = false"
-                            class="mt-3 w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+                            class="mt-3 w-full inline-flex justify-center rounded-lg border border-slate-300 shadow-sm px-3 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
                             :disabled="submitting"
                         >
                             Отмена

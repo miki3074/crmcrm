@@ -435,11 +435,11 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-5xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[90vh]">
+    <div class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+        <div class="w-full max-w-5xl rounded-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[88vh]">
             <!-- Заголовок -->
-            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-2xl font-bold flex items-center gap-2">
+            <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
                     <span>📋</span> {{ poll?.title || 'Опрос' }}
                 </h3>
                 <div class="flex items-center gap-2">
@@ -470,7 +470,7 @@ onMounted(() => {
             </div>
 
             <!-- Тело -->
-            <div class="p-6 overflow-y-auto flex-1">
+            <div class="p-4 overflow-y-auto flex-1">
                 <div v-if="isLoading" class="text-center py-10">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
                     <p class="mt-4 text-slate-500">Загрузка опроса...</p>
@@ -498,21 +498,21 @@ onMounted(() => {
                             {{ poll.description }}
                         </p>
 
-<!--                        <div class="grid grid-cols-4 gap-4 mt-4">-->
+<!--                        <div class="grid grid-cols-4 gap-3 mt-4">-->
 <!--                            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-center">-->
-<!--                                <div class="text-2xl font-bold text-indigo-600">{{ poll.participants_count }}</div>-->
+<!--                                <div class="text-lg font-semibold text-indigo-600">{{ poll.participants_count }}</div>-->
 <!--                                <div class="text-xs text-slate-500">Участников</div>-->
 <!--                            </div>-->
 <!--                            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-center">-->
-<!--                                <div class="text-2xl font-bold text-emerald-600">{{ poll.responded_count }}</div>-->
+<!--                                <div class="text-lg font-semibold text-emerald-600">{{ poll.responded_count }}</div>-->
 <!--                                <div class="text-xs text-slate-500">Ответило</div>-->
 <!--                            </div>-->
 <!--                            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-center">-->
-<!--                                <div class="text-2xl font-bold text-amber-600">{{ poll.problems_count || 0 }}</div>-->
+<!--                                <div class="text-lg font-semibold text-amber-600">{{ poll.problems_count || 0 }}</div>-->
 <!--                                <div class="text-xs text-slate-500">Проблем</div>-->
 <!--                            </div>-->
 <!--                            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-center">-->
-<!--                                <div class="text-2xl font-bold text-purple-600">{{ poll.participants_count - poll.responded_count }}</div>-->
+<!--                                <div class="text-lg font-semibold text-purple-600">{{ poll.participants_count - poll.responded_count }}</div>-->
 <!--                                <div class="text-xs text-slate-500">Не ответили</div>-->
 <!--                            </div>-->
 <!--                        </div>-->
@@ -522,14 +522,14 @@ onMounted(() => {
                             <button
                                 v-if="isCreator && poll.status === 'active'"
                                 @click="closePoll"
-                                class="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-400 font-medium transition text-sm"
+                                class="px-3 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-400 font-medium transition text-sm"
                             >
                                 🔒 Закрыть опрос
                             </button>
                             <button
                                 v-if="isCreator && poll.status === 'closed'"
                                 @click="reopenPoll"
-                                class="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-medium transition text-sm"
+                                class="px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 font-medium transition text-sm"
                             >
                                 🔓 Открыть заново
                             </button>
@@ -727,7 +727,7 @@ onMounted(() => {
             </div>
 
             <!-- Футер -->
-            <div class="p-6 border-t dark:border-slate-700 flex justify-between items-center">
+            <div class="px-4 py-3 border-t dark:border-slate-700 flex justify-between items-center">
                 <div class="text-sm text-slate-400">
                     <span v-if="poll?.is_participant">✅ Вы участник опроса</span>
                     <span v-else>👤 Вы не участвуете в этом опросе</span>
@@ -735,7 +735,7 @@ onMounted(() => {
                 </div>
                 <button
                     @click="$emit('close')"
-                    class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
+                    class="h-9 px-3 rounded-lg text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
                 >
                     Закрыть
                 </button>
@@ -744,11 +744,11 @@ onMounted(() => {
     </div>
 
     <!-- Модалка добавления участников -->
-    <div v-if="showAddParticipantsModal" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[80vh]">
+    <div v-if="showAddParticipantsModal" class="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+        <div class="w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[80vh]">
             <!-- Заголовок -->
-            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-xl font-bold flex items-center gap-2">
+            <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-base font-semibold flex items-center gap-2">
                     <span>👥</span> Добавить участников в опрос
                 </h3>
                 <button
@@ -760,7 +760,7 @@ onMounted(() => {
             </div>
 
             <!-- Тело -->
-            <div class="p-6 overflow-y-auto flex-1">
+            <div class="p-4 overflow-y-auto flex-1">
                 <div v-if="isLoadingAvailable" class="text-center py-10">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
                     <p class="mt-4 text-slate-500">Загрузка доступных участников...</p>
@@ -819,17 +819,17 @@ onMounted(() => {
             </div>
 
             <!-- Футер -->
-            <div class="p-6 border-t dark:border-slate-700 flex justify-end gap-3">
+            <div class="px-4 py-3 border-t dark:border-slate-700 flex justify-end gap-3">
                 <button
                     @click="showAddParticipantsModal = false"
-                    class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
+                    class="h-9 px-3 rounded-lg text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
                 >
                     Отмена
                 </button>
                 <button
                     @click="addParticipants"
                     :disabled="isAddingParticipants || selectedNewParticipants.length === 0"
-                    class="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    class="h-9 px-3 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     <span v-if="isAddingParticipants" class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
                     {{ isAddingParticipants ? 'Добавление...' : `Добавить (${selectedNewParticipants.length})` }}

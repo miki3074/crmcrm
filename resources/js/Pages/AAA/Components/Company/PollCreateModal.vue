@@ -133,11 +133,11 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[90vh]">
+    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+        <div class="w-full max-w-2xl rounded-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[88vh]">
             <!-- Заголовок -->
-            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-2xl font-bold flex items-center gap-2">
+            <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
                     <span>📋</span> Создать опрос
                 </h3>
                 <button
@@ -149,7 +149,7 @@ onMounted(() => {
             </div>
 
             <!-- Тело -->
-            <div class="p-6 overflow-y-auto flex-1">
+            <div class="p-4 overflow-y-auto flex-1">
                 <div v-if="isLoading" class="text-center py-10">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
                     <p class="mt-4 text-slate-500">Загрузка участников...</p>
@@ -165,7 +165,7 @@ onMounted(() => {
                             <input
                                 v-model="form.title"
                                 type="text"
-                                class="w-full px-4 py-2 rounded-xl border dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                                class="w-full px-3 py-2 rounded-lg border dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                                 placeholder="Введите название опроса"
                                 required
                             />
@@ -179,7 +179,7 @@ onMounted(() => {
                             <textarea
                                 v-model="form.description"
                                 rows="3"
-                                class="w-full px-4 py-2 rounded-xl border dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                                class="w-full px-3 py-2 rounded-lg border dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                                 placeholder="Опишите цель опроса..."
                             ></textarea>
                         </div>
@@ -255,17 +255,17 @@ onMounted(() => {
             </div>
 
             <!-- Футер -->
-            <div class="p-6 border-t dark:border-slate-700 flex justify-end gap-3">
+            <div class="px-4 py-3 border-t dark:border-slate-700 flex justify-end gap-3">
                 <button
                     @click="$emit('close')"
-                    class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
+                    class="h-9 px-3 rounded-lg text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
                 >
                     Отмена
                 </button>
                 <button
                     @click="createPoll"
                     :disabled="isSubmitting || !form.title.trim() || form.participants.length === 0"
-                    class="px-6 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    class="h-9 px-3 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                     <span v-if="isSubmitting" class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
                     {{ isSubmitting ? 'Создание...' : 'Создать опрос' }}

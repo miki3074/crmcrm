@@ -37,18 +37,18 @@ const getAvatarColor = (name) => {
 </script>
 
 <template>
-    <div class="space-y-6">
+    <div class="space-y-3">
 
 <!--         Блок: Команда и Инфо-->
-<!--        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">-->
+<!--        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">-->
 
 <!--            &lt;!&ndash; Заголовок блока &ndash;&gt;-->
-<!--            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 bg-gray-50/50 dark:bg-gray-700/30">-->
+<!--            <div class="px-6 py-2.5 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2 bg-gray-50/50 dark:bg-gray-700/30">-->
 <!--                <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>-->
 <!--                <h3 class="font-bold text-gray-800 dark:text-gray-200">Детали задачи</h3>-->
 <!--            </div>-->
 
-<!--            <div class="p-6 space-y-6">-->
+<!--            <div class="p-4 space-y-3">-->
 
 <!--                &lt;!&ndash; Секция: Исполнители (Главные) &ndash;&gt;-->
 <!--                <div>-->
@@ -70,7 +70,7 @@ const getAvatarColor = (name) => {
 <!--                </div>-->
 
 <!--                &lt;!&ndash; Секция: Ответственные и Наблюдатели &ndash;&gt;-->
-<!--                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-gray-100 dark:border-gray-700">-->
+<!--                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-slate-800">-->
 
 <!--                    &lt;!&ndash; Ответственные &ndash;&gt;-->
 <!--                    <div>-->
@@ -107,7 +107,7 @@ const getAvatarColor = (name) => {
 <!--                </div>-->
 
 <!--                &lt;!&ndash; Производители / Покупатели &ndash;&gt;-->
-<!--                <div v-if="task?.producers?.length" class="pt-4 border-t border-gray-100 dark:border-gray-700">-->
+<!--                <div v-if="task?.producers?.length" class="pt-4 border-t border-gray-100 dark:border-slate-800">-->
 <!--                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1">-->
 <!--                        Контрагенты-->
 <!--                    </h4>-->
@@ -126,14 +126,14 @@ const getAvatarColor = (name) => {
 <!--        </div>-->
 
         <!-- Блок: Чеклисты -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+            <div class="px-6 py-2.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30">
                 <div class="flex items-center gap-2">
                     <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     <h3 class="font-bold text-gray-800 dark:text-gray-200">Чек-листы</h3>
                 </div>
             </div>
-            <div class="p-6">
+            <div class="p-4">
                 <!-- Теперь userId передается корректно -->
                 <TaskChecklists
                     :user-id="userId"
@@ -145,7 +145,7 @@ const getAvatarColor = (name) => {
             </div>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800">
             <TaskChat
                 :task-id="task.id"
                 :can-chat="true"

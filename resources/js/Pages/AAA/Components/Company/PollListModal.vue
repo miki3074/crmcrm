@@ -105,11 +105,11 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div class="w-full max-w-5xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[90vh]">
+    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+        <div class="w-full max-w-5xl rounded-xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[88vh]">
             <!-- Заголовок -->
-            <div class="p-6 border-b dark:border-slate-700 flex justify-between items-center">
-                <h3 class="text-2xl font-bold flex items-center gap-2">
+            <div class="px-4 py-3 border-b dark:border-slate-700 flex justify-between items-center">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
                     <span>📊</span> Мои опросы
                     <span class="text-sm font-normal text-slate-500 ml-2">({{ polls.length }})</span>
                 </h3>
@@ -122,7 +122,7 @@ onMounted(() => {
             </div>
 
             <!-- Тело -->
-            <div class="p-6 overflow-y-auto flex-1">
+            <div class="p-4 overflow-y-auto flex-1">
                 <div v-if="isLoading" class="text-center py-10">
                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
                     <p class="mt-4 text-slate-500">Загрузка опросов...</p>
@@ -135,11 +135,11 @@ onMounted(() => {
                 
                 </div>
 
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div
                         v-for="poll in polls"
                         :key="poll.id"
-                        class="border dark:border-slate-700 rounded-xl p-5 hover:shadow-lg transition cursor-pointer hover:border-indigo-500 relative"
+                        class="border dark:border-slate-700 rounded-xl p-4 hover:shadow-md transition cursor-pointer hover:border-indigo-500 relative"
                         @click="openPoll(poll.id)"
                     >
                         <!-- Кнопка удаления -->
@@ -233,11 +233,11 @@ onMounted(() => {
             </div>
 
             <!-- Футер -->
-            <div class="p-6 border-t dark:border-slate-700 flex justify-between items-center">
+            <div class="px-4 py-3 border-t dark:border-slate-700 flex justify-between items-center">
 
                 <button
                     @click="$emit('close')"
-                    class="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
+                    class="h-9 px-3 rounded-lg text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-medium"
                 >
                     Закрыть
                 </button>

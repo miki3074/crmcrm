@@ -124,26 +124,64 @@ private function participates(User $user, Task $task): bool
         return false;
     }
 
-  public function createSubtask(User $user, Task $task): bool
+public function createSubtask(User $user, Task $task): bool
 {
+    $project = $task->project;
+
+    if (!$project) {
+        return false;
+    }
+
     return
         // Автор задачи
-        $user->id === $task->creator_id ||
+        (int) $user->id === (int) $task->creator_id ||
 
-        // Ответственные в задаче
-        $task->responsibles()->where('users.id', $user->id)->exists() ||
+        // Ответственный задачи
+        $task->responsibles()
+            ->where('users.id', $user->id)
+            ->exists() ||
 
-        // Исполнители в задаче
-        $task->executors()->where('users.id', $user->id)->exists() ||
+        // Исполнитель задачи
+        $task->executors()
+            ->where('users.id', $user->id)
+            ->exists() ||
 
-        // Руководители проекта
-        $task->project->managers->contains('id', $user->id) ||
+        // Менеджер проекта
+        $project->managers()
+            ->where('users.id', $user->id)
+            ->exists() ||
 
-        // Исполнители проекта
-        $task->project->executors->contains('id', $user->id) ||
+        // Исполнитель проекта
+        $project->executors()
+            ->where('users.id', $user->id)
+            ->exists() ||
+
+        // Наблюдатель проекта
+        $project->watchers()
+            ->where('users.id', $user->id)
+            ->exists() ||
+
+        // Наблюдатель задачи
+        $task->watcherstask()
+            ->where('users.id', $user->id)
+            ->exists() ||
+
+        // Исполнитель любой существующей подзадачи
+        $task->subtasks()
+            ->whereHas('executors', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->exists() ||
+
+        // Ответственный любой существующей подзадачи
+        $task->subtasks()
+            ->whereHas('responsibles', function ($query) use ($user) {
+                $query->where('users.id', $user->id);
+            })
+            ->exists() ||
 
         // Владелец компании
-        $user->id === ($task->project->company->user_id ?? 0);
+        (int) optional($project->company)->user_id === (int) $user->id;
 }
 
 

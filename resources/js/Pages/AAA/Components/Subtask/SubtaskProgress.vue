@@ -24,13 +24,13 @@ const updateProgress = async (val) => {
 </script>
 
 <template>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="flex items-center justify-between mb-3">
-            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Прогресс подзадачи</h3>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Прогресс подзадачи</h3>
             <span class="text-sm text-gray-500">Выполнено {{ subtask.progress ?? 0 }}%</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-2">
+        <div class="grid grid-cols-2 gap-3 mb-3">
             <div>
                 <p class="text-gray-500 text-sm">Начало</p>
                 <p class="font-medium dark:text-white">{{ subtask.start_date }}</p>
@@ -41,14 +41,14 @@ const updateProgress = async (val) => {
             </div>
         </div>
 
-        <div class="flex mt-2 space-x-1 select-none">
+        <div class="mt-2 flex space-x-1 select-none">
             <div v-for="n in 10" :key="n"
                  @click="canUpdateProgress ? updateProgress(n*10) : null"
-                 class="h-4 sm:h-5 flex-1 rounded transition"
+                 class="h-2.5 flex-1 rounded transition"
                  :class="{
                 'cursor-pointer hover:opacity-80': canUpdateProgress,
                 'bg-green-600': (subtask.progress ?? 0) >= n * 10,
-                'bg-gray-200 dark:bg-gray-700': (subtask.progress ?? 0) < n * 10
+                'bg-gray-200 dark:bg-slate-800': (subtask.progress ?? 0) < n * 10
              }"
             />
         </div>

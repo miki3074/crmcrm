@@ -16,11 +16,11 @@ const showAll = ref(false)
 const visibleSubtasks = computed(() => {
     if (!props.subtasks) return []
     if (showAll.value) return props.subtasks
-    return props.subtasks.slice(0, 4)
+    return props.subtasks.slice(0, 6)
 })
 
 // Проверка: нужно ли вообще показывать кнопку (если задач > 4)
-const hasMore = computed(() => props.subtasks?.length > 4)
+const hasMore = computed(() => props.subtasks?.length > 6)
 
 // Хелперы
 const getProgressColor = (progress) => {
@@ -41,10 +41,10 @@ const formatDate = (dateStr) => {
 </script>
 
 <template>
-    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 h-auto flex flex-col">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 h-auto flex flex-col">
 
         <!-- Заголовок -->
-        <div class="flex justify-between items-center mb-5">
+        <div class="flex justify-between items-center mb-3">
             <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                 Подзадачи <span class="text-xs text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{{ subtasks?.length || 0 }}</span>
@@ -66,8 +66,8 @@ const formatDate = (dateStr) => {
 
         <!-- Сетка задач (2 колонки) -->
         <div v-else>
-            <!-- grid-cols-1 для мобильных, sm:grid-cols-2 для планшетов и десктопов -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <!-- grid-cols-1 для мобильных, md:grid-cols-2 xl:grid-cols-3 для планшетов и десктопов -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-3">
                 <div
                     v-for="s in visibleSubtasks"
                     :key="s.id"
@@ -76,7 +76,7 @@ const formatDate = (dateStr) => {
                 >
                     <!-- Верх: Заголовок -->
                     <div class="flex justify-between items-start mb-3">
-                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-blue-600 transition-colors pr-2 h-10 leading-5">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-blue-600 transition-colors pr-2 leading-5">
                             {{ s.title }}
                         </h4>
                         <!-- Стрелочка -->
@@ -86,7 +86,7 @@ const formatDate = (dateStr) => {
                     </div>
 
                     <!-- Центр: Прогресс -->
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <div class="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div class="h-full rounded-full transition-all duration-500"
                                  :class="getProgressColor(s.progress)"
@@ -126,7 +126,7 @@ const formatDate = (dateStr) => {
                     @click="showAll = !showAll"
                     class="text-xs font-medium text-gray-500 hover:text-blue-600 flex items-center gap-1 transition-colors px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                    <span v-if="!showAll">Показать еще ({{ subtasks.length - 4 }})</span>
+                    <span v-if="!showAll">Показать еще ({{ subtasks.length - 6 }})</span>
                     <span v-else>Свернуть</span>
 
                     <svg :class="{'rotate-180': showAll}" class="w-3 h-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">

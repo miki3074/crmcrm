@@ -61,17 +61,17 @@ const doAction = (event) => {
 </script>
 
 <template>
-    <div class="group relative bg-white dark:bg-gray-800 rounded-[2rem] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-8 transition-all hover:shadow-2xl font-sans">
+    <div class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-4 transition-all hover:shadow-xl font-sans">
 
         <!-- Верхняя полоска -->
-        <div class="h-2 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500"></div>
+        <div class="h-1 w-full bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500"></div>
 
-        <div class="p-6 sm:p-10">
-            <div class="flex flex-col xl:flex-row gap-10">
+        <div class="p-4 sm:p-5">
+            <div class="flex flex-col xl:flex-row gap-5">
 
                 <!-- ЛЕВАЯ КОЛОНКА -->
                 <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
                         <button @click="$emit('back')" class="hover:text-indigo-600 transition flex items-center gap-1.5">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7 7-7m-7 7h18" /></svg>
                             Назад
@@ -80,8 +80,8 @@ const doAction = (event) => {
                         <span class="truncate">📁 {{ task?.project?.name }}</span>
                     </div>
 
-                    <div class="mb-8">
-                        <h1 class="text-3xl sm:text-5xl font-black text-slate-800 dark:text-white tracking-tight break-words mb-5">
+                    <div class="mb-4">
+                        <h1 class="text-2xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight break-words mb-3">
                             {{ task?.title }}
                         </h1>
                         <div class="flex flex-wrap gap-3">
@@ -95,8 +95,8 @@ const doAction = (event) => {
                     </div>
 
                     <div v-if="task?.description" class="relative">
-                        <div class="pl-5 border-l-4 border-slate-100 dark:border-gray-700 py-2">
-                            <p class="text-slate-600 dark:text-slate-300 text-lg leading-relaxed italic">
+                        <div class="pl-3 border-l-2 border-slate-100 dark:border-gray-700 py-2">
+                            <p class="text-slate-600 dark:text-slate-300 text-sm leading-6">
                                 «{{ shortDescription }}»
                             </p>
                             <button v-if="isLongDescription" @click="showDescriptionModal = true" class="mt-3 text-sm font-black text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Читать полностью</button>
@@ -105,7 +105,7 @@ const doAction = (event) => {
                 </div>
 
                 <!-- ПРАВАЯ КОЛОНКА -->
-                <div class="w-full xl:w-80 flex flex-col gap-4 flex-shrink-0">
+                <div class="w-full xl:w-72 flex flex-col gap-4 flex-shrink-0">
                     <!-- Lifecycle Buttons -->
                     <template v-if="!task?.completed">
                         <button v-if="task?.status === 'new'" @click="$emit('startWork', task.id)" class="main-btn bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200">
@@ -123,7 +123,7 @@ const doAction = (event) => {
                     </div>
 
                     <!-- КНОПКА ОТКРЫТИЯ МЕНЮ -->
-                    <button @click="isSidebarOpen = true" class="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
+                    <button @click="isSidebarOpen = true" class="w-full py-2.5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-wide hover:scale-[1.02] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16m-7 6h7" /></svg>
                         Управление
                     </button>
@@ -136,18 +136,18 @@ const doAction = (event) => {
             <div v-if="isSidebarOpen" class="fixed inset-0 z-[100] flex justify-end">
                 <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-md transition-opacity" @click="isSidebarOpen = false"></div>
 
-                <div class="relative w-full max-w-md bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col border-l border-slate-100 dark:border-gray-800 animate-in slide-in-from-right duration-500">
+                <div class="relative w-full max-w-sm bg-white dark:bg-gray-900 h-full shadow-xl flex flex-col border-l border-slate-100 dark:border-gray-800 animate-in slide-in-from-right duration-500">
 
                     <!-- Header -->
-                    <div class="p-8 border-b border-slate-50 dark:border-gray-800 flex justify-between items-center bg-slate-50/50 dark:bg-gray-800/50">
+                    <div class="p-5 border-b border-slate-50 dark:border-gray-800 flex justify-between items-center bg-slate-50/50 dark:bg-gray-800/50">
                         <h2 class="text-2xl font-black uppercase tracking-tighter text-slate-800 dark:text-white">Параметры</h2>
                         <button @click="isSidebarOpen = false" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-700 transition-colors text-2xl text-slate-400">&times;</button>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+                    <div class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
 
                         <!-- БЛОК: ДЕТАЛИ ЗАДАЧИ (Вставлен сюда) -->
-                        <section class="space-y-6">
+                        <section class="space-y-3">
                             <h3 class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Участники задачи</h3>
 
                             <!-- Исполнители -->
@@ -163,7 +163,7 @@ const doAction = (event) => {
                             </div>
 
                             <!-- Ответственные и Наблюдатели -->
-                            <div class="grid grid-cols-2 gap-6 pt-4">
+                            <div class="grid grid-cols-2 gap-4 pt-4">
                                 <div class="space-y-3">
                                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">👨‍💼 Ответственные</p>
                                     <div class="flex -space-x-2">
@@ -215,7 +215,7 @@ const doAction = (event) => {
 
                         <!-- Опасная зона -->
                         <section v-if="perms.canDelete" class="pt-10 border-t border-slate-50 dark:border-gray-800">
-                            <button @click="doAction('delete')" class="w-full py-4 rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">Удалить задачу безвозвратно</button>
+                            <button @click="doAction('delete')" class="w-full py-2.5 rounded-2xl bg-rose-50 text-rose-600 font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">Удалить задачу безвозвратно</button>
                         </section>
                     </div>
                 </div>
@@ -225,14 +225,14 @@ const doAction = (event) => {
 
     <!-- МОДАЛКА ОПИСАНИЯ (упрощенная для читабельности) -->
     <Transition name="fade">
-        <div v-if="showDescriptionModal" class="fixed inset-0 z-[110] flex items-center justify-center p-6">
+        <div v-if="showDescriptionModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showDescriptionModal = false"></div>
-            <div class="relative bg-white dark:bg-gray-800 w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[80vh] animate-in zoom-in-95">
-                <div class="p-8 border-b border-slate-50 dark:border-gray-700 flex justify-between items-center">
+            <div class="relative bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-in zoom-in-95">
+                <div class="p-5 border-b border-slate-50 dark:border-gray-700 flex justify-between items-center">
                     <h3 class="font-black text-xl uppercase tracking-tighter">Описание</h3>
-                    <button @click="showDescriptionModal = false" class="text-3xl text-slate-300 hover:text-slate-500">&times;</button>
+                    <button @click="showDescriptionModal = false" class="text-2xl text-slate-300 hover:text-slate-500">&times;</button>
                 </div>
-                <div class="p-10 overflow-y-auto custom-scrollbar">
+                <div class="p-5 overflow-y-auto custom-scrollbar">
                     <p class="text-slate-700 dark:text-slate-200 text-lg leading-relaxed whitespace-pre-line">{{ task.description }}</p>
                 </div>
             </div>
@@ -242,8 +242,8 @@ const doAction = (event) => {
 
 <style scoped>
 .badge { @apply inline-flex items-center rounded-full text-[10px] font-black uppercase tracking-widest ring-1 shadow-sm transition-all; }
-.main-btn { @apply w-full py-4 rounded-2xl text-white font-black text-[11px] uppercase tracking-[0.2em] transition-all transform hover:-translate-y-0.5 active:translate-y-0 shadow-xl active:scale-95; }
-.side-menu-btn { @apply flex items-center justify-center gap-2 w-full px-4 py-3.5 bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 transition-all hover:border-indigo-500 hover:shadow-lg active:scale-95; }
+.main-btn { @apply w-full py-2.5 rounded-2xl text-white font-black text-[11px] uppercase tracking-wide transition-all transform hover:-translate-y-0.5 active:translate-y-0 shadow-xl active:scale-95; }
+.side-menu-btn { @apply flex items-center justify-center gap-2 w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-slate-100 dark:border-gray-700 rounded-2xl text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 transition-all hover:border-indigo-500 hover:shadow-lg active:scale-95; }
 .slide-enter-active, .slide-leave-active { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
 .slide-enter-from, .slide-leave-to { transform: translateX(100%); }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 const props = defineProps(['project'])
 
 
@@ -60,7 +61,7 @@ const goTo = (url) => {
 
 <template>
     <!-- Карточка -->
-    <div class="rounded-3xl border border-slate-100 bg-white dark:bg-slate-800 dark:border-slate-700 p-6 shadow-sm sticky top-6">
+    <div class="rounded-2xl border border-slate-100 bg-white dark:bg-slate-800 dark:border-slate-700 p-4 shadow-sm sticky top-4">
 
         <!-- Заголовок -->
         <div class="flex items-center gap-2 border-b border-slate-100 dark:border-slate-700 pb-4 mb-4">
@@ -71,14 +72,14 @@ const goTo = (url) => {
         </div>
 
         <!-- Список характеристик -->
-        <div class="space-y-4">
+        <div class="space-y-2.5">
             <!-- Компания -->
             <div class="flex items-start justify-between group">
                 <div class="flex items-center gap-2 text-sm text-slate-500">
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                     <span>Компания</span>
                 </div>
-                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[150px]">
+                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[170px]">
                     {{ project.company?.name || '—' }}
                 </span>
             </div>
@@ -89,7 +90,7 @@ const goTo = (url) => {
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     <span>Инициатор</span>
                 </div>
-                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[150px]">
+                <span class="text-sm font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[170px]">
                     {{ project.initiator?.name || '—' }}
                 </span>
             </div>
@@ -156,10 +157,10 @@ const goTo = (url) => {
             <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModal = false"></div>
 
             <!-- Контент -->
-            <div class="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] transform transition-all animate-in zoom-in-95 duration-200">
+            <div class="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-xl flex flex-col max-h-[85vh] transform transition-all animate-in zoom-in-95 duration-200">
 
                 <!-- Хедер модалки -->
-                <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
+                <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
                     <h3 class="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
                         <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Описание проекта
@@ -170,14 +171,14 @@ const goTo = (url) => {
                 </div>
 
                 <!-- Тело модалки (скролл) -->
-                <div class="p-6 overflow-y-auto custom-scrollbar">
+                <div class="p-4 overflow-y-auto custom-scrollbar">
                     <div class="prose prose-sm prose-slate dark:prose-invert max-w-none whitespace-pre-line leading-relaxed">
                         {{ project.description }}
                     </div>
                 </div>
 
                 <!-- Футер модалки -->
-                <div class="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl flex justify-end">
+                <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl flex justify-end">
                     <button @click="showModal = false" class="px-4 py-2 bg-white border border-slate-300 dark:bg-slate-700 dark:border-slate-600 text-slate-700 dark:text-white rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors shadow-sm">
                         Закрыть
                     </button>
@@ -222,17 +223,17 @@ const goTo = (url) => {
 
             <!-- Контент -->
             <div class="relative w-full max-w-xl bg-white dark:bg-slate-800
-                  rounded-2xl shadow-2xl max-h-[80vh] flex flex-col z-10"
+                  rounded-2xl shadow-xl max-h-[80vh] flex flex-col z-10"
                  @click.stop>
 
                 <!-- Header -->
-                <div class="px-6 py-4 border-b flex justify-between items-center">
+                <div class="px-4 py-3 border-b flex justify-between items-center">
                     <h3 class="font-bold text-lg">Завершённые задачи проекта</h3>
                     <button @click="showCompletedModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 
                 <!-- Body -->
-                <div class="p-6 overflow-y-auto space-y-6">
+                <div class="p-4 overflow-y-auto space-y-2.5">
 
                     <div v-if="!completedTasks.length && !completedSubtasks.length" class="text-sm text-slate-400">
                         Пока нет завершённых задач
@@ -267,7 +268,7 @@ const goTo = (url) => {
                 </div>
 
                 <!-- Footer -->
-                <div class="px-6 py-4 border-t flex justify-end">
+                <div class="px-4 py-3 border-t flex justify-end">
                     <button @click="showCompletedModal = false" class="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600">
                         Закрыть
                     </button>

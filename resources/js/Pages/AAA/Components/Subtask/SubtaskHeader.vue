@@ -79,8 +79,8 @@ const updateSubtask = async () => {
 </script>
 
 <template>
-    <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] p-6 mb-6 shadow-sm transition-all hover:shadow-md">
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] p-4 mb-6 shadow-sm transition-all hover:shadow-md">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
 
             <!-- ЛЕВАЯ ЧАСТЬ: Информация -->
             <div class="flex-1 min-w-0">
@@ -93,7 +93,7 @@ const updateSubtask = async () => {
                     </span>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                <div class="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
                     <div class="flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         Дедлайн: <span class="text-slate-600 dark:text-slate-200">{{ formatDate(subtask.due_date) }}</span>

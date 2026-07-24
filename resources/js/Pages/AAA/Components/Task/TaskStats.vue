@@ -558,27 +558,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="space-y-5">
+    <div class="space-y-3">
         <!-- Основная информационная карточка -->
         <section
             class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
         >
             <div
-                class="grid grid-cols-1 divide-y divide-slate-100 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)] lg:divide-x lg:divide-y-0 dark:divide-slate-700"
+                class="grid grid-cols-1 divide-y divide-slate-100 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)] lg:divide-x lg:divide-y-0 dark:divide-slate-700"
             >
                 <!-- Временная шкала -->
-                <div class="p-5 sm:p-6">
+                <div class="p-5 sm:p-4">
                     <div
-                        class="mb-5 flex items-center justify-between gap-4"
+                        class="mb-3 flex items-center justify-between gap-4"
                     >
                         <div
                             class="flex min-w-0 items-center gap-3"
                         >
                             <div
-                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                             >
                                 <svg
-                                    class="h-5 w-5"
+                                    class="h-4 w-4"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
@@ -683,7 +683,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Прогресс -->
-                <div class="p-5 sm:p-6">
+                <div class="p-5 sm:p-4">
                     <div
                         class="mb-4 flex items-start justify-between gap-4"
                     >
@@ -702,7 +702,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <span
-                            class="text-3xl font-black tracking-tight"
+                            class="text-2xl font-black tracking-tight"
                             :class="progressTextColor"
                         >
                             {{ progress }}%
@@ -724,7 +724,7 @@ onBeforeUnmount(() => {
                             v-for="number in 11"
                             :key="number"
                             type="button"
-                            class="group relative h-8 rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                            class="group relative h-6 rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
                             :class="[
                                 progress >= (number - 1) * 10
                                     ? progressColor
@@ -766,14 +766,14 @@ onBeforeUnmount(() => {
         >
             <!-- Заголовок -->
             <div
-                class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-700"
+                class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-2.5 dark:border-slate-700"
             >
                 <div class="flex items-center gap-3">
                     <div
                         class="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400"
                     >
                         <svg
-                            class="h-5 w-5"
+                            class="h-4 w-4"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -875,7 +875,7 @@ onBeforeUnmount(() => {
 
                 <button
                     type="button"
-                    class="flex w-full items-center justify-center gap-3 rounded-xl border border-dashed px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
+                    class="flex w-full items-center justify-center gap-3 rounded-xl border border-dashed px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60"
                     :class="
                         isDragging
                             ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
@@ -889,7 +889,7 @@ onBeforeUnmount(() => {
                     @drop.prevent="handleDrop"
                 >
                     <svg
-                        class="h-5 w-5 shrink-0"
+                        class="h-4 w-4 shrink-0"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -1095,17 +1095,17 @@ onBeforeUnmount(() => {
                     @click.self="closeFileViewer"
                 >
                     <div
-                        class="flex h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl dark:bg-slate-900"
+                        class="flex h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-white shadow-xl dark:bg-slate-900"
                     >
                         <!-- Заголовок -->
                         <header
-                            class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700"
+                            class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5 dark:border-slate-700"
                         >
                             <div
                                 class="flex min-w-0 items-center gap-3"
                             >
                                 <div
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800"
+                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-xl dark:bg-slate-800"
                                 >
                                     {{ currentFileIcon }}
                                 </div>
@@ -1148,7 +1148,7 @@ onBeforeUnmount(() => {
                                     @click="reloadPreview"
                                 >
                                     <svg
-                                        class="h-5 w-5"
+                                        class="h-4 w-4"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke="currentColor"
@@ -1193,7 +1193,7 @@ onBeforeUnmount(() => {
                                     @click="closeFileViewer"
                                 >
                                     <svg
-                                        class="h-5 w-5"
+                                        class="h-4 w-4"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke="currentColor"
@@ -1253,13 +1253,13 @@ onBeforeUnmount(() => {
                             <!-- Ошибка -->
                             <div
                                 v-if="previewError"
-                                class="absolute inset-0 z-30 flex items-center justify-center overflow-auto p-6"
+                                class="absolute inset-0 z-30 flex items-center justify-center overflow-auto p-4"
                             >
                                 <div
-                                    class="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-xl dark:border-rose-500/20 dark:bg-slate-900"
+                                    class="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-4 text-center shadow-xl dark:border-rose-500/20 dark:bg-slate-900"
                                 >
                                     <div
-                                        class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-3xl dark:bg-rose-500/10"
+                                        class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-2xl dark:bg-rose-500/10"
                                     >
                                         ⚠️
                                     </div>

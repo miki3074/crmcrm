@@ -36,7 +36,7 @@ const onSubmit = () => emit('submit', form.value)
         <!-- Content -->
         <div class="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-8 transform transition-all">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="text-2xl font-bold text-slate-800 dark:text-white">Новый проект</h3>
+                <h3 class="text-lg font-semibold text-slate-800 dark:text-white">Новый проект</h3>
                 <button @click="$emit('close')" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition">✕</button>
             </div>
 
@@ -58,7 +58,7 @@ const onSubmit = () => emit('submit', form.value)
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Дата старта</label>
                         <input type="date" v-model="form.start_date" required class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-indigo-500 outline-none" />

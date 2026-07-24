@@ -359,17 +359,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div class="flex flex-col h-[600px] bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+    <div class="flex h-[520px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-950">
 
         <!-- Шапка чата -->
-        <div class="px-5 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm z-10">
-            <h3 class="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+        <div class="px-3 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-sm z-10">
+            <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100">
                 <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
                 Обсуждение задачи
             </h3>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
                 <span class="text-xs text-gray-400 font-medium">
                     {{ messageCount }} {{ messageCount === 1 ? 'сообщение' :
                     messageCount >= 2 && messageCount <= 4 ? 'сообщения' : 'сообщений' }}
@@ -395,7 +395,7 @@ onBeforeUnmount(() => {
         <!-- Список сообщений -->
         <div
             ref="commentsContainer"
-            class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gray-50/50 dark:bg-gray-900"
+            class="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-slate-50/70 p-3 dark:bg-slate-950ray-900"
         >
             <!-- Загрузка -->
             <div v-if="loading" class="flex justify-center py-8">
@@ -415,7 +415,7 @@ onBeforeUnmount(() => {
                 v-for="c in sortedComments"
                 :key="c.id"
                 :id="`comment-${c.id}`"
-                class="group flex gap-3 animate-fade-in-up"
+                class="group flex gap-2.5 animate-fade-in-up"
             >
                 <!-- Аватар -->
                 <div class="flex-shrink-0 mt-1">
@@ -437,7 +437,7 @@ onBeforeUnmount(() => {
                     </div>
 
                     <!-- Карточка сообщения -->
-                    <div class="relative bg-white dark:bg-gray-800 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="relative bg-white dark:bg-slate-900 p-3 rounded-xl rounded-tl-none border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
 
                         <!-- Цитата (Reply) -->
                         <div v-if="c.parent" class="mb-2 pl-3 border-l-4 border-indigo-200 dark:border-indigo-700/50 py-1 bg-gray-50 dark:bg-gray-700/30 rounded-r-lg">
@@ -530,7 +530,7 @@ onBeforeUnmount(() => {
         </div>
 
         <!-- Футер: Поле ввода -->
-        <div v-if="canChat" class="bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700 relative z-20">
+        <div v-if="canChat" class="bg-white dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-800 relative z-20">
 
             <!-- Панель ответа -->
             <transition
@@ -541,12 +541,12 @@ onBeforeUnmount(() => {
                 leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 translate-y-2"
             >
-                <div v-if="replyingTo" class="absolute bottom-full left-4 right-4 mb-2 bg-indigo-50 dark:bg-gray-700 p-3 rounded-lg border border-indigo-100 dark:border-indigo-500/30 shadow-lg flex justify-between items-center z-30">
-                    <div class="flex items-center gap-3 overflow-hidden">
+                <div v-if="replyingTo" class="absolute bottom-full left-4 right-4 mb-2 bg-indigo-50 dark:bg-gray-700 p-3 rounded-lg border border-indigo-100 dark:border-indigo-500/30 shadow-md flex justify-between items-center z-30">
+                    <div class="flex items-center gap-2.5 overflow-hidden">
                         <div class="w-1 bg-indigo-500 h-8 rounded-full"></div>
                         <div class="flex flex-col text-sm">
                             <span class="font-bold text-indigo-700 dark:text-indigo-300">Ответ {{ replyingTo.user?.name }}</span>
-                            <span class="text-gray-500 dark:text-gray-400 truncate max-w-xs text-xs">{{ replyingTo.body }}</span>
+                            <span class="text-slate-500 dark:text-slate-400 truncate max-w-xs text-xs">{{ replyingTo.body }}</span>
                         </div>
                     </div>
                     <button @click="cancelReply" class="p-1 hover:bg-black/5 rounded-full text-gray-400 hover:text-gray-600 transition">
@@ -559,8 +559,8 @@ onBeforeUnmount(() => {
 
             <!-- Панель редактирования -->
             <transition name="slide-down">
-                <div v-if="editingComment" class="absolute bottom-full left-4 right-4 mb-2 bg-blue-50 dark:bg-gray-700 p-3 rounded-lg border border-blue-100 dark:border-blue-500/30 shadow-lg flex justify-between items-center z-30">
-                    <div class="flex items-center gap-3 overflow-hidden">
+                <div v-if="editingComment" class="absolute bottom-full left-4 right-4 mb-2 bg-blue-50 dark:bg-gray-700 p-3 rounded-lg border border-blue-100 dark:border-blue-500/30 shadow-md flex justify-between items-center z-30">
+                    <div class="flex items-center gap-2.5 overflow-hidden">
                         <div class="w-1 bg-blue-500 h-8 rounded-full"></div>
                         <span class="font-bold text-blue-700 dark:text-blue-300 text-sm">Редактирование сообщения</span>
                     </div>
@@ -581,7 +581,7 @@ onBeforeUnmount(() => {
                     :placeholder="replyingTo ? `Ответить ${replyingTo.user?.name}...` :
                                  editingComment ? 'Редактирование...' :
                                  'Написать сообщение...'"
-                    class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 dark:text-gray-200 resize-none max-h-32 py-2.5 px-2 custom-scrollbar"
+                    class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 dark:text-gray-200 resize-none max-h-28 py-2.5 px-2 custom-scrollbar"
                     style="min-height: 40px;"
                     @input="onInput"
                     @keydown.ctrl.enter="editingComment ? saveEdit() : send()"
@@ -610,17 +610,17 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Модалка Mention -->
-            <div v-if="mentionOpen && mentionList.length" class="absolute bottom-full left-4 mb-2 bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-xl shadow-2xl w-64 max-h-56 overflow-y-auto z-50 custom-scrollbar">
+            <div v-if="mentionOpen && mentionList.length" class="absolute bottom-full left-4 mb-2 bg-white dark:bg-slate-900 border dark:border-gray-600 rounded-xl shadow-2xl w-64 max-h-56 overflow-y-auto z-50 custom-scrollbar">
                 <div
                     v-for="m in mentionList"
                     :key="m.id"
                     @click="selectMention(m)"
-                    class="px-4 py-2.5 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700 text-sm flex items-center gap-3 border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition"
+                    class="px-3 py-2.5 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700 text-sm flex items-center gap-2.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition"
                 >
                     <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-700 flex items-center justify-center text-xs font-bold shadow-sm">
                         {{ m.name[0] }}
                     </div>
-                    <span class="font-medium text-gray-700 dark:text-gray-200">{{ m.name }}</span>
+                    <span class="font-medium text-slate-700 dark:text-slate-200">{{ m.name }}</span>
                 </div>
             </div>
         </div>
