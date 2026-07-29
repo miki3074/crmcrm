@@ -95,7 +95,7 @@ onMounted(() => {
             <!-- Быстрые действия -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <StatCard title="Календарь" icon="📅" color="violet" @click="router.visit('/calendar')" />
-                <StatCard title="Хранилище" icon="📂" color="blue" @click="router.visit('/file-storage')" />
+                <StatCard title="База знанйи" icon="📂" color="blue" @click="router.visit('/knowledge')" />
                 <StatCard v-if="isAdmin" title="Сотрудники" icon="👥" color="indigo" @click="router.visit('/employees')" />
                 <StatCard v-if="isAdmin" title="Клиенты" icon="🤝" color="amber" @click="router.visit('/klients')" />
                 <StatCard title="Схема" icon="🗺️" color="emerald" @click="router.visit('/mapdiagram')" />

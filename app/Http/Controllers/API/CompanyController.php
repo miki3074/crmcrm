@@ -10,8 +10,11 @@ use App\Models\Company;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Subtask;
-
+use Illuminate\Support\Facades\DB;
 use App\Models\Subproject;
+
+use Inertia\Inertia;
+use Inertia\Response;
 
 use Carbon\Carbon;
 
@@ -840,4 +843,69 @@ public function destroy(Request $request, \App\Models\Company $company)
 
         return response()->json($members);
     }
+
+// база знаний 
+
+public function knowledgeCompanies(): Response
+{
+    $userId = auth()->id();
+
+    $companies = Company::query()
+        ->select([
+            'companies.id',
+            'companies.user_id',
+            'companies.name',
+            'companies.logo',
+            'companies.created_at',
+            'companies.updated_at',
+            'company_user.role as member_role',
+        ])
+        ->leftJoin('company_user', function ($join) use ($userId) {
+            $join
+                ->on(
+                    'company_user.company_id',
+                    '=',
+                    'companies.id'
+                )
+                ->where(
+                    'company_user.user_id',
+                    '=',
+                    $userId
+                );
+        })
+        ->where(function ($query) use ($userId) {
+            $query
+                ->where('companies.user_id', $userId)
+                ->orWhereNotNull('company_user.id');
+        })
+        ->distinct()
+        ->orderBy('companies.name')
+        ->get()
+        ->map(function ($company) use ($userId) {
+            $isOwner = (int) $company->user_id === (int) $userId;
+
+            return [
+                'id' => $company->id,
+                'name' => $company->name,
+                'logo' => $company->logo,
+                'user_id' => $company->user_id,
+                'is_owner' => $isOwner,
+                'role' => $isOwner
+                    ? 'owner'
+                    : $company->member_role,
+                'created_at' => optional(
+                    $company->created_at
+                )->toISOString(),
+            ];
+        })
+        ->values();
+
+    return Inertia::render('Knowledge/Companies', [
+        'companies' => $companies,
+    ]);
 }
+
+}
+
+
+

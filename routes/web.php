@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 
+
+
 use App\Models\Subproject;
 use App\Models\User;
 
@@ -27,10 +29,23 @@ use App\Http\Controllers\Auth\NewPasswordController;
 
 use App\Http\Controllers\Support\AdminSupportController;
 
+
+
 use App\Http\Controllers\PollController;
 //use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 
+//база зананий 
+
+use App\Http\Controllers\API\CompanyController;
+use App\Http\Controllers\KnowledgeBaseController;
+use App\Http\Controllers\KnowledgeAccessController;
+use App\Http\Controllers\KnowledgeFolderController;
+use App\Http\Controllers\KnowledgeArticleController;
+use App\Http\Controllers\KnowledgeArticleFileController;
+use App\Http\Controllers\KnowledgeFileController;
+
+use App\Http\Controllers\KnowledgeFolderAccessController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -567,5 +582,179 @@ Route::get('/api/tasks/files/{file}', [
 ])->middleware('auth');
 
 
+// база знаний
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/knowledge',
+        [CompanyController::class, 'knowledgeCompanies']
+    )->name('knowledge.companies');
+
+    // Route::get(
+    //     '/companies/{company}/knowledge',
+    //     [KnowledgeBaseController::class, 'show']
+    // )->name('companies.knowledge');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/knowledge',
+        [CompanyController::class, 'knowledgeCompanies']
+    )->name('knowledge.companies');
+
+    Route::get(
+        '/companies/{company}/knowledge',
+        [KnowledgeBaseController::class, 'show']
+    )->name('companies.knowledge');
+
+    Route::get(
+        '/companies/{company}/knowledge/access',
+        [KnowledgeAccessController::class, 'index']
+    )->name('knowledge.access.index');
+
+    Route::put(
+        '/companies/{company}/knowledge/access/{user}',
+        [KnowledgeAccessController::class, 'update']
+    )->name('knowledge.access.update');
+
+    Route::delete(
+        '/companies/{company}/knowledge/access/{user}',
+        [KnowledgeAccessController::class, 'destroy']
+    )->name('knowledge.access.destroy');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::post(
+        '/companies/{company}/knowledge/folders',
+        [KnowledgeFolderController::class, 'store']
+    )->name('knowledge.folders.store');
+});
+
+Route::post(
+    '/companies/{company}/knowledge/folders/{folder}/files',
+    [KnowledgeFileController::class, 'store']
+)->name('knowledge.files.store');
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/companies/{company}/knowledge/folders/{folder}',
+        [KnowledgeFolderController::class, 'show'],
+    )->name('knowledge.folders.show');
+});
+
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/companies/{company}/knowledge/folders/{folder}/articles/create',
+        [KnowledgeArticleController::class, 'create']
+    )->name('knowledge.articles.create');
+
+    Route::post(
+        '/companies/{company}/knowledge/folders/{folder}/articles',
+        [KnowledgeArticleController::class, 'store']
+    )->name('knowledge.articles.store');
+
+    Route::get(
+        '/companies/{company}/knowledge/articles/{article}',
+        [KnowledgeArticleController::class, 'show']
+    )->name('knowledge.articles.show');
+
+    Route::get(
+        '/companies/{company}/knowledge/articles/{article}/edit',
+        [KnowledgeArticleController::class, 'edit']
+    )->name('knowledge.articles.edit');
+
+    Route::put(
+        '/companies/{company}/knowledge/articles/{article}',
+        [KnowledgeArticleController::class, 'update']
+    )->name('knowledge.articles.update');
+
+Route::delete(
+    '/companies/{company}/knowledge/articles/{article}',
+    [KnowledgeArticleController::class, 'destroy']
+)->name('knowledge.articles.destroy');
+
+
+Route::post(
+    '/companies/{company}/knowledge/articles/{article}/files',
+    [KnowledgeArticleFileController::class, 'store']
+)->name('knowledge.articles.files.store');
+
+Route::delete(
+    '/companies/{company}/knowledge/articles/{article}/files/{file}',
+    [KnowledgeArticleFileController::class, 'destroy']
+)->name('knowledge.articles.files.destroy');
+
+});
+
+
+Route::prefix(
+    '/companies/{company}/knowledge/folders/{folder}/access'
+)->group(function () {
+    Route::get(
+        '/',
+        [KnowledgeFolderAccessController::class, 'index']
+    )->name('knowledge.folders.access.index');
+
+    Route::put(
+        '/mode',
+        [KnowledgeFolderAccessController::class, 'updateMode']
+    )->name('knowledge.folders.access.mode');
+
+    Route::post(
+        '/users',
+        [KnowledgeFolderAccessController::class, 'storeUser']
+    )->name('knowledge.folders.access.users.store');
+
+    Route::put(
+        '/users/{user}',
+        [KnowledgeFolderAccessController::class, 'updateUser']
+    )->name('knowledge.folders.access.users.update');
+
+    Route::delete(
+        '/users/{user}',
+        [KnowledgeFolderAccessController::class, 'destroyUser']
+    )->name('knowledge.folders.access.users.destroy');
+
+
+
+
+});
+
+Route::delete(
+    '/companies/{company}/knowledge/folders/{folder}',
+    [KnowledgeFolderController::class, 'destroy']
+)->name('knowledge.folders.destroy');
+
+
+Route::post(
+    '/companies/{company}/knowledge/folders/{folder}/files',
+    [KnowledgeFileController::class, 'storeInFolder']
+)->name('knowledge.files.folder.store');
+
+Route::post(
+    '/companies/{company}/knowledge/folders/{folder}/articles/{article}/files',
+    [KnowledgeFileController::class, 'storeInArticle']
+)->name('knowledge.files.article.store');
+
+
+
+Route::delete(
+    '/companies/{company}/knowledge/folders/{folder}/files/{file}',
+    [KnowledgeFileController::class, 'destroy']
+)->name('knowledge.files.destroy');
+
+Route::get(
+    '/companies/{company}/knowledge/folders/{folder}/files/{file}/preview',
+    [KnowledgeFileController::class, 'preview']
+)->name('knowledge.files.preview');
+
+Route::get(
+    '/companies/{company}/knowledge/folders/{folder}/files/{file}/download',
+    [KnowledgeFileController::class, 'download']
+)->name('knowledge.files.download');
+
+
 
 require __DIR__.'/auth.php';
+

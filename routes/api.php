@@ -855,3 +855,20 @@ Route::get('/my-calendar-companies', function (\Illuminate\Http\Request $request
     return $companies;
 });
 
+
+
+// база знаний
+
+Route::get(
+    '/knowledge/companies',
+    [CompanyController::class, 'knowledgeCompanies']
+)->middleware('auth:sanctum');
+
+Route::middleware('auth:sanctum')->group(function () {
+    
+
+    Route::get(
+        '/companies/{company}/knowledge',
+        [CompanyKnowledgeController::class, 'show']
+    );
+});
