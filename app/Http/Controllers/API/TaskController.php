@@ -155,6 +155,8 @@ public function store(Request $request)
                 'project.managers:id,name',
                 'project.company:id,name',
                 'project.watchers:id,name',
+                'klients:id,name,status,phone,email,company_id,project_id,task_id',
+                'klients.company:id,name',
                 'files' => function ($query) {
                     $query->select('id', 'task_id', 'file_path', 'user_id', 'file_name', 'status', 'rejection_reason', 'created_at', 'updated_at')
                         ->with(['comments' => function ($q) {

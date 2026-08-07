@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 import CreateTaskDrawer from '../AAA/Components/Klients/CreateTaskDrawer.vue';
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
@@ -10,9 +10,134 @@ const props = defineProps({
     availableResponsibles: Array,
     projects: Array, // список всех проектов компании
     allTasks: Array,  // список всех задач компании
+    cities: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const isEditingConnections = ref(false);
+
+const isMediaPlanModalOpen = ref(false);
+
+const mediaPlanForm = useForm({
+    name: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+
+    city_ids: [],
+    radio_station_ids: [],
+
+    multiplatform_activities: [],
+});
+
+const availableRadioStations = computed(() => {
+    if (!mediaPlanForm.city_ids.length) {
+        return [];
+    }
+
+    const selectedCityIds = mediaPlanForm.city_ids.map(
+        id => Number(id)
+    );
+
+    return props.cities.flatMap(city => {
+        if (!selectedCityIds.includes(Number(city.id))) {
+            return [];
+        }
+
+        return (city.radio_stations || []).map(station => ({
+            ...station,
+            city_name: city.name,
+        }));
+    });
+});
+
+watch(
+    () => [...mediaPlanForm.city_ids],
+    () => {
+        const availableIds = availableRadioStations.value.map(
+            station => Number(station.id)
+        );
+
+        mediaPlanForm.radio_station_ids =
+            mediaPlanForm.radio_station_ids.filter(
+                stationId =>
+                    availableIds.includes(Number(stationId))
+            );
+    }
+);
+
+const openMediaPlanModal = () => {
+    mediaPlanForm.reset();
+    mediaPlanForm.clearErrors();
+
+    mediaPlanForm.name =
+        `Медиаплан для ${props.klient.name}`;
+
+    isMediaPlanModalOpen.value = true;
+};
+
+const closeMediaPlanModal = () => {
+    if (mediaPlanForm.processing) {
+        return;
+    }
+
+    isMediaPlanModalOpen.value = false;
+    mediaPlanForm.reset();
+    mediaPlanForm.clearErrors();
+};
+
+const submitMediaPlan = () => {
+    mediaPlanForm.post(
+        route(
+            'klients.media-plans.store',
+            props.klient.id
+        ),
+        {
+            preserveScroll: true,
+
+            onSuccess: () => {
+                closeMediaPlanModal();
+            },
+        }
+    );
+};
+
+const multiplatformOptions = [
+    {
+        value: 'vk',
+        label: 'VK',
+    },
+    {
+        value: 'ok',
+        label: 'Одноклассники',
+    },
+    {
+        value: 'telegram',
+        label: 'Telegram',
+    },
+    {
+        value: 'vk_video',
+        label: 'VK Видео',
+    },
+    {
+        value: 'rutube',
+        label: 'RuTube',
+    },
+    {
+        value: 'max',
+        label: 'Макс',
+    },
+    {
+        value: 'offline_meeting',
+        label: 'Очные встречи',
+    },
+    {
+        value: 'local_award',
+        label: 'Локальные финалы и награждения',
+    },
+];
 
 const connectionsForm = useForm({
     project_id: props.klient.project_id,
@@ -384,6 +509,91 @@ const otherDeals = computed(() => {
                         </div>
                     </div>
 
+                    <!-- Медиапланы -->
+<div
+    class="bg-white rounded-2xl shadow-md border border-slate-100 p-6"
+>
+    <div class="flex items-center justify-between mb-5">
+        <div>
+            <h2
+                class="text-lg font-bold text-slate-800 flex items-center gap-2"
+            >
+                <i class="fas fa-broadcast-tower text-indigo-500"></i>
+
+                Медиапланы
+            </h2>
+
+            <p class="text-xs text-slate-400 mt-1">
+                Радио и мультиплатформенные активности
+            </p>
+        </div>
+
+        <button
+            type="button"
+            @click="openMediaPlanModal"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition"
+        >
+            <i class="fas fa-plus"></i>
+            Добавить медиаплан
+        </button>
+    </div>
+
+    <div
+        v-if="klient.media_plans?.length"
+        class="space-y-3"
+    >
+       <Link
+    v-for="plan in klient.media_plans"
+    :key="plan.id"
+    :href="route('media-plans.show', plan.id)"
+    class="block p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-indigo-300 hover:shadow-md transition"
+>
+    <div class="flex justify-between gap-4">
+        <div class="min-w-0">
+            <h3 class="font-bold text-slate-800 truncate">
+                {{ plan.name }}
+            </h3>
+
+            <div class="flex flex-wrap gap-1 mt-2">
+                <span
+                    v-for="city in plan.cities"
+                    :key="city.id"
+                    class="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold"
+                >
+                    {{ city.name }}
+                </span>
+            </div>
+        </div>
+
+        <div class="text-right shrink-0">
+            <div class="text-sm font-bold text-slate-700">
+                {{
+                    new Intl.NumberFormat('ru-RU').format(
+                        Number(plan.total_amount || 0)
+                    )
+                }} ₽
+            </div>
+
+            <i class="fas fa-chevron-right text-slate-300 mt-2"></i>
+        </div>
+    </div>
+</Link>
+    </div>
+
+    <div
+        v-else
+        class="py-10 text-center border-2 border-dashed border-slate-200 rounded-xl"
+    >
+        <i
+            class="fas fa-broadcast-tower text-3xl text-slate-300 mb-3"
+        ></i>
+
+        <p class="text-sm text-slate-400">
+            Для клиента пока нет медиапланов
+        </p>
+    </div>
+</div>
+
                     <!-- БЛОК: Сделки (обновленный) -->
                     <div class="bg-white shadow rounded-lg p-6 mt-6 border-t-4 border-indigo-500">
                         <div class="flex justify-between items-center mb-4">
@@ -727,4 +937,339 @@ const otherDeals = computed(() => {
         :responsibles="availableResponsibles"
         @close="isTaskDrawerOpen = false"
     />
+
+
+<Teleport to="body">
+    <div
+        v-if="isMediaPlanModalOpen"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+    >
+        <!-- Затемнение -->
+        <button
+            type="button"
+            aria-label="Закрыть"
+            class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            @click="closeMediaPlanModal"
+        ></button>
+
+        <!-- Окно -->
+        <div
+            class="relative z-10 w-full max-w-4xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+        >
+            <!-- Заголовок -->
+            <div
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+            >
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">
+                        Новый медиаплан
+                    </h2>
+
+                    <p class="text-sm text-slate-400">
+                        {{ klient.name }}
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    @click="closeMediaPlanModal"
+                    class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
+                >
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <form
+                @submit.prevent="submitMediaPlan"
+                class="flex-1 overflow-y-auto"
+            >
+                <div class="p-6 space-y-7">
+                    <!-- Основные данные -->
+                    <section>
+                        <h3
+                            class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4"
+                        >
+                            Основные данные
+                        </h3>
+
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                        >
+                            <div class="md:col-span-2">
+                                <label
+                                    class="block text-sm font-medium text-slate-700"
+                                >
+                                    Название *
+                                </label>
+
+                                <input
+                                    v-model="mediaPlanForm.name"
+                                    type="text"
+                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                >
+
+                                <p
+                                    v-if="mediaPlanForm.errors.name"
+                                    class="mt-1 text-xs text-rose-600"
+                                >
+                                    {{ mediaPlanForm.errors.name }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-slate-700"
+                                >
+                                    Дата начала
+                                </label>
+
+                                <input
+                                    v-model="mediaPlanForm.start_date"
+                                    type="date"
+                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                >
+                            </div>
+
+                            <div>
+                                <label
+                                    class="block text-sm font-medium text-slate-700"
+                                >
+                                    Дата завершения
+                                </label>
+
+                                <input
+                                    v-model="mediaPlanForm.end_date"
+                                    type="date"
+                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                >
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label
+                                    class="block text-sm font-medium text-slate-700"
+                                >
+                                    Описание
+                                </label>
+
+                                <textarea
+                                    v-model="mediaPlanForm.description"
+                                    rows="3"
+                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Города -->
+                    <section>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3
+                                    class="text-xs font-bold uppercase tracking-wider text-slate-400"
+                                >
+                                    Города
+                                </h3>
+
+                                <p class="text-xs text-slate-400 mt-1">
+                                    Можно выбрать один или несколько
+                                </p>
+                            </div>
+
+                            <span
+                                class="text-xs font-bold text-indigo-600"
+                            >
+                                Выбрано:
+                                {{ mediaPlanForm.city_ids.length }}
+                            </span>
+                        </div>
+
+                        <div
+                            class="grid grid-cols-2 md:grid-cols-3 gap-3"
+                        >
+                            <label
+                                v-for="city in cities"
+                                :key="city.id"
+                                class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition"
+                                :class="
+                                    mediaPlanForm.city_ids.includes(city.id)
+                                        ? 'border-indigo-500 bg-indigo-50'
+                                        : 'border-slate-200 hover:border-indigo-300'
+                                "
+                            >
+                                <input
+                                    v-model="mediaPlanForm.city_ids"
+                                    type="checkbox"
+                                    :value="city.id"
+                                    class="rounded text-indigo-600"
+                                >
+
+                                <span
+                                    class="text-sm font-medium text-slate-700"
+                                >
+                                    {{ city.name }}
+                                </span>
+                            </label>
+                        </div>
+
+                        <p
+                            v-if="mediaPlanForm.errors.city_ids"
+                            class="mt-2 text-xs text-rose-600"
+                        >
+                            {{ mediaPlanForm.errors.city_ids }}
+                        </p>
+                    </section>
+
+                    <!-- Радиостанции -->
+                    <section>
+                        <div class="mb-4">
+                            <h3
+                                class="text-xs font-bold uppercase tracking-wider text-slate-400"
+                            >
+                                Радиостанции
+                            </h3>
+
+                            <p class="text-xs text-slate-400 mt-1">
+                                Показываются станции только выбранных городов
+                            </p>
+                        </div>
+
+                        <div
+                            v-if="!mediaPlanForm.city_ids.length"
+                            class="p-5 rounded-xl bg-slate-50 text-center text-sm text-slate-400"
+                        >
+                            Сначала выберите хотя бы один город
+                        </div>
+
+                        <div
+                            v-else-if="!availableRadioStations.length"
+                            class="p-5 rounded-xl bg-slate-50 text-center text-sm text-slate-400"
+                        >
+                            Для выбранных городов радиостанции не добавлены
+                        </div>
+
+                        <div
+                            v-else
+                            class="grid grid-cols-1 md:grid-cols-2 gap-3"
+                        >
+                            <label
+                                v-for="station in availableRadioStations"
+                                :key="station.id"
+                                class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer"
+                                :class="
+                                    mediaPlanForm.radio_station_ids.includes(
+                                        station.id
+                                    )
+                                        ? 'border-indigo-500 bg-indigo-50'
+                                        : 'border-slate-200'
+                                "
+                            >
+                                <input
+                                    v-model="mediaPlanForm.radio_station_ids"
+                                    type="checkbox"
+                                    :value="station.id"
+                                    class="rounded text-indigo-600"
+                                >
+
+                                <div class="min-w-0">
+                                    <div
+                                        class="font-semibold text-sm text-slate-700"
+                                    >
+                                        {{ station.name }}
+                                    </div>
+
+                                    <div class="text-xs text-slate-400">
+                                        {{ station.city_name }}
+
+                                        <template v-if="station.frequency">
+                                            · {{ station.frequency }} FM
+                                        </template>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <p
+                            v-if="
+                                mediaPlanForm.errors.radio_station_ids
+                            "
+                            class="mt-2 text-xs text-rose-600"
+                        >
+                            {{
+                                mediaPlanForm.errors.radio_station_ids
+                            }}
+                        </p>
+                    </section>
+
+                    <!-- Мультиплатформенные активности -->
+                    <section>
+                        <h3
+                            class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4"
+                        >
+                            Мультиплатформенные активности
+                        </h3>
+
+                        <div
+                            class="grid grid-cols-2 md:grid-cols-4 gap-3"
+                        >
+                            <label
+                                v-for="option in multiplatformOptions"
+                                :key="option.value"
+                                class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer"
+                                :class="
+                                    mediaPlanForm.multiplatform_activities.includes(
+                                        option.value
+                                    )
+                                        ? 'border-indigo-500 bg-indigo-50'
+                                        : 'border-slate-200'
+                                "
+                            >
+                                <input
+                                    v-model="
+                                        mediaPlanForm.multiplatform_activities
+                                    "
+                                    type="checkbox"
+                                    :value="option.value"
+                                    class="rounded text-indigo-600"
+                                >
+
+                                <span
+                                    class="text-sm font-medium text-slate-700"
+                                >
+                                    {{ option.label }}
+                                </span>
+                            </label>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Нижняя панель -->
+                <div
+                    class="sticky bottom-0 px-6 py-4 bg-white border-t border-slate-100 flex justify-end gap-3"
+                >
+                    <button
+                        type="button"
+                        @click="closeMediaPlanModal"
+                        class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium"
+                    >
+                        Отмена
+                    </button>
+
+                    <button
+                        type="submit"
+                        :disabled="mediaPlanForm.processing"
+                        class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50"
+                    >
+                        {{
+                            mediaPlanForm.processing
+                                ? 'Создание...'
+                                : 'Создать медиаплан'
+                        }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</Teleport>
+
+
 </template>

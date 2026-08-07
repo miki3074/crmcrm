@@ -8,10 +8,13 @@ use App\Models\KlientDeal;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Models\City;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class KlientController extends Controller
 {
@@ -265,130 +268,410 @@ class KlientController extends Controller
      * Просмотр карточки.
      */
     public function show(Klient $klient)
-    {
-        $this->authorize('view', $klient);
+{
+    $this->authorize('view', $klient);
 
-        $klient->load([
-            'contactPersons',
-            'company:id,name',
-            'project:id,name',
-            'task:id,title',
-            'creator:id,name',
-            'allowedUsers:id,name',
-            'files.user:id,name',
+    $klient->load([
+        'contactPersons',
+        'company:id,name',
+        'project:id,name',
+        'task:id,title',
+        'creator:id,name',
+        'allowedUsers:id,name',
+        'files.user:id,name',
 
-//            'tasks' => fn($q) => $q->where('status', '!=', 'completed'),
-            'tasks.responsible',
-            'tasks.files',
-            'deals',
-            'deals.responsibles',
-            'deals.items',
-        ]);
+        'tasks.responsible',
+        'tasks.files',
 
+        'deals',
+        'deals.responsibles',
+        'deals.items',
 
+        'mediaPlans' => fn ($query) => $query
+            ->latest()
+            ->with([
+                'cities:id,name',
+                'creator:id,name',
+                'items.city:id,name',
+                'items.radioStation:id,city_id,name,frequency',
+            ]),
+    ]);
 
+    /*
+     * Получаем города вместе с радиостанциями.
+     * Именно этой строки у вас не хватало.
+     */
+    $cities = City::query()
+        ->with([
+            'radioStations' => function ($query) {
+                $query
+                    ->select(
+                        'id',
+                        'city_id',
+                        'name',
+                        'frequency',
+                        'price_per_second'
+                    )
+                    ->orderBy('name');
+            },
+        ])
+        ->orderBy('name')
+        ->get();
 
-        $availableResponsibles = collect([$klient->creator])
-            ->merge($klient->allowedUsers)
-            ->unique('id');
+    $availableResponsibles = collect([$klient->creator])
+        ->merge($klient->allowedUsers)
+        ->filter()
+        ->unique('id')
+        ->values();
 
-        return Inertia::render('Klients/Show', [
-            'klient' => $klient,
-            'auth_id' => Auth::id(),
-            'contacts' => $klient->contactPersons,
-            'activeTasks' => $klient->tasks,
-            'availableResponsibles' => $availableResponsibles
-        ]);
-    }
-
+    return Inertia::render('Klients/Show', [
+        'klient' => $klient,
+        'auth_id' => Auth::id(),
+        'contacts' => $klient->contactPersons,
+        'activeTasks' => $klient->tasks,
+        'availableResponsibles' => $availableResponsibles,
+        'cities' => $cities,
+    ]);
+}
     /**
      * Форма редактирования клиента.
      */
     public function edit(Klient $klient)
-    {
-        // 1. ПРОВЕРКА ПРАВ: только создатель
-        if ($klient->user_id !== Auth::id()) {
-            abort(403, 'Только создатель карточки может её редактировать.');
-        }
-
-        $userId = Auth::id();
-
-        // 2. Получаем списки для выпадающих меню (как в методе create)
-        $myCompanyIds = DB::table('companies')
-            ->where('user_id', $userId)
-            ->union(DB::table('company_user')->where('user_id', $userId)->select('company_id'))
-            ->pluck('id')->toArray();
-
-
-
-        // Коллеги для доступа
-        $mergedUserIds = array_unique(array_merge(
-            DB::table('company_user')->whereIn('company_id', $myCompanyIds)->pluck('user_id')->toArray(),
-            DB::table('companies')->whereIn('id', $myCompanyIds)->pluck('user_id')->toArray()
-        ));
-
-        $colleagues = User::whereIn('id', $mergedUserIds)->where('id', '!=', $userId)->select('id', 'name')->get();
-
-        // Загружаем текущие связи клиента
-        $klient->load(['contactPersons', 'allowedUsers']);
-
-        return Inertia::render('Klients/Edit', [
-            'klient'     => $klient,
-
-            'colleagues' => $colleagues
-        ]);
+{
+    if ($klient->user_id !== Auth::id()) {
+        abort(403, 'Только создатель карточки может её редактировать.');
     }
+
+    $userId = Auth::id();
+
+    $myCompanyIds = DB::table('companies')
+        ->where('user_id', $userId)
+        ->union(
+            DB::table('company_user')
+                ->where('user_id', $userId)
+                ->select('company_id')
+        )
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->toArray();
+
+    $companies = Company::query()
+        ->whereIn('id', $myCompanyIds)
+        ->select('id', 'name')
+        ->orderBy('name')
+        ->get();
+
+    $projects = Project::query()
+        ->whereIn('company_id', $myCompanyIds)
+        ->where(function ($query) use ($userId) {
+            $query
+                ->where('initiator_id', $userId)
+                ->orWhereHas(
+                    'executors',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas(
+                    'project_users',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas('tasks', function ($q) use ($userId) {
+                    $q->where('creator_id', $userId)
+                        ->orWhereHas(
+                            'executors',
+                            fn ($sq) => $sq->where('users.id', $userId)
+                        )
+                        ->orWhereHas(
+                            'responsibles',
+                            fn ($sq) => $sq->where('users.id', $userId)
+                        );
+                });
+        })
+        ->select('id', 'name', 'company_id')
+        ->orderBy('name')
+        ->get();
+
+    $tasks = Task::query()
+        ->whereIn('project_id', $projects->pluck('id'))
+        ->where(function ($query) use ($userId) {
+            $query
+                ->where('creator_id', $userId)
+                ->orWhereHas(
+                    'executors',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas(
+                    'responsibles',
+                    fn ($q) => $q->where('users.id', $userId)
+                );
+        })
+        ->select('id', 'title', 'project_id')
+        ->orderBy('title')
+        ->get();
+
+    $mergedUserIds = array_unique(array_merge(
+        DB::table('company_user')
+            ->whereIn('company_id', $myCompanyIds)
+            ->pluck('user_id')
+            ->toArray(),
+
+        DB::table('companies')
+            ->whereIn('id', $myCompanyIds)
+            ->pluck('user_id')
+            ->toArray()
+    ));
+
+   $colleagues = User::query()
+    ->whereIn('id', $mergedUserIds)
+    ->where('id', '!=', $userId)
+    ->select('id', 'name')
+    ->orderBy('name')
+    ->get()
+    ->map(function (User $user) use ($myCompanyIds) {
+        // Компании, где пользователь является сотрудником
+        $employeeCompanyIds = DB::table('company_user')
+            ->where('user_id', $user->id)
+            ->whereIn('company_id', $myCompanyIds)
+            ->pluck('company_id')
+            ->toArray();
+
+        // Компании, где пользователь является владельцем
+        $ownedCompanyIds = DB::table('companies')
+            ->where('user_id', $user->id)
+            ->whereIn('id', $myCompanyIds)
+            ->pluck('id')
+            ->toArray();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+
+            'company_ids' => array_values(
+                array_map(
+                    'intval',
+                    array_unique(
+                        array_merge($employeeCompanyIds, $ownedCompanyIds)
+                    )
+                )
+            ),
+        ];
+    })
+    ->values();
+
+    $klient->load([
+        'contactPersons',
+        'allowedUsers:id,name',
+        'creator:id,name',
+    ]);
+
+    return Inertia::render('Klients/Edit', [
+        'klient'    => $klient,
+        'companies' => $companies,
+        'projects'  => $projects,
+        'tasks'     => $tasks,
+        'colleagues' => $colleagues,
+    ]);
+}
 
     /**
      * Обновление данных клиента.
      */
     public function update(Request $request, Klient $klient)
-    {
-        // 1. ПРОВЕРКА ПРАВ
-        if ($klient->user_id !== Auth::id()) {
-            abort(403);
+{
+    if ($klient->user_id !== Auth::id()) {
+        abort(403);
+    }
+
+    $userId = Auth::id();
+
+    $myCompanyIds = DB::table('companies')
+        ->where('user_id', $userId)
+        ->union(
+            DB::table('company_user')
+                ->where('user_id', $userId)
+                ->select('company_id')
+        )
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->toArray();
+
+    $availableProjectIds = Project::query()
+        ->whereIn('company_id', $myCompanyIds)
+        ->where(function ($query) use ($userId) {
+            $query
+                ->where('initiator_id', $userId)
+                ->orWhereHas(
+                    'executors',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas(
+                    'project_users',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas('tasks', function ($q) use ($userId) {
+                    $q->where('creator_id', $userId)
+                        ->orWhereHas(
+                            'executors',
+                            fn ($sq) => $sq->where('users.id', $userId)
+                        )
+                        ->orWhereHas(
+                            'responsibles',
+                            fn ($sq) => $sq->where('users.id', $userId)
+                        );
+                });
+        })
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->toArray();
+
+    $availableTaskIds = Task::query()
+        ->whereIn('project_id', $availableProjectIds)
+        ->where(function ($query) use ($userId) {
+            $query
+                ->where('creator_id', $userId)
+                ->orWhereHas(
+                    'executors',
+                    fn ($q) => $q->where('users.id', $userId)
+                )
+                ->orWhereHas(
+                    'responsibles',
+                    fn ($q) => $q->where('users.id', $userId)
+                );
+        })
+        ->pluck('id')
+        ->map(fn ($id) => (int) $id)
+        ->toArray();
+
+    $validated = $request->validate([
+        'name'       => ['required', 'string', 'max:255'],
+        'status'     => ['required', 'string'],
+
+        'company_id' => [
+            'nullable',
+            'integer',
+            Rule::in($myCompanyIds),
+        ],
+
+        'project_id' => [
+            'nullable',
+            'integer',
+            Rule::in($availableProjectIds),
+        ],
+
+        'task_id' => [
+            'nullable',
+            'integer',
+            Rule::in($availableTaskIds),
+        ],
+
+        'segment'        => ['nullable', 'string'],
+        'rating'         => ['nullable', 'string', 'max:10'],
+        'phone'          => ['nullable', 'string'],
+        'email'          => ['nullable', 'email'],
+        'inn'            => ['nullable', 'string'],
+        'kpp'            => ['nullable', 'string'],
+        'ogrn'           => ['nullable', 'string'],
+        'legal_address'  => ['nullable', 'string'],
+        'actual_address' => ['nullable', 'string'],
+        'industry'       => ['nullable', 'string'],
+        'messengers'     => ['nullable', 'array'],
+
+        'contact_persons'                  => ['nullable', 'array'],
+        'contact_persons.*.full_name'      => ['nullable', 'string', 'max:255'],
+        'contact_persons.*.position'       => ['nullable', 'string', 'max:255'],
+        'contact_persons.*.role'           => ['nullable', 'string', 'max:255'],
+        'contact_persons.*.phone'          => ['nullable', 'string', 'max:50'],
+        'contact_persons.*.email'          => ['nullable', 'email'],
+        'contact_persons.*.is_primary'     => ['nullable', 'boolean'],
+
+        'allowed_users'   => ['nullable', 'array'],
+        'allowed_users.*' => ['integer', 'exists:users,id'],
+    ]);
+
+    /*
+     * Личный клиент:
+     * когда company_id пустой, автоматически убираем проект и задачу.
+     */
+    if (empty($validated['company_id'])) {
+        $validated['company_id'] = null;
+        $validated['project_id'] = null;
+        $validated['task_id'] = null;
+    }
+
+    /*
+     * Если проект выбран, проверяем, что он относится
+     * к выбранной компании.
+     */
+    if (!empty($validated['project_id'])) {
+        $projectBelongsToCompany = Project::query()
+            ->whereKey($validated['project_id'])
+            ->where('company_id', $validated['company_id'])
+            ->exists();
+
+        if (!$projectBelongsToCompany) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Выбранный проект не относится к указанной компании.',
+            ]);
+        }
+    } else {
+        $validated['project_id'] = null;
+        $validated['task_id'] = null;
+    }
+
+    /*
+     * Если задача выбрана, проверяем, что она относится
+     * к выбранному проекту.
+     */
+    if (!empty($validated['task_id'])) {
+        $taskBelongsToProject = Task::query()
+            ->whereKey($validated['task_id'])
+            ->where('project_id', $validated['project_id'])
+            ->exists();
+
+        if (!$taskBelongsToProject) {
+            throw ValidationException::withMessages([
+                'task_id' => 'Выбранная задача не относится к указанному проекту.',
+            ]);
+        }
+    } else {
+        $validated['task_id'] = null;
+    }
+
+    return DB::transaction(function () use ($validated, $klient) {
+        $contactPersons = $validated['contact_persons'] ?? [];
+        $allowedUsers = $validated['allowed_users'] ?? [];
+
+        /*
+         * Не передаём связанные массивы напрямую в update().
+         */
+        unset(
+            $validated['contact_persons'],
+            $validated['allowed_users']
+        );
+
+        $klient->update($validated);
+
+        $klient->contactPersons()->delete();
+
+        foreach ($contactPersons as $person) {
+            if (!empty($person['full_name'])) {
+                $klient->contactPersons()->create([
+                    'full_name' => $person['full_name'],
+                    'position' => $person['position'] ?? null,
+                    'role' => $person['role'] ?? null,
+                    'phone' => $person['phone'] ?? null,
+                    'email' => $person['email'] ?? null,
+                    'is_primary' => (bool) ($person['is_primary'] ?? false),
+                ]);
+            }
         }
 
-        $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'status'          => 'required|string',
+        $klient->allowedUsers()->sync($allowedUsers);
 
-            'segment'         => 'nullable|string',
-            'rating'          => 'nullable|string|max:10',
-            'phone'           => 'nullable|string',
-            'email'           => 'nullable|email',
-            'inn'             => 'nullable|string',
-            'kpp'             => 'nullable|string',
-            'ogrn'            => 'nullable|string',
-            'legal_address'   => 'nullable|string',
-            'actual_address'  => 'nullable|string',
-            'industry'        => 'nullable|string',
-            'messengers'      => 'nullable|array',
-            'contact_persons' => 'nullable|array',
-            'allowed_users'   => 'nullable|array',
-        ]);
-
-        return DB::transaction(function () use ($validated, $klient) {
-            // 2. Обновляем основные данные
-            $klient->update($validated);
-
-            // 3. Обновляем контактных лиц (удаляем старых и создаем новых или обновляем)
-            // Самый простой и надежный способ для динамических форм:
-            $klient->contactPersons()->delete();
-            if (!empty($validated['contact_persons'])) {
-                foreach ($validated['contact_persons'] as $person) {
-                    if (!empty($person['full_name'])) {
-                        $klient->contactPersons()->create($person);
-                    }
-                }
-            }
-
-            // 4. Обновляем права доступа
-            $klient->allowedUsers()->sync($validated['allowed_users'] ?? []);
-
-            return redirect()->route('klients.show', $klient->id)->with('success', 'Данные клиента обновлены');
-        });
-    }
+        return redirect()
+            ->route('klients.show', $klient->id)
+            ->with('success', 'Данные клиента обновлены');
+    });
+}
 
 
 

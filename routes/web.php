@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 
-
+use App\Http\Controllers\MediaPlanController;
 
 use App\Models\Subproject;
 use App\Models\User;
@@ -754,6 +754,40 @@ Route::get(
     [KnowledgeFileController::class, 'download']
 )->name('knowledge.files.download');
 
+Route::post(
+    '/klients/{klient}/media-plans',
+    [MediaPlanController::class, 'store']
+)->name('klients.media-plans.store');
+
+
+Route::middleware('auth')->group(function () {
+    Route::get(
+        '/media-plans/{mediaPlan}',
+        [MediaPlanController::class, 'show']
+    )->name('media-plans.show');
+
+    Route::put(
+        '/media-plans/{mediaPlan}',
+        [MediaPlanController::class, 'update']
+    )->name('media-plans.update');
+
+    Route::post(
+        '/media-plans/{mediaPlan}/items',
+        [MediaPlanController::class, 'storeItem']
+    )->name('media-plans.items.store');
+
+    Route::delete(
+        '/media-plans/{mediaPlan}/items/{item}',
+        [MediaPlanController::class, 'destroyItem']
+    )->name('media-plans.items.destroy');
+
+
+Route::delete(
+    '/media-plans/{mediaPlan}',
+    [MediaPlanController::class, 'destroy']
+)->name('media-plans.destroy');
+
+});
 
 
 require __DIR__.'/auth.php';

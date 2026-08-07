@@ -1,37 +1,60 @@
 <script setup>
 import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3' // <--- 1. Добавляем импорт Inertia
+import { usePage } from '@inertiajs/vue3'
 import TaskChecklists from '@/Components/TaskChecklists.vue'
 import TaskChat from '@/Components/TaskChat.vue'
 
-defineProps({ task: Object })
 
-// <--- 2. Получаем ID текущего пользователя из глобальных пропсов Inertia
+const props = defineProps({
+    task: {
+        type: Object,
+        required: true,
+    },
+})
+
 const page = usePage()
-const userId = computed(() => page.props.auth.user ? page.props.auth.user.id : null)
 
-// Хелпер для получения инициалов
+const userId = computed(() => {
+    return page.props.auth.user?.id ?? null
+})
+
+const taskKlients = computed(() => {
+    return props.task?.klients ?? []
+})
+
 const getInitials = (name) => {
     if (!name) return '?'
-    const parts = name.trim().split(' ')
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+
+    const parts = name.trim().split(/\s+/)
+
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+
     return name.slice(0, 2).toUpperCase()
 }
 
-// Хелпер для цвета фона аватара
 const getAvatarColor = (name) => {
     const colors = [
-        'bg-red-100 text-red-600', 'bg-orange-100 text-orange-600',
-        'bg-amber-100 text-amber-600', 'bg-green-100 text-green-600',
-        'bg-teal-100 text-teal-600', 'bg-blue-100 text-blue-600',
-        'bg-indigo-100 text-indigo-600', 'bg-purple-100 text-purple-600',
-        'bg-pink-100 text-pink-600'
+        'bg-red-100 text-red-600',
+        'bg-orange-100 text-orange-600',
+        'bg-amber-100 text-amber-600',
+        'bg-green-100 text-green-600',
+        'bg-teal-100 text-teal-600',
+        'bg-blue-100 text-blue-600',
+        'bg-indigo-100 text-indigo-600',
+        'bg-purple-100 text-purple-600',
+        'bg-pink-100 text-pink-600',
     ]
+
     if (!name) return colors[0]
+
     let hash = 0
+
     for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash)
     }
+
     return colors[Math.abs(hash) % colors.length]
 }
 </script>
@@ -39,93 +62,113 @@ const getAvatarColor = (name) => {
 <template>
     <div class="space-y-3">
 
-<!--         Блок: Команда и Инфо-->
-<!--        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">-->
+        <!-- Клиенты задачи -->
+<div
+    v-if="taskKlients.length > 0"
+    class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden"
+>
+    <!-- Заголовок -->
+    <div
+        class="px-6 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30"
+    >
+        <div class="flex items-center gap-2">
+            <svg
+                class="w-5 h-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m8-4a4 4 0 11-8 0 4 4 0 018 0zm-8 0a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+            </svg>
 
-<!--            &lt;!&ndash; Заголовок блока &ndash;&gt;-->
-<!--            <div class="px-6 py-2.5 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2 bg-gray-50/50 dark:bg-gray-700/30">-->
-<!--                <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>-->
-<!--                <h3 class="font-bold text-gray-800 dark:text-gray-200">Детали задачи</h3>-->
-<!--            </div>-->
+            <h3 class="font-bold text-gray-800 dark:text-gray-200">
+                Клиенты
+            </h3>
 
-<!--            <div class="p-4 space-y-3">-->
+            <span
+                class="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+            >
+                {{ taskKlients.length }}
+            </span>
+        </div>
+    </div>
 
-<!--                &lt;!&ndash; Секция: Исполнители (Главные) &ndash;&gt;-->
-<!--                <div>-->
-<!--                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3">🔨 Исполнители</h4>-->
-<!--                    <div v-if="task?.executors?.length" class="flex flex-wrap gap-3">-->
-<!--                        <div-->
-<!--                            v-for="user in task.executors"-->
-<!--                            :key="user.id"-->
-<!--                            class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"-->
-<!--                        >-->
-<!--                            &lt;!&ndash; Аватар &ndash;&gt;-->
-<!--                            <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0" :class="getAvatarColor(user.name)">-->
-<!--                                {{ getInitials(user.name) }}-->
-<!--                            </div>-->
-<!--                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ user.name }}</span>-->
-<!--                        </div>-->
-<!--                    </div>-->
-<!--                    <div v-else class="text-sm text-gray-400 italic">Не назначены</div>-->
-<!--                </div>-->
+    <!-- Список -->
+    <div class="divide-y divide-gray-100 dark:divide-slate-800">
+        <a
+            v-for="klient in taskKlients"
+            :key="klient.id"
+            :href="route('klients.show', klient.id)"
+            class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition"
+        >
+            <!-- Аватар -->
+            <div
+                class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold"
+                :class="getAvatarColor(klient.name)"
+            >
+                {{ getInitials(klient.name) }}
+            </div>
 
-<!--                &lt;!&ndash; Секция: Ответственные и Наблюдатели &ndash;&gt;-->
-<!--                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100 dark:border-slate-800">-->
+            <!-- Информация -->
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <p
+                        class="font-semibold text-gray-900 dark:text-gray-100 truncate"
+                    >
+                        {{ klient.name }}
+                    </p>
 
-<!--                    &lt;!&ndash; Ответственные &ndash;&gt;-->
-<!--                    <div>-->
-<!--                        <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider mb-2">👨‍💼 Ответственные</h4>-->
-<!--                        <div v-if="task?.responsibles?.length" class="flex -space-x-2 overflow-hidden py-1">-->
-<!--                            <div-->
-<!--                                v-for="user in task.responsibles"-->
-<!--                                :key="user.id"-->
-<!--                                class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"-->
-<!--                                :class="getAvatarColor(user.name)"-->
-<!--                                :title="user.name"-->
-<!--                            >-->
-<!--                                {{ user.name }}-->
-<!--                            </div>-->
-<!--                        </div>-->
-<!--                        <div v-else class="text-sm text-gray-400 italic">—</div>-->
-<!--                    </div>-->
+                    <span
+                        v-if="klient.status"
+                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300"
+                    >
+                        {{ klient.status }}
+                    </span>
+                </div>
 
-<!--                    &lt;!&ndash; Наблюдатели &ndash;&gt;-->
-<!--                    <div>-->
-<!--                        <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider mb-2">👁 Наблюдатели</h4>-->
-<!--                        <div v-if="task?.watcherstask?.length" class="flex -space-x-2 overflow-hidden py-1">-->
-<!--                            <div-->
-<!--                                v-for="user in task.watcherstask"-->
-<!--                                :key="user.id"-->
-<!--                                class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm"-->
-<!--                                :title="user.name"-->
-<!--                            >-->
-<!--                                {{ user.name }}-->
-<!--                            </div>-->
-<!--                        </div>-->
-<!--                        <div v-else class="text-sm text-gray-400 italic">—</div>-->
-<!--                    </div>-->
-<!--                </div>-->
+                <div
+                    class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+                >
+                    <span v-if="klient.company">
+                        {{ klient.company.name }}
+                    </span>
 
-<!--                &lt;!&ndash; Производители / Покупатели &ndash;&gt;-->
-<!--                <div v-if="task?.producers?.length" class="pt-4 border-t border-gray-100 dark:border-slate-800">-->
-<!--                    <h4 class="text-xs font-bold uppercase text-gray-400 tracking-wider mb-3 flex items-center gap-1">-->
-<!--                        Контрагенты-->
-<!--                    </h4>-->
-<!--                    <div class="flex flex-wrap gap-2">-->
-<!--                        <span-->
-<!--                            v-for="p in task.producers"-->
-<!--                            :key="p.id"-->
-<!--                            class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800 transition hover:bg-indigo-100"-->
-<!--                        >-->
-<!--                            🏭 {{ p.name }}-->
-<!--                        </span>-->
-<!--                    </div>-->
-<!--                </div>-->
+                    <span v-if="klient.phone">
+                        {{ klient.phone }}
+                    </span>
 
-<!--            </div>-->
-<!--        </div>-->
+                    <span v-if="klient.email">
+                        {{ klient.email }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Стрелка -->
+            <svg
+                class="w-5 h-5 shrink-0 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                />
+            </svg>
+        </a>
+    </div>
+</div>
+
 
         <!-- Блок: Чеклисты -->
+         123
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
             <div class="px-6 py-2.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30">
                 <div class="flex items-center gap-2">
@@ -135,6 +178,7 @@ const getAvatarColor = (name) => {
             </div>
             <div class="p-4">
                 <!-- Теперь userId передается корректно -->
+                 
                 <TaskChecklists
                     :user-id="userId"
                     :task-id="task.id"

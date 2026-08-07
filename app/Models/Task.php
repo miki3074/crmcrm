@@ -141,6 +141,11 @@ public function watchers()
     }
 
 
+    public function klients()
+{
+    return $this->hasMany(Klient::class, 'task_id');
+}
+
 
 
 

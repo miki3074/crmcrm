@@ -155,6 +155,7 @@ onMounted(fetchTask)
                 </template>
             </div>
         </main>
+        
 
         <TaskActionModals :modals="modals" :task="task" :employees="companyEmployees"
             @close="key => modals[key] = false" @update="updateTask" @saveDescription="saveDescription"

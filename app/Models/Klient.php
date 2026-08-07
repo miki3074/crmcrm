@@ -11,10 +11,24 @@ class Klient extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'status', 'segment', 'rating', 'phone', 'email',
-        'messengers', 'inn', 'kpp', 'ogrn', 'legal_address',
-        'actual_address', 'industry', 'user_id', 'company_id', 'project_id', 'task_id', 'user_id'
-    ];
+    'name',
+    'status',
+    'segment',
+    'rating',
+    'phone',
+    'email',
+    'messengers',
+    'inn',
+    'kpp',
+    'ogrn',
+    'legal_address',
+    'actual_address',
+    'industry',
+    'user_id',
+    'company_id',
+    'project_id',
+    'task_id',
+];
 
     protected $casts = [
         'messengers' => 'array',
@@ -53,4 +67,9 @@ class Klient extends Model
     {
         return $this->hasMany(KlientDeal::class);
     }
+
+    public function mediaPlans()
+{
+    return $this->hasMany(MediaPlan::class);
+}
 }
