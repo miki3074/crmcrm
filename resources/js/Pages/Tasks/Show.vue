@@ -8,7 +8,7 @@ import TaskHero from '../AAA/Components/Task/TaskHero.vue'
 import TaskStats from '../AAA/Components/Task/TaskStats.vue'
 import TaskSubtasks from '../AAA/Components/Task/TaskSubtasks.vue'
 import TaskSidebar from '../AAA/Components/Task/TaskSidebar.vue'
-import TaskDocumentApproval from '@/Pages/AAA/Components/Task/TaskDocumentApproval.vue'
+import TaskFilesHub from '../AAA/Components/Task/TaskFilesHub.vue'
 import TaskActionModals from '../AAA/Components/Task/Modals/TaskActionModals.vue'
 import TaskPersonnelModals from '../AAA/Components/Task/Modals/TaskPersonnelModals.vue'
 
@@ -140,12 +140,10 @@ onMounted(fetchTask)
 
                     <section class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
                         <div class="min-w-0 space-y-3">
-                            <TaskStats :task="task" :loading="loading" :can-upload="perms.canUpload"
-                                @updateProgress="updateProgress" @uploadFiles="uploadFiles" @deleteFile="deleteFile" />
+                            <TaskStats :task="task" @updateProgress="updateProgress" />
 
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
-                                <TaskDocumentApproval :task="task" :current-user="user" @refresh="fetchTask" />
-                            </div>
+                            <TaskFilesHub :task="task" :loading="loading" :can-upload="perms.canUpload"
+                                :current-user="user" @uploadFiles="uploadFiles" @deleteFile="deleteFile" @refresh="fetchTask" />
 
                             <TaskSubtasks :subtasks="task.subtasks" :can-create="perms.canCreateSubtask" @create="modals.subtask = true" />
                         </div>

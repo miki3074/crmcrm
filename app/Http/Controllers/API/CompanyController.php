@@ -12,6 +12,9 @@ use App\Models\Task;
 use App\Models\Subtask;
 use Illuminate\Support\Facades\DB;
 use App\Models\Subproject;
+use App\Models\KlientTask;
+use App\Models\KlientDeal;
+use App\Models\MediaPlan;
 
 use Inertia\Inertia;
 use Inertia\Response;
@@ -678,6 +681,68 @@ $watchingTasks = Task::with([
         ->unique('id')
         ->values();
 
+    // Задачи из карточек клиентов (Klients), где я создатель или ответственный
+    $klientTasks = KlientTask::with(['klient:id,name'])
+        ->where(function ($q) use ($user) {
+            $q->where('creator_id', $user->id)
+                ->orWhere('responsible_id', $user->id);
+        })
+        ->get()
+        ->map(function ($t) {
+            $isDone = in_array($t->status, ['completed', 'cancelled']);
+
+            return (object) [
+                'id'       => 'klient_task_' . $t->id,
+                'title'    => $t->title,
+                'due_date' => $t->deadline,
+                'priority' => $t->priority ?? null,
+                'progress' => $isDone ? 100 : 0,
+                'project'  => (object) ['name' => 'Клиент · ' . ($t->klient->name ?? '—')],
+                'link'     => "/klient-tasks/{$t->id}",
+            ];
+        });
+
+    // Активные медиапланы (не завершённые и не отменённые), где я создатель
+    // или ответственный хотя бы за одну позицию медиаплана
+    $mediaPlans = MediaPlan::with(['klient:id,name'])
+        ->whereNotIn('status', ['completed', 'cancelled'])
+        ->where(function ($q) use ($user) {
+            $q->where('creator_id', $user->id)
+                ->orWhereHas('items.responsibles', fn($sub) => $sub->where('users.id', $user->id));
+        })
+        ->get()
+        ->map(function ($mp) {
+            return (object) [
+                'id'       => 'media_plan_' . $mp->id,
+                'title'    => $mp->name,
+                'due_date' => $mp->end_date ? $mp->end_date->toDateString() : null,
+                'priority' => null,
+                'progress' => 0,
+                'project'  => (object) ['name' => 'Медиаплан · ' . ($mp->klient->name ?? '—')],
+                'link'     => "/media-plans/{$mp->id}",
+            ];
+        });
+
+    // Активные сделки, где я в команде (ответственный) или создатель
+    $klientDeals = KlientDeal::with(['klient:id,name'])
+        ->whereNotIn('status', ['Успешно', 'Отказ'])
+        ->where(function ($q) use ($user) {
+            $q->where('creator_id', $user->id)
+                ->orWhereHas('responsibles', fn($sub) => $sub->where('users.id', $user->id));
+        })
+        ->get()
+        ->map(function ($d) {
+            return (object) [
+                'id'       => 'klient_deal_' . $d->id,
+                'title'    => $d->name,
+                'due_date' => $d->deadline,
+                'priority' => null,
+                'progress' => 0,
+                'project'  => (object) ['name' => 'Сделка · ' . ($d->klient->name ?? '—')],
+                'link'     => "/klient-deals/{$d->id}",
+            ];
+        });
+
     // Подзадачи, где я исполнитель
     $mySubtasks = Subtask::with([
             'task:id,title,project_id',
@@ -771,6 +836,9 @@ foreach ($allSubtasks as $sub) {
         // 'all_subtasks'            => $allSubtasks,
         'incomplete_tasks'        => $incompleteTasks,
         'responsible_subprojects' => $responsibleSubprojects,
+        'klient_tasks'            => $klientTasks->values(),
+        'media_plans'             => $mediaPlans->values(),
+        'klient_deals'            => $klientDeals->values(),
         'due_today'               => $dueToday,
         'overdue'                 => $overdue,
         'watching_tasks'          => $watchingTasks,

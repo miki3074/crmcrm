@@ -66,14 +66,14 @@ const getProgressColor = progress => {
     }
 
     if (value >= 70) {
-        return 'bg-indigo-500'
+        return 'bg-cyan-500'
     }
 
     if (value >= 35) {
         return 'bg-amber-500'
     }
 
-    return 'bg-slate-400'
+    return 'bg-zinc-400'
 }
 
 const getContainerClass = () => {
@@ -114,11 +114,11 @@ const formatDate = value => {
     <section
         :class="[
             compact
-                ? 'overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-slate-900'
+                ? 'overflow-hidden rounded-2xl border bg-white shadow-sm dark:bg-zinc-900/60'
                 : '',
             getContainerClass(),
             compact && !getContainerClass()
-                ? 'border-slate-200 dark:border-slate-800'
+                ? 'border-zinc-200 dark:border-white/5'
                 : '',
         ]"
     >
@@ -126,7 +126,7 @@ const formatDate = value => {
             :class="[
                 'flex items-center justify-between gap-3',
                 compact
-                    ? 'border-b border-slate-100 px-4 py-3 dark:border-slate-800'
+                    ? 'border-b border-zinc-100 px-4 py-3 dark:border-white/5'
                     : 'mb-3',
             ]"
         >
@@ -145,15 +145,15 @@ const formatDate = value => {
 
                 <h3
                     class="truncate text-sm font-bold
-                           text-slate-900 dark:text-white"
+                           text-zinc-900 dark:text-white"
                 >
                     {{ title }}
                 </h3>
 
                 <span
-                    class="rounded-md bg-slate-100 px-1.5
+                    class="rounded-md bg-zinc-100 px-1.5
                            py-0.5 text-[10px] font-bold
-                           text-slate-500 dark:bg-slate-800"
+                           text-zinc-500 dark:bg-white/5"
                 >
                     {{ currentTasks.length }}
                 </span>
@@ -161,8 +161,8 @@ const formatDate = value => {
 
             <div
                 v-if="showFilters"
-                class="flex rounded-lg bg-slate-100 p-0.5
-                       dark:bg-slate-800"
+                class="flex rounded-lg bg-zinc-100 p-0.5
+                       dark:bg-white/5"
             >
                 <button
                     type="button"
@@ -170,8 +170,8 @@ const formatDate = value => {
                            text-[10px] font-bold transition"
                     :class="
                         filter === 'active'
-                            ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700'
-                            : 'text-slate-400'
+                            ? 'bg-white text-cyan-600 shadow-sm dark:bg-white/10'
+                            : 'text-zinc-400'
                     "
                     @click="filter = 'active'"
                 >
@@ -184,8 +184,8 @@ const formatDate = value => {
                            text-[10px] font-bold transition"
                     :class="
                         filter === 'completed'
-                            ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-700'
-                            : 'text-slate-400'
+                            ? 'bg-white text-emerald-600 shadow-sm dark:bg-white/10'
+                            : 'text-zinc-400'
                     "
                     @click="filter = 'completed'"
                 >
@@ -198,7 +198,7 @@ const formatDate = value => {
             v-if="visibleTasks.length"
             :class="[
                 compact
-                    ? 'divide-y divide-slate-100 dark:divide-slate-800'
+                    ? 'divide-y divide-zinc-100 dark:divide-white/5'
                     : 'grid grid-cols-1 gap-2 lg:grid-cols-2',
             ]"
         >
@@ -209,17 +209,17 @@ const formatDate = value => {
                 :class="[
                     'group w-full text-left transition',
                     compact
-                        ? 'px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                        : 'rounded-xl border border-slate-100 bg-slate-50/60 p-3 hover:border-indigo-300 hover:bg-white hover:shadow-sm dark:border-slate-800 dark:bg-slate-800/30',
+                        ? 'px-4 py-3 hover:bg-zinc-50 dark:hover:bg-white/5'
+                        : 'rounded-xl border border-zinc-100 bg-zinc-50/60 p-3 hover:border-cyan-300 hover:bg-white hover:shadow-sm dark:border-white/5 dark:bg-white/[0.03]',
                 ]"
-                @click="router.visit(`/tasks/${task.id}`)"
+                @click="router.visit(task.link || `/tasks/${task.id}`)"
             >
                 <div class="flex items-start gap-3">
                     <div class="min-w-0 flex-1">
                         <p
                             class="truncate text-[10px]
                                    font-bold uppercase tracking-wide
-                                   text-indigo-500"
+                                   text-cyan-500"
                         >
                             {{
                                 task.project?.name ||
@@ -229,18 +229,18 @@ const formatDate = value => {
 
                         <h4
                             class="mt-0.5 line-clamp-1 text-sm
-                                   font-semibold text-slate-700
-                                   group-hover:text-indigo-600
-                                   dark:text-slate-200"
+                                   font-semibold text-zinc-700
+                                   group-hover:text-cyan-600
+                                   dark:text-zinc-300"
                         >
                             {{ task.title }}
                         </h4>
                     </div>
 
                     <span
-                        class="shrink-0 rounded-md bg-slate-100
+                        class="shrink-0 rounded-md bg-zinc-100
                                px-2 py-1 text-[10px] font-bold
-                               text-slate-500 dark:bg-slate-800"
+                               text-zinc-500 dark:bg-white/5"
                     >
                         {{ formatDate(task.due_date) }}
                     </span>
@@ -249,8 +249,8 @@ const formatDate = value => {
                 <div class="mt-2 flex items-center gap-2">
                     <div
                         class="h-1.5 flex-1 overflow-hidden
-                               rounded-full bg-slate-200
-                               dark:bg-slate-700"
+                               rounded-full bg-zinc-200
+                               dark:bg-white/10"
                     >
                         <div
                             class="h-full rounded-full transition-all"
@@ -268,7 +268,7 @@ const formatDate = value => {
 
                     <span
                         class="w-8 text-right text-[10px]
-                               font-black text-slate-500"
+                               font-black text-zinc-500"
                     >
                         {{ Number(task.progress || 0) }}%
                     </span>
@@ -279,7 +279,7 @@ const formatDate = value => {
         <div
             v-else
             :class="[
-                'text-center text-sm text-slate-400',
+                'text-center text-sm text-zinc-400',
                 compact ? 'px-4 py-8' : 'py-12',
             ]"
         >

@@ -129,20 +129,20 @@ const confirmDelete = async () => {
         <!-- Мои компании -->
         <div
             class="overflow-hidden rounded-2xl border
-                   border-slate-200 bg-white shadow-sm
-                   dark:border-slate-800 dark:bg-slate-900"
+                   border-zinc-200 bg-white shadow-sm
+                   dark:border-white/5 dark:bg-zinc-900/60"
         >
             <header
                 class="flex items-center justify-between border-b
-                       border-slate-100 px-4 py-3
-                       dark:border-slate-800"
+                       border-zinc-100 px-4 py-3
+                       dark:border-white/5"
             >
                 <div class="flex items-center gap-3">
                     <span
                         class="flex h-9 w-9 items-center justify-center
-                               rounded-xl bg-indigo-100 text-indigo-600
-                               dark:bg-indigo-950/60
-                               dark:text-indigo-300"
+                               rounded-xl bg-cyan-100 text-cyan-600
+                               dark:bg-cyan-500/10
+                               dark:text-cyan-300"
                     >
                         <svg
                             class="h-4.5 w-4.5"
@@ -162,13 +162,13 @@ const confirmDelete = async () => {
                     <div>
                         <h2
                             class="text-sm font-bold
-                                   text-slate-900 dark:text-white"
+                                   text-zinc-900 dark:text-white"
                         >
                             Мои компании
                         </h2>
 
                         <p
-                            class="text-[11px] text-slate-400"
+                            class="text-[11px] text-zinc-400"
                         >
                             {{ myCompanies.length }} организаций
                         </p>
@@ -179,9 +179,9 @@ const confirmDelete = async () => {
                     v-if="myCompanies.length > 8"
                     type="button"
                     class="rounded-lg px-2.5 py-1.5 text-xs
-                           font-bold text-indigo-600 transition
-                           hover:bg-indigo-50
-                           dark:hover:bg-indigo-950/40"
+                           font-bold text-cyan-600 transition
+                           hover:bg-cyan-50
+                           dark:hover:bg-cyan-500/10"
                     @click="showAllMyCompaniesModal = true"
                 >
                     Все компании
@@ -198,13 +198,13 @@ const confirmDelete = async () => {
                     :key="company.id"
                     class="group flex min-w-0 cursor-pointer
                            items-center gap-3 rounded-xl border
-                           border-slate-100 bg-slate-50/70 p-3
-                           transition hover:border-indigo-300
+                           border-zinc-100 bg-zinc-50/70 p-3
+                           transition hover:border-cyan-300
                            hover:bg-white hover:shadow-sm
-                           dark:border-slate-800
-                           dark:bg-slate-800/40
-                           dark:hover:border-indigo-800
-                           dark:hover:bg-slate-800"
+                           dark:border-white/5
+                           dark:bg-white/[0.03]
+                           dark:hover:border-cyan-500/30
+                           dark:hover:bg-white/5"
                     @click="visitCompany(company)"
                 >
                     <img
@@ -219,10 +219,10 @@ const confirmDelete = async () => {
                         v-else
                         class="flex h-11 w-11 shrink-0
                                items-center justify-center rounded-xl
-                               bg-indigo-100 text-xs font-black
-                               text-indigo-600
-                               dark:bg-indigo-950/60
-                               dark:text-indigo-300"
+                               bg-cyan-100 text-xs font-black
+                               text-cyan-600
+                               dark:bg-cyan-500/10
+                               dark:text-cyan-300"
                     >
                         {{ getInitials(company.name) }}
                     </div>
@@ -230,8 +230,8 @@ const confirmDelete = async () => {
                     <div class="min-w-0 flex-1">
                         <h3
                             class="truncate text-sm font-bold
-                                   text-slate-800
-                                   group-hover:text-indigo-600
+                                   text-zinc-800
+                                   group-hover:text-cyan-600
                                    dark:text-white"
                         >
                             {{ company.name }}
@@ -239,7 +239,7 @@ const confirmDelete = async () => {
 
                         <p
                             class="mt-0.5 text-[11px]
-                                   text-slate-400"
+                                   text-zinc-400"
                         >
                             {{ getProjectsCount(company) }}
                             проектов
@@ -251,7 +251,7 @@ const confirmDelete = async () => {
                         type="button"
                         class="flex h-7 w-7 shrink-0 items-center
                                justify-center rounded-lg
-                               text-slate-300 opacity-0 transition
+                               text-zinc-500 opacity-0 transition
                                hover:bg-rose-50 hover:text-rose-500
                                group-hover:opacity-100
                                dark:hover:bg-rose-950/40"
@@ -277,7 +277,7 @@ const confirmDelete = async () => {
 
             <div
                 v-else
-                class="p-8 text-center text-sm text-slate-400"
+                class="p-8 text-center text-sm text-zinc-400"
             >
                 У вас пока нет компаний
             </div>
@@ -286,24 +286,24 @@ const confirmDelete = async () => {
         <!-- Другие компании -->
         <div
             class="overflow-hidden rounded-2xl border
-                   border-slate-200 bg-white shadow-sm
-                   dark:border-slate-800 dark:bg-slate-900"
+                   border-zinc-200 bg-white shadow-sm
+                   dark:border-white/5 dark:bg-zinc-900/60"
         >
             <header
                 class="flex items-center justify-between border-b
-                       border-slate-100 px-4 py-3
-                       dark:border-slate-800"
+                       border-zinc-100 px-4 py-3
+                       dark:border-white/5"
             >
                 <div>
                     <h2
                         class="text-sm font-bold
-                               text-slate-900 dark:text-white"
+                               text-zinc-900 dark:text-white"
                     >
                         Другие компании
                     </h2>
 
                     <p
-                        class="text-[11px] text-slate-400"
+                        class="text-[11px] text-zinc-400"
                     >
                         Доступные пространства
                     </p>
@@ -321,8 +321,8 @@ const confirmDelete = async () => {
 
             <div
                 v-if="visibleOtherCompanies.length"
-                class="divide-y divide-slate-100
-                       dark:divide-slate-800"
+                class="divide-y divide-zinc-100
+                       dark:divide-white/5"
             >
                 <button
                     v-for="company in visibleOtherCompanies"
@@ -331,7 +331,7 @@ const confirmDelete = async () => {
                     class="flex w-full items-center gap-3 px-4
                            py-2.5 text-left transition
                            hover:bg-emerald-50/60
-                           dark:hover:bg-emerald-950/20"
+                           dark:hover:bg-emerald-500/10"
                     @click="visitCompany(company)"
                 >
                     <img
@@ -346,7 +346,7 @@ const confirmDelete = async () => {
                                justify-center rounded-lg
                                bg-emerald-100 text-[10px]
                                font-black text-emerald-600
-                               dark:bg-emerald-950/60
+                               dark:bg-emerald-500/10
                                dark:text-emerald-300"
                     >
                         {{ getInitials(company.name) }}
@@ -354,14 +354,14 @@ const confirmDelete = async () => {
 
                     <span
                         class="min-w-0 flex-1 truncate text-sm
-                               font-semibold text-slate-700
-                               dark:text-slate-200"
+                               font-semibold text-zinc-700
+                               dark:text-zinc-300"
                     >
                         {{ company.name }}
                     </span>
 
                     <span
-                        class="text-[10px] text-slate-400"
+                        class="text-[10px] text-zinc-400"
                     >
                         {{ getProjectsCount(company) }}
                     </span>
@@ -370,7 +370,7 @@ const confirmDelete = async () => {
 
             <div
                 v-else
-                class="p-8 text-center text-sm text-slate-400"
+                class="p-8 text-center text-sm text-zinc-400"
             >
                 Других компаний нет
             </div>
@@ -382,38 +382,38 @@ const confirmDelete = async () => {
         <div
             v-if="showAllMyCompaniesModal"
             class="fixed inset-0 z-[90] flex items-center
-                   justify-center bg-slate-950/60 p-4
+                   justify-center bg-black/70 p-4
                    backdrop-blur-sm"
             @click.self="showAllMyCompaniesModal = false"
         >
             <div
                 class="flex max-h-[88vh] w-full max-w-5xl
                        flex-col overflow-hidden rounded-2xl
-                       border border-slate-200 bg-white shadow-2xl
-                       dark:border-slate-800 dark:bg-slate-900"
+                       border border-zinc-200 bg-white shadow-2xl
+                       dark:border-white/5 dark:bg-zinc-900/60"
             >
                 <header
                     class="flex items-center justify-between
-                           border-b border-slate-100 px-5 py-4
-                           dark:border-slate-800"
+                           border-b border-zinc-100 px-5 py-4
+                           dark:border-white/5"
                 >
                     <div>
                         <h3
                             class="text-lg font-bold
-                                   text-slate-900 dark:text-white"
+                                   text-zinc-900 dark:text-white"
                         >
                             Все мои компании
                         </h3>
 
-                        <p class="text-xs text-slate-400">
+                        <p class="text-xs text-zinc-400">
                             Всего {{ myCompanies.length }}
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 hover:bg-slate-100
-                               dark:hover:bg-slate-800"
+                        class="rounded-lg p-2 hover:bg-zinc-100
+                               dark:hover:bg-white/5"
                         @click="showAllMyCompaniesModal = false"
                     >
                         ✕
@@ -430,11 +430,11 @@ const confirmDelete = async () => {
                         :key="company.id"
                         type="button"
                         class="flex items-center gap-3 rounded-xl
-                               border border-slate-200 p-3 text-left
-                               transition hover:border-indigo-400
-                               hover:bg-indigo-50/50
-                               dark:border-slate-700
-                               dark:hover:bg-indigo-950/20"
+                               border border-zinc-200 p-3 text-left
+                               transition hover:border-cyan-400
+                               hover:bg-cyan-50/60
+                               dark:border-white/10
+                               dark:hover:bg-cyan-500/10"
                         @click="visitCompany(company)"
                     >
                         <img
@@ -447,8 +447,8 @@ const confirmDelete = async () => {
                             v-else
                             class="flex h-12 w-12 items-center
                                    justify-center rounded-xl
-                                   bg-indigo-100 text-xs font-black
-                                   text-indigo-600"
+                                   bg-cyan-100 text-xs font-black
+                                   text-cyan-600"
                         >
                             {{ getInitials(company.name) }}
                         </div>
@@ -456,12 +456,12 @@ const confirmDelete = async () => {
                         <div class="min-w-0">
                             <p
                                 class="truncate text-sm font-bold
-                                       text-slate-800 dark:text-white"
+                                       text-zinc-800 dark:text-white"
                             >
                                 {{ company.name }}
                             </p>
 
-                            <p class="text-xs text-slate-400">
+                            <p class="text-xs text-zinc-400">
                                 {{ getProjectsCount(company) }}
                                 проектов
                             </p>
@@ -477,37 +477,37 @@ const confirmDelete = async () => {
         <div
             v-if="showAllOtherCompaniesModal"
             class="fixed inset-0 z-[90] flex items-center
-                   justify-center bg-slate-950/60 p-4
+                   justify-center bg-black/70 p-4
                    backdrop-blur-sm"
             @click.self="showAllOtherCompaniesModal = false"
         >
             <div
                 class="flex max-h-[88vh] w-full max-w-3xl
                        flex-col overflow-hidden rounded-2xl
-                       bg-white shadow-2xl dark:bg-slate-900"
+                       bg-white shadow-2xl dark:bg-zinc-900/60"
             >
                 <header
                     class="flex items-center justify-between
-                           border-b border-slate-100 px-5 py-4
-                           dark:border-slate-800"
+                           border-b border-zinc-100 px-5 py-4
+                           dark:border-white/5"
                 >
                     <div>
                         <h3
                             class="text-lg font-bold
-                                   text-slate-900 dark:text-white"
+                                   text-zinc-900 dark:text-white"
                         >
                             Другие компании
                         </h3>
 
-                        <p class="text-xs text-slate-400">
+                        <p class="text-xs text-zinc-400">
                             Всего {{ otherCompanies.length }}
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 hover:bg-slate-100
-                               dark:hover:bg-slate-800"
+                        class="rounded-lg p-2 hover:bg-zinc-100
+                               dark:hover:bg-white/5"
                         @click="showAllOtherCompaniesModal = false"
                     >
                         ✕
@@ -523,9 +523,9 @@ const confirmDelete = async () => {
                         :key="company.id"
                         type="button"
                         class="flex items-center gap-3 rounded-xl
-                               border border-slate-200 p-3 text-left
+                               border border-zinc-200 p-3 text-left
                                transition hover:border-emerald-400
-                               dark:border-slate-700"
+                               dark:border-white/10"
                         @click="visitCompany(company)"
                     >
                         <img
@@ -546,7 +546,7 @@ const confirmDelete = async () => {
 
                         <p
                             class="min-w-0 truncate text-sm font-bold
-                                   text-slate-800 dark:text-white"
+                                   text-zinc-800 dark:text-white"
                         >
                             {{ company.name }}
                         </p>
@@ -561,25 +561,25 @@ const confirmDelete = async () => {
         <div
             v-if="showDeleteModal"
             class="fixed inset-0 z-[100] flex items-center
-                   justify-center bg-slate-950/60 p-4
+                   justify-center bg-black/70 p-4
                    backdrop-blur-sm"
             @click.self="closeDelete"
         >
             <div
                 class="w-full max-w-sm rounded-2xl
                        bg-white p-5 shadow-2xl
-                       dark:bg-slate-900"
+                       dark:bg-zinc-900/60"
             >
                 <h4
                     class="text-lg font-bold
-                           text-slate-900 dark:text-white"
+                           text-zinc-900 dark:text-white"
                 >
                     Удалить компанию?
                 </h4>
 
                 <p
                     class="mt-1 text-sm leading-6
-                           text-slate-500"
+                           text-zinc-500"
                 >
                     Для подтверждения введите пароль
                     от вашего аккаунта.
@@ -589,11 +589,11 @@ const confirmDelete = async () => {
                     v-model="deletePassword"
                     type="password"
                     class="mt-4 w-full rounded-xl border
-                           border-slate-200 bg-white px-4 py-3
+                           border-zinc-200 bg-white px-4 py-3
                            text-sm outline-none focus:border-rose-400
                            focus:ring-4 focus:ring-rose-100
-                           dark:border-slate-700
-                           dark:bg-slate-800 dark:text-white"
+                           dark:border-white/10
+                           dark:bg-white/5 dark:text-white"
                     placeholder="Пароль"
                     @keyup.enter="confirmDelete"
                 />
@@ -602,9 +602,9 @@ const confirmDelete = async () => {
                     <button
                         type="button"
                         class="flex-1 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-slate-500
-                               hover:bg-slate-100
-                               dark:hover:bg-slate-800"
+                               text-sm font-bold text-zinc-500
+                               hover:bg-zinc-100
+                               dark:hover:bg-white/5"
                         @click="closeDelete"
                     >
                         Отмена

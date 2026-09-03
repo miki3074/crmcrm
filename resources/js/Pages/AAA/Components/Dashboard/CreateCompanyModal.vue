@@ -119,41 +119,41 @@ const submit = async () => {
     <Teleport to="body">
         <div
             class="fixed inset-0 z-[100] flex items-center
-                   justify-center bg-slate-950/60 p-4
+                   justify-center bg-black/70 p-4
                    backdrop-blur-sm"
             @click.self="emit('close')"
         >
             <div
                 class="w-full max-w-md overflow-hidden
-                       rounded-2xl border border-slate-200
+                       rounded-2xl border border-zinc-200
                        bg-white shadow-2xl
-                       dark:border-slate-800
-                       dark:bg-slate-900"
+                       dark:border-white/5
+                       dark:bg-zinc-900/60"
             >
                 <header
                     class="flex items-center justify-between
-                           border-b border-slate-100 px-5 py-4
-                           dark:border-slate-800"
+                           border-b border-zinc-100 px-5 py-4
+                           dark:border-white/5"
                 >
                     <div>
                         <h3
                             class="text-lg font-bold
-                                   text-slate-900 dark:text-white"
+                                   text-zinc-900 dark:text-white"
                         >
                             Новая компания
                         </h3>
 
-                        <p class="text-xs text-slate-400">
+                        <p class="text-xs text-zinc-400">
                             Создайте новое рабочее пространство
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 text-slate-400
-                               transition hover:bg-slate-100
-                               hover:text-slate-700
-                               dark:hover:bg-slate-800"
+                        class="rounded-lg p-2 text-zinc-400
+                               transition hover:bg-zinc-100
+                               hover:text-zinc-700
+                               dark:hover:bg-white/5"
                         @click="emit('close')"
                     >
                         ✕
@@ -167,8 +167,8 @@ const submit = async () => {
                     <div>
                         <label
                             class="mb-1.5 block text-xs
-                                   font-bold text-slate-600
-                                   dark:text-slate-300"
+                                   font-bold text-zinc-600
+                                   dark:text-zinc-500"
                         >
                             Название компании
                         </label>
@@ -178,14 +178,14 @@ const submit = async () => {
                             type="text"
                             class="w-full rounded-xl border
                                    bg-white px-4 py-3 text-sm
-                                   text-slate-900 outline-none
+                                   text-zinc-900 outline-none
                                    transition focus:ring-4
-                                   dark:bg-slate-800
+                                   dark:bg-white/5
                                    dark:text-white"
                             :class="
                                 errors.name
                                     ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-100'
-                                    : 'border-slate-200 focus:border-indigo-400 focus:ring-indigo-100 dark:border-slate-700'
+                                    : 'border-zinc-200 focus:border-cyan-400 focus:ring-cyan-100 dark:border-white/10'
                             "
                             placeholder="Название организации"
                             @input="errors.name = null"
@@ -203,8 +203,8 @@ const submit = async () => {
                     <div>
                         <label
                             class="mb-1.5 block text-xs
-                                   font-bold text-slate-600
-                                   dark:text-slate-300"
+                                   font-bold text-zinc-600
+                                   dark:text-zinc-500"
                         >
                             Логотип
                         </label>
@@ -220,8 +220,8 @@ const submit = async () => {
                         <div
                             v-if="logoPreview"
                             class="flex items-center gap-3
-                                   rounded-xl border border-slate-200
-                                   p-3 dark:border-slate-700"
+                                   rounded-xl border border-zinc-200
+                                   p-3 dark:border-white/10"
                         >
                             <img
                                 :src="logoPreview"
@@ -233,15 +233,15 @@ const submit = async () => {
                                 <p
                                     class="truncate text-sm
                                            font-semibold
-                                           text-slate-700
-                                           dark:text-slate-200"
+                                           text-zinc-700
+                                           dark:text-zinc-300"
                                 >
                                     {{ form.logo?.name }}
                                 </p>
 
                                 <p
                                     class="mt-0.5 text-xs
-                                           text-slate-400"
+                                           text-zinc-400"
                                 >
                                     {{
                                         (
@@ -271,12 +271,12 @@ const submit = async () => {
                             type="button"
                             class="flex w-full items-center gap-3
                                    rounded-xl border-2 border-dashed
-                                   border-slate-200 px-4 py-5
+                                   border-zinc-200 px-4 py-5
                                    text-left transition
-                                   hover:border-indigo-400
-                                   hover:bg-indigo-50/30
-                                   dark:border-slate-700
-                                   dark:hover:bg-indigo-950/20"
+                                   hover:border-cyan-400
+                                   hover:bg-cyan-50/30
+                                   dark:border-white/10
+                                   dark:hover:bg-cyan-500/10"
                             :class="{
                                 'border-rose-400':
                                     errors.logo,
@@ -286,8 +286,8 @@ const submit = async () => {
                             <span
                                 class="flex h-10 w-10 items-center
                                        justify-center rounded-xl
-                                       bg-indigo-100
-                                       text-indigo-600"
+                                       bg-cyan-100
+                                       text-cyan-600"
                             >
                                 +
                             </span>
@@ -296,15 +296,15 @@ const submit = async () => {
                                 <span
                                     class="block text-sm
                                            font-semibold
-                                           text-slate-700
-                                           dark:text-slate-200"
+                                           text-zinc-700
+                                           dark:text-zinc-300"
                                 >
                                     Выбрать изображение
                                 </span>
 
                                 <span
                                     class="mt-0.5 block text-xs
-                                           text-slate-400"
+                                           text-zinc-400"
                                 >
                                     PNG, JPG или WebP
                                 </span>
@@ -322,15 +322,15 @@ const submit = async () => {
 
                     <footer
                         class="flex gap-2 border-t
-                               border-slate-100 pt-4
-                               dark:border-slate-800"
+                               border-zinc-100 pt-4
+                               dark:border-white/5"
                     >
                         <button
                             type="button"
                             class="flex-1 rounded-xl px-4 py-2.5
-                                   text-sm font-bold text-slate-500
-                                   transition hover:bg-slate-100
-                                   dark:hover:bg-slate-800"
+                                   text-sm font-bold text-zinc-500
+                                   transition hover:bg-zinc-100
+                                   dark:hover:bg-white/5"
                             @click="emit('close')"
                         >
                             Отмена
@@ -341,9 +341,9 @@ const submit = async () => {
                             :disabled="!canSubmit"
                             class="flex flex-1 items-center
                                    justify-center rounded-xl
-                                   bg-indigo-600 px-4 py-2.5
+                                   bg-cyan-600 px-4 py-2.5
                                    text-sm font-bold text-white
-                                   transition hover:bg-indigo-700
+                                   transition hover:bg-cyan-700
                                    disabled:cursor-not-allowed
                                    disabled:opacity-50"
                         >

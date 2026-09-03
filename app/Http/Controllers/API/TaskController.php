@@ -711,6 +711,27 @@ public function withSubtasks()
         ]);
     }
 
+    // Отправить обычное вложение на согласование
+    public function submitForApproval(Request $request, TaskFile $file)
+    {
+        $this->checkReviewerPermissions($file);
+
+        if ($file->status !== 'none') {
+            return response()->json([
+                'message' => 'Этот файл уже находится в процессе согласования',
+            ], 422);
+        }
+
+        $file->update([
+            'status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Документ отправлен на согласование',
+            'file' => $file,
+        ]);
+    }
+
     // Одобрить файл
     public function approve(Request $request, TaskFile $file)
     {

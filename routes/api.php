@@ -424,6 +424,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/task-comments/{comment}', [TaskCommentController::class, 'update'])
         ->middleware('auth:sanctum');
 
+    Route::put('/files/{file}/submit-approval', [TaskController::class, 'submitForApproval']);
+
     Route::put('/files/{file}/approve', [TaskController::class, 'approve']);
 
     Route::put('/files/{file}/reject', [TaskController::class, 'reject']);

@@ -20,33 +20,48 @@ defineProps({
 
 const colors = {
     violet:
-        'bg-violet-100 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300',
+        'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-500/10 dark:text-fuchsia-300',
     blue:
-        'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300',
+        'bg-cyan-100 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-300',
     indigo:
-        'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300',
+        'bg-sky-100 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300',
     amber:
-        'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300',
+        'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300',
     emerald:
-        'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300',
+        'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300',
     rose:
-        'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300',
+        'bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300',
+}
+
+const glow = {
+    violet: 'group-hover:shadow-fuchsia-500/20',
+    blue: 'group-hover:shadow-cyan-500/20',
+    indigo: 'group-hover:shadow-sky-500/20',
+    amber: 'group-hover:shadow-amber-500/20',
+    emerald: 'group-hover:shadow-emerald-500/20',
+    rose: 'group-hover:shadow-rose-500/20',
 }
 </script>
 
 <template>
     <button
         type="button"
-        class="group flex min-h-[74px] min-w-0 items-center gap-3
-               rounded-2xl border border-slate-200 bg-white
+        class="group relative flex min-h-[76px] min-w-0 items-center gap-3
+               overflow-hidden rounded-xl border border-zinc-200 bg-white
                p-3 text-left shadow-sm transition
-               hover:-translate-y-0.5 hover:border-indigo-300
-               hover:shadow-md dark:border-slate-800
-               dark:bg-slate-900 dark:hover:border-indigo-800"
+               hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-lg
+               dark:border-white/5 dark:bg-zinc-900/70 dark:shadow-none
+               dark:hover:border-white/10 dark:hover:bg-zinc-900"
+        :class="glow[color]"
     >
         <span
+            class="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0
+                   bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400
+                   transition-transform duration-300 group-hover:scale-x-100"
+        />
+        <span
             class="flex h-10 w-10 shrink-0 items-center
-                   justify-center rounded-xl transition-transform
+                   justify-center rounded-lg transition-transform
                    group-hover:scale-105"
             :class="colors[color]"
         >
@@ -128,15 +143,15 @@ const colors = {
 
         <span class="min-w-0">
             <span
-                class="block truncate text-sm font-bold
-                       text-slate-800 dark:text-white"
+                class="block truncate text-[13px] font-bold uppercase
+                       tracking-wide text-zinc-800 dark:text-zinc-100"
             >
                 {{ title }}
             </span>
 
             <span
                 class="mt-0.5 block truncate text-[11px]
-                       text-slate-400"
+                       text-zinc-400 dark:text-zinc-500"
             >
                 {{ subtitle }}
             </span>
@@ -144,9 +159,10 @@ const colors = {
 
         <svg
             class="ml-auto hidden h-4 w-4 shrink-0
-                   text-slate-300 transition
+                   text-zinc-300 transition
                    group-hover:translate-x-0.5
-                   group-hover:text-indigo-500 xl:block"
+                   group-hover:text-cyan-500 dark:text-zinc-700
+                   dark:group-hover:text-cyan-400 xl:block"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"

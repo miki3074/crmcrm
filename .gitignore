@@ -16,3 +16,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Добавьте эти две строки:
+/.cursor/
+/CLAUDE.md

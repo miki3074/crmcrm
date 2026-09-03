@@ -37,7 +37,33 @@ const handleFileChange = (e) => {
     form.files = Array.from(e.target.files);
 };
 
+// Клиентская валидация обязательных полей
+const clientErrors = ref({});
+
+const validate = () => {
+    const errors = {};
+
+    if (!form.name.trim()) {
+        errors.name = 'Укажите название сделки';
+    }
+
+    const hasValidItem = form.items.some(item => item.name.trim());
+    if (!hasValidItem) {
+        errors.items = 'Добавьте хотя бы одну позицию с названием';
+    }
+
+    if (!form.responsible_ids.length) {
+        errors.responsible_ids = 'Выберите хотя бы одного ответственного';
+    }
+
+    clientErrors.value = errors;
+    return Object.keys(errors).length === 0;
+};
+
 const submit = () => {
+    if (!validate()) {
+        return;
+    }
     form.post(route('klient-deals.store', props.klient.id));
 };
 </script>
@@ -71,7 +97,11 @@ const submit = () => {
                             <div class="grid grid-cols-1 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Название сделки *</label>
-                                    <input v-model="form.name" type="text" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Напр: Поставка оборудования">
+                                    <input v-model="form.name" type="text" required
+                                        :class="['mt-1 block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500', (clientErrors.name || form.errors.name) ? 'border-red-400' : 'border-gray-300']"
+                                        placeholder="Напр: Поставка оборудования"
+                                        @input="clientErrors.name = ''">
+                                    <p v-if="clientErrors.name || form.errors.name" class="mt-1 text-xs text-red-500">{{ clientErrors.name || form.errors.name }}</p>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
@@ -101,7 +131,10 @@ const submit = () => {
 
                         <!-- ТОВАРЫ И УСЛУГИ -->
                         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h2 class="text-sm font-bold text-gray-400 uppercase mb-4 tracking-widest">Товары и услуги</h2>
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Товары и услуги</h2>
+                                <p v-if="clientErrors.items" class="text-xs text-red-500">{{ clientErrors.items }}</p>
+                            </div>
 
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left">
@@ -117,7 +150,7 @@ const submit = () => {
                                     <tbody class="divide-y divide-gray-100">
                                     <tr v-for="(item, index) in form.items" :key="index">
                                         <td class="py-3 pr-4">
-                                            <input v-model="item.name" type="text" placeholder="Услуга или товар" class="w-full border-none p-0 focus:ring-0 text-sm font-medium">
+                                            <input v-model="item.name" type="text" placeholder="Услуга или товар" class="w-full border-none p-0 focus:ring-0 text-sm font-medium" @input="clientErrors.items = ''">
                                         </td>
                                         <td class="py-3 px-2">
                                             <input v-model.number="item.quantity" type="number" step="0.1" class="w-full border-gray-200 rounded text-center text-sm">
@@ -172,12 +205,13 @@ const submit = () => {
 
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 mb-2 uppercase">Ответственные</label>
-                                <div class="space-y-2 max-h-40 overflow-y-auto border p-3 rounded">
+                                <div :class="['space-y-2 max-h-40 overflow-y-auto border p-3 rounded', clientErrors.responsible_ids ? 'border-red-400' : 'border-gray-200']">
                                     <div v-for="user in availableResponsibles" :key="user.id" class="flex items-center">
-                                        <input type="checkbox" :value="user.id" v-model="form.responsible_ids" :id="'user'+user.id" class="rounded text-indigo-600">
+                                        <input type="checkbox" :value="user.id" v-model="form.responsible_ids" :id="'user'+user.id" class="rounded text-indigo-600" @change="clientErrors.responsible_ids = ''">
                                         <label :for="'user'+user.id" class="ml-2 text-sm text-gray-600">{{ user.name }}</label>
                                     </div>
                                 </div>
+                                <p v-if="clientErrors.responsible_ids" class="mt-1 text-xs text-red-500">{{ clientErrors.responsible_ids }}</p>
                             </div>
                         </div>
 
