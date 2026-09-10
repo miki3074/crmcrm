@@ -10,6 +10,7 @@ import {
 import { VueFilesPreview } from 'vue-files-preview'
 import 'vue-files-preview/lib/style.css'
 import axios from 'axios'
+import SelectReviewerModal from './SelectReviewerModal.vue'
 
 const props = defineProps({
     task: {
@@ -258,21 +259,53 @@ const canSubmitForApproval = (file) => {
     return props.canUpload && (!file?.status || file.status === 'none')
 }
 
-const submitForApproval = async (file) => {
-    if (!canSubmitForApproval(file) || submittingId.value) {
-        return
+// Участники задачи, из которых можно выбрать согласующего
+const taskParticipants = computed(() => {
+    const map = new Map()
+
+    const add = (user, role) => {
+        if (!user?.id) return
+        if (map.has(user.id)) {
+            map.get(user.id).roles.push(role)
+        } else {
+            map.set(user.id, { id: user.id, name: user.name, roles: [role] })
+        }
     }
 
+    add(props.task?.creator, 'Создатель')
+    ;(props.task?.executors || []).forEach(u => add(u, 'Исполнитель'))
+    ;(props.task?.responsibles || []).forEach(u => add(u, 'Ответственный'))
+    ;(props.task?.watcherstask || []).forEach(u => add(u, 'Наблюдатель'))
+
+    return Array.from(map.values())
+})
+
+const reviewerModal = ref({ show: false, file: null, error: '' })
+
+const openReviewerModal = (file) => {
+    if (!canSubmitForApproval(file)) return
+    reviewerModal.value = { show: true, file, error: '' }
+}
+
+const closeReviewerModal = () => {
+    reviewerModal.value = { show: false, file: null, error: '' }
+}
+
+const confirmSubmitForApproval = async (reviewerId) => {
+    const file = reviewerModal.value.file
+    if (!file || !reviewerId) return
+
     submittingId.value = file.id
+    reviewerModal.value.error = ''
 
     try {
-        await axios.put(`/api/files/${file.id}/submit-approval`)
+        await axios.put(`/api/files/${file.id}/submit-approval`, { reviewer_id: reviewerId })
+        closeReviewerModal()
         emit('refresh')
     } catch (error) {
-        alert(
-            error?.response?.data?.message ||
-            'Не удалось отправить файл на согласование'
-        )
+        reviewerModal.value.error = error?.response?.data?.message
+            || Object.values(error?.response?.data?.errors || {})[0]?.[0]
+            || 'Не удалось отправить файл на согласование'
     } finally {
         submittingId.value = null
     }
@@ -809,9 +842,9 @@ onBeforeUnmount(() => {
                         <button
                             v-if="canSubmitForApproval(file)"
                             type="button"
-                            class="mt-2 inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                            class="mt-2 inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                             :disabled="submittingId === file.id"
-                            @click="submitForApproval(file)"
+                            @click="openReviewerModal(file)"
                         >
                             <svg
                                 v-if="submittingId === file.id"
@@ -1133,6 +1166,16 @@ onBeforeUnmount(() => {
                 </div>
             </Transition>
         </Teleport>
+
+        <SelectReviewerModal
+            :show="reviewerModal.show"
+            :participants="taskParticipants"
+            :file-name="reviewerModal.file?.file_name"
+            :loading="submittingId !== null"
+            :error="reviewerModal.error"
+            @confirm="confirmSubmitForApproval"
+            @close="closeReviewerModal"
+        />
     </div>
 </template>
 

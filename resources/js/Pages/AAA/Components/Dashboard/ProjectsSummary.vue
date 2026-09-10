@@ -110,7 +110,7 @@ const getTasksCount = project => {
                     class="text-sm font-bold
                            text-zinc-900 dark:text-white"
                 >
-                    Управляемые проекты
+                    Мои проекты
                 </h3>
 
                 <p class="text-[11px] text-zinc-400">
@@ -244,7 +244,7 @@ const getTasksCount = project => {
                                 class="text-lg font-bold
                                        text-zinc-900 dark:text-white"
                             >
-                                Все управляемые проекты
+                                Все мои проекты
                             </h2>
 
                             <p class="text-xs text-zinc-400">

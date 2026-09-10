@@ -1,16 +1,30 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
     task: {
         type: Object,
         default: () => ({})
+    },
+    saving: {
+        type: Boolean,
+        default: false
     }
 })
 
 const emit = defineEmits([
     'updateProgress'
 ])
+
+// Короткая вспышка после успешного сохранения прогресса — заметная
+// обратная связь без перерисовки всего блока.
+const justSaved = ref(false)
+watch(() => props.saving, (isSaving, wasSaving) => {
+    if (wasSaving && !isSaving) {
+        justSaved.value = true
+        setTimeout(() => { justSaved.value = false }, 700)
+    }
+})
 
 /*
 |--------------------------------------------------------------------------
@@ -26,11 +40,11 @@ const progress = computed(() => {
 
 const progressColor = computed(() => {
     if (progress.value < 30) {
-        return 'bg-slate-400'
+        return 'bg-zinc-400'
     }
 
     if (progress.value < 70) {
-        return 'bg-blue-500'
+        return 'bg-cyan-500'
     }
 
     return 'bg-emerald-500'
@@ -38,11 +52,11 @@ const progressColor = computed(() => {
 
 const progressTextColor = computed(() => {
     if (progress.value < 30) {
-        return 'text-slate-600 dark:text-slate-300'
+        return 'text-zinc-600 dark:text-zinc-300'
     }
 
     if (progress.value < 70) {
-        return 'text-blue-600 dark:text-blue-400'
+        return 'text-cyan-600 dark:text-cyan-400'
     }
 
     return 'text-emerald-600 dark:text-emerald-400'
@@ -111,10 +125,10 @@ const formatDate = (isoString) => {
 
 <template>
     <section
-        class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
+        class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-800"
     >
         <div
-            class="grid grid-cols-1 divide-y divide-slate-100 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)] lg:divide-x lg:divide-y-0 dark:divide-slate-700"
+            class="grid grid-cols-1 divide-y divide-zinc-100 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.65fr)] lg:divide-x lg:divide-y-0 dark:divide-zinc-700"
         >
             <!-- Временная шкала -->
             <div class="p-5 sm:p-4">
@@ -125,7 +139,7 @@ const formatDate = (isoString) => {
                         class="flex min-w-0 items-center gap-3"
                     >
                         <div
-                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400"
                         >
                             <svg
                                 class="h-4 w-4"
@@ -144,13 +158,13 @@ const formatDate = (isoString) => {
 
                         <div class="min-w-0">
                             <h3
-                                class="font-semibold text-slate-900 dark:text-white"
+                                class="font-semibold text-zinc-900 dark:text-white"
                             >
                                 Сроки выполнения
                             </h3>
 
                             <p
-                                class="mt-0.5 text-xs text-slate-500 dark:text-slate-400"
+                                class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400"
                             >
                                 Период работы над задачей
                             </p>
@@ -166,17 +180,17 @@ const formatDate = (isoString) => {
                 </div>
 
                 <div
-                    class="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40"
+                    class="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-900/40"
                 >
                     <div class="min-w-0">
                         <span
-                            class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-slate-400"
+                            class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-400"
                         >
                             Начало
                         </span>
 
                         <span
-                            class="block truncate text-sm font-semibold text-slate-700 dark:text-slate-200 sm:text-base"
+                            class="block truncate text-sm font-semibold text-zinc-700 dark:text-zinc-200 sm:text-base"
                             :title="formatDate(task?.start_date)"
                         >
                             {{ formatDate(task?.start_date) }}
@@ -184,7 +198,7 @@ const formatDate = (isoString) => {
                     </div>
 
                     <div
-                        class="flex min-w-10 items-center text-slate-300 dark:text-slate-600"
+                        class="flex min-w-10 items-center text-zinc-300 dark:text-zinc-600"
                     >
                         <span
                             class="h-px w-3 bg-current sm:w-6"
@@ -211,7 +225,7 @@ const formatDate = (isoString) => {
                             :class="
                                 isOverdue
                                     ? 'text-rose-500'
-                                    : 'text-slate-400'
+                                    : 'text-zinc-400'
                             "
                         >
                             Срок
@@ -222,7 +236,7 @@ const formatDate = (isoString) => {
                             :class="
                                 isOverdue
                                     ? 'text-rose-600 dark:text-rose-400'
-                                    : 'text-slate-900 dark:text-white'
+                                    : 'text-zinc-900 dark:text-white'
                             "
                             :title="formatDate(task?.due_date)"
                         >
@@ -239,28 +253,33 @@ const formatDate = (isoString) => {
                 >
                     <div>
                         <h3
-                            class="font-semibold text-slate-900 dark:text-white"
+                            class="font-semibold text-zinc-900 dark:text-white"
                         >
                             Прогресс
                         </h3>
 
                         <p
-                            class="mt-0.5 text-xs text-slate-500 dark:text-slate-400"
+                            class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400"
                         >
                             {{ progressStatus }}
                         </p>
                     </div>
 
                     <span
-                        class="text-2xl font-black tracking-tight"
-                        :class="progressTextColor"
+                        class="flex items-center gap-2 text-2xl font-black tracking-tight transition-all duration-300"
+                        :class="[progressTextColor, justSaved ? 'scale-110' : '']"
                     >
+                        <svg v-if="saving" class="h-4 w-4 animate-spin text-current opacity-60" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <svg v-else-if="justSaved" class="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
                         {{ progress }}%
                     </span>
                 </div>
 
                 <div
-                    class="mb-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700"
+                    class="mb-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700"
                 >
                     <div
                         class="h-full rounded-full transition-all duration-500"
@@ -269,20 +288,22 @@ const formatDate = (isoString) => {
                     ></div>
                 </div>
 
-                <div class="grid grid-cols-11 gap-1">
+                <div class="grid grid-cols-11 gap-1" role="group" aria-label="Быстрая установка прогресса">
                     <button
                         v-for="number in 11"
                         :key="number"
                         type="button"
-                        class="group relative h-6 rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        :disabled="saving"
+                        class="group relative h-9 rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-offset-zinc-800"
                         :class="[
                             progress >= (number - 1) * 10
                                 ? progressColor
-                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600',
+                                : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-700 dark:hover:bg-zinc-600',
                             progress === (number - 1) * 10
-                                ? 'scale-105 ring-2 ring-blue-400 ring-offset-1 dark:ring-offset-slate-800'
+                                ? 'scale-105 ring-2 ring-cyan-400 ring-offset-1 dark:ring-offset-zinc-800'
                                 : ''
                         ]"
+                        :aria-label="`Установить прогресс ${(number - 1) * 10}%`"
                         :title="`Установить ${(number - 1) * 10}%`"
                         @click="
                             emit(
@@ -292,7 +313,7 @@ const formatDate = (isoString) => {
                         "
                     >
                         <span
-                            class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-white shadow-lg group-hover:block"
+                            class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-medium text-white shadow-lg group-hover:block"
                         >
                             {{ (number - 1) * 10 }}%
                         </span>
@@ -300,7 +321,7 @@ const formatDate = (isoString) => {
                 </div>
 
                 <div
-                    class="mt-2 flex justify-between text-[11px] font-medium text-slate-400"
+                    class="mt-2 flex justify-between text-[11px] font-medium text-zinc-400"
                 >
                     <span>0%</span>
                     <span>50%</span>

@@ -17,6 +17,7 @@ const form = ref({
 })
 
 const errors = ref({})
+const generalError = ref('')
 const submitting = ref(false)
 const fileInput = ref(null)
 
@@ -70,6 +71,7 @@ const submit = async () => {
 
     submitting.value = true
     errors.value = {}
+    generalError.value = ''
 
     const formData = new FormData()
 
@@ -104,10 +106,9 @@ const submit = async () => {
             errors.value =
                 error.response.data.errors || {}
         } else {
-            alert(
+            generalError.value =
                 error.response?.data?.message ||
-                'Не удалось создать компанию.',
-            )
+                'Не удалось создать компанию.'
         }
     } finally {
         submitting.value = false
@@ -319,6 +320,15 @@ const submit = async () => {
                             {{ errors.logo[0] }}
                         </p>
                     </div>
+
+                    <p
+                        v-if="generalError"
+                        class="rounded-lg bg-rose-50 px-3 py-2
+                               text-xs font-medium text-rose-600
+                               dark:bg-rose-950/40 dark:text-rose-400"
+                    >
+                        {{ generalError }}
+                    </p>
 
                     <footer
                         class="flex gap-2 border-t

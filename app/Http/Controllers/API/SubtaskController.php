@@ -18,6 +18,7 @@ use App\Jobs\SendSubtaskAssignedNotification;
 use App\Models\User;
 
 use App\Services\TelegramService;
+use App\Services\TaskActivityService;
 
 class SubtaskController extends Controller
 {
@@ -103,6 +104,8 @@ class SubtaskController extends Controller
             \App\Jobs\SendSubtaskAssignedNotification::dispatch($user, $subtask, $task, $role);
         }
         // ========= КОНЕЦ УВЕДОМЛЕНИЙ =========
+
+        TaskActivityService::notifyParticipants($task, 'subtask_created', "Создана подзадача «{$subtask->title}»", auth()->id());
 
         return response()->json(
             $subtask->load(['executors:id,name', 'responsibles:id,name', 'creator:id,name']),

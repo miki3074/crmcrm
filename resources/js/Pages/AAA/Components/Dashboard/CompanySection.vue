@@ -6,6 +6,7 @@ import {
 
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
+import ProjectsSummary from './ProjectsSummary.vue'
 
 const props = defineProps({
     companies: {
@@ -20,6 +21,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    projects: {
+        type: Array,
+        default: () => [],
+    },
 })
 
 const emit = defineEmits(['refresh'])
@@ -31,6 +36,7 @@ const showAllOtherCompaniesModal = ref(false)
 const deletePassword = ref('')
 const selectedCompanyId = ref(null)
 const deleting = ref(false)
+const deleteError = ref('')
 
 const myCompanies = computed(() => {
     return props.companies.filter(
@@ -82,12 +88,14 @@ const visitCompany = company => {
 const openDelete = company => {
     selectedCompanyId.value = company.id
     deletePassword.value = ''
+    deleteError.value = ''
     showDeleteModal.value = true
 }
 
 const closeDelete = () => {
     selectedCompanyId.value = null
     deletePassword.value = ''
+    deleteError.value = ''
     showDeleteModal.value = false
 }
 
@@ -97,6 +105,7 @@ const confirmDelete = async () => {
     }
 
     deleting.value = true
+    deleteError.value = ''
 
     try {
         await axios.delete(
@@ -111,10 +120,9 @@ const confirmDelete = async () => {
         closeDelete()
         emit('refresh')
     } catch (error) {
-        alert(
+        deleteError.value =
             error.response?.data?.message ||
-            'Не удалось удалить компанию.',
-        )
+            'Не удалось удалить компанию.'
     } finally {
         deleting.value = false
     }
@@ -124,7 +132,7 @@ const confirmDelete = async () => {
 <template>
     <section
         class="grid grid-cols-1 gap-4
-               xl:grid-cols-[minmax(0,1fr)_360px]"
+               xl:grid-cols-[minmax(0,1fr)_280px_320px]"
     >
         <!-- Мои компании -->
         <div
@@ -145,7 +153,7 @@ const confirmDelete = async () => {
                                dark:text-cyan-300"
                     >
                         <svg
-                            class="h-4.5 w-4.5"
+                            class="h-5 w-5"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -191,7 +199,7 @@ const confirmDelete = async () => {
             <div
                 v-if="visibleMyCompanies.length"
                 class="grid grid-cols-1 gap-2 p-3
-                       sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+                       sm:grid-cols-2"
             >
                 <article
                     v-for="company in visibleMyCompanies"
@@ -375,6 +383,9 @@ const confirmDelete = async () => {
                 Других компаний нет
             </div>
         </div>
+
+        <!-- Мои проекты -->
+        <ProjectsSummary :projects="projects" />
     </section>
 
     <!-- Все мои компании -->
@@ -597,6 +608,15 @@ const confirmDelete = async () => {
                     placeholder="Пароль"
                     @keyup.enter="confirmDelete"
                 />
+
+                <p
+                    v-if="deleteError"
+                    class="mt-2 rounded-lg bg-rose-50 px-3 py-2
+                           text-xs font-medium text-rose-600
+                           dark:bg-rose-950/40 dark:text-rose-400"
+                >
+                    {{ deleteError }}
+                </p>
 
                 <div class="mt-4 flex gap-2">
                     <button

@@ -3,23 +3,43 @@ import { ref, onMounted, computed } from 'vue'
 import { usePage, Head, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import { useToast } from '@/Composables/useToast'
+import ToastContainer from '@/Components/ToastContainer.vue'
 
 import TaskHero from '../AAA/Components/Task/TaskHero.vue'
 import TaskStats from '../AAA/Components/Task/TaskStats.vue'
 import TaskSubtasks from '../AAA/Components/Task/TaskSubtasks.vue'
 import TaskSidebar from '../AAA/Components/Task/TaskSidebar.vue'
 import TaskFilesHub from '../AAA/Components/Task/TaskFilesHub.vue'
+import TaskResults from '../AAA/Components/Task/TaskResults.vue'
+import AddResultModal from '../AAA/Components/Task/AddResultModal.vue'
 import TaskActionModals from '../AAA/Components/Task/Modals/TaskActionModals.vue'
 import TaskPersonnelModals from '../AAA/Components/Task/Modals/TaskPersonnelModals.vue'
+import ConfirmDialog from '../AAA/Components/Task/ConfirmDialog.vue'
 
 const { props } = usePage()
 const taskId = props.id
 const user = props.auth?.user
+const toast = useToast()
 
 const task = ref(null)
 const companyEmployees = ref([])
 const loading = ref(true)
 const loadError = ref('')
+
+// Отдельные состояния для форм в модалках (TaskActionModals) — чтобы
+// показывать ошибку и блокировать кнопку именно там, где идёт действие,
+// а не перезагружать всю страницу спиннером на каждую мелочь.
+const actionSaving = ref(false)
+const actionError = ref('')
+
+const progressSaving = ref(false)
+
+const fileToDelete = ref(null)
+
+const showResultModal = ref(false)
+const resultSaving = ref(false)
+const resultError = ref('')
 
 const modals = ref({
     edit: false, description: false, delete: false, subtask: false,
@@ -48,83 +68,261 @@ const perms = computed(() => {
     }
 })
 
-const fetchTask = async () => {
-    loading.value = true
-    loadError.value = ''
+// Файлы, которые пользователь сам загрузил в эту задачу — только их можно
+// прикрепить к своему результату.
+const myFiles = computed(() => {
+    if (!task.value || !user) return []
+    return (task.value.files || []).filter(f => f.user_id === user.id)
+})
+
+// silent: true — фоновое обновление данных после мелких действий, без
+// полноэкранного спиннера и без повторного запроса списка сотрудников
+// (он не меняется от этих действий).
+const fetchTask = async ({ silent = false } = {}) => {
+    if (!silent) {
+        loading.value = true
+        loadError.value = ''
+    }
+
     try {
         const { data } = await axios.get(`/api/tasks/${taskId}`)
         task.value = data
-        const { data: employees } = await axios.get(`/api/projects/${data.project.id}/employees`)
-        companyEmployees.value = employees
+
+        if (!silent) {
+            const { data: employees } = await axios.get(`/api/projects/${data.project.id}/employees`)
+            companyEmployees.value = employees
+        }
     } catch (error) {
         console.error(error)
-        loadError.value = error.response?.data?.message || 'Не удалось загрузить задачу'
+        if (!silent) {
+            loadError.value = error.response?.data?.message || 'Не удалось загрузить задачу'
+        } else {
+            toast.error('Не удалось обновить данные задачи')
+        }
     } finally {
-        loading.value = false
+        if (!silent) loading.value = false
     }
 }
 
-const updateTask = async form => { await axios.put(`/api/tasks/${taskId}`, form); modals.value.edit = false; await fetchTask() }
-const saveDescription = async description => { await axios.patch(`/api/tasks/${taskId}/description`, { description }); modals.value.description = false; await fetchTask() }
-const updateProgress = async progress => { await axios.patch(`/api/tasks/${taskId}/progress`, { progress }); task.value.progress = progress }
-const deleteTask = async () => { await axios.delete(`/api/tasks/${taskId}`); window.history.back() }
-const finishTask = async () => { await axios.patch(`/api/tasks/${taskId}/complete`); await fetchTask() }
-const uploadFiles = async files => { const data = new FormData(); [...files].forEach(file => data.append('files[]', file)); await axios.post(`/api/tasks/${taskId}/files`, data); await fetchTask() }
-const deleteFile = async id => { if (confirm('Удалить файл?')) { await axios.delete(`/api/tasks/files/${id}`); await fetchTask() } }
-const createSubtask = async form => { await axios.post(`/api/tasks/${taskId}/subtasks`, form); modals.value.subtask = false; await fetchTask() }
+const closeModal = key => {
+    modals.value[key] = false
+    actionError.value = ''
+}
+
+const updateTask = async form => {
+    actionSaving.value = true
+    actionError.value = ''
+    try {
+        await axios.put(`/api/tasks/${taskId}`, form)
+        modals.value.edit = false
+        await fetchTask({ silent: true })
+        toast.success('Задача обновлена')
+    } catch (error) {
+        actionError.value = error.response?.data?.message || 'Не удалось сохранить изменения'
+    } finally {
+        actionSaving.value = false
+    }
+}
+
+const saveDescription = async description => {
+    actionSaving.value = true
+    actionError.value = ''
+    try {
+        await axios.patch(`/api/tasks/${taskId}/description`, { description })
+        modals.value.description = false
+        await fetchTask({ silent: true })
+        toast.success('Описание сохранено')
+    } catch (error) {
+        actionError.value = error.response?.data?.message || 'Не удалось сохранить описание'
+    } finally {
+        actionSaving.value = false
+    }
+}
+
+const updateProgress = async progress => {
+    const previous = task.value.progress
+    progressSaving.value = true
+    task.value.progress = progress
+
+    try {
+        await axios.patch(`/api/tasks/${taskId}/progress`, { progress })
+    } catch (error) {
+        task.value.progress = previous
+        toast.error(error.response?.data?.message || 'Не удалось обновить прогресс')
+    } finally {
+        progressSaving.value = false
+    }
+}
+
+const deleteTask = async () => {
+    actionSaving.value = true
+    actionError.value = ''
+    try {
+        await axios.delete(`/api/tasks/${taskId}`)
+        window.history.back()
+    } catch (error) {
+        actionError.value = error.response?.data?.message || 'Не удалось удалить задачу'
+        actionSaving.value = false
+    }
+}
+
+const finishTask = async () => {
+    try {
+        await axios.patch(`/api/tasks/${taskId}/complete`)
+        await fetchTask({ silent: true })
+        toast.success('Задача завершена')
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Не удалось завершить задачу')
+    }
+}
+
+const uploadFiles = async files => {
+    const data = new FormData()
+    ;[...files].forEach(file => data.append('files[]', file))
+
+    try {
+        await axios.post(`/api/tasks/${taskId}/files`, data)
+        await fetchTask({ silent: true })
+        toast.success('Файлы загружены')
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Не удалось загрузить файлы')
+    }
+}
+
+const requestDeleteFile = id => {
+    fileToDelete.value = id
+}
+
+const confirmDeleteFile = async () => {
+    const id = fileToDelete.value
+    fileToDelete.value = null
+
+    try {
+        await axios.delete(`/api/tasks/files/${id}`)
+        await fetchTask({ silent: true })
+        toast.success('Файл удалён')
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Не удалось удалить файл')
+    }
+}
+
+const addResult = async ({ text, file_id }) => {
+    resultSaving.value = true
+    resultError.value = ''
+    try {
+        const { data } = await axios.post(`/api/tasks/${taskId}/results`, { text, file_id })
+        task.value.results = [data.result, ...(task.value.results || [])]
+        showResultModal.value = false
+        toast.success('Результат добавлен')
+    } catch (error) {
+        resultError.value = error.response?.data?.message
+            || Object.values(error.response?.data?.errors || {})[0]?.[0]
+            || 'Не удалось добавить результат'
+    } finally {
+        resultSaving.value = false
+    }
+}
+
+const openResultFile = file => {
+    window.open(`/api/public/files/${file.id}`, '_blank')
+}
+
+const createSubtask = async form => {
+    actionSaving.value = true
+    actionError.value = ''
+    try {
+        await axios.post(`/api/tasks/${taskId}/subtasks`, form)
+        modals.value.subtask = false
+        await fetchTask({ silent: true })
+        toast.success('Подзадача создана')
+    } catch (error) {
+        actionError.value = error.response?.data?.message || 'Не удалось создать подзадачу'
+    } finally {
+        actionSaving.value = false
+    }
+}
 
 const handlePersonnelChange = async ({ type, oldId, newId }) => {
     const endpoint = type === 'executor' ? 'executor' : 'responsible'
-    await axios.patch(`/api/tasks/${taskId}/${endpoint}`, { replace_user_id: oldId, user_id: newId })
-    modals.value[type] = false
-    await fetchTask()
+    try {
+        await axios.patch(`/api/tasks/${taskId}/${endpoint}`, { replace_user_id: oldId, user_id: newId })
+        modals.value[type] = false
+        await fetchTask({ silent: true })
+        toast.success('Состав обновлён')
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Не удалось выполнить замену')
+    }
 }
 
 const handlePersonnelAdd = async ({ type, ids, singleId }) => {
-    if (type === 'watcher') {
-        await axios.post(`/api/tasks/${taskId}/watchers`, { user_id: singleId })
-        modals.value.addWatcher = false
-    } else {
-        const endpoint = type === 'executor' ? 'executors' : 'responsibles'
-        await axios.post(`/api/tasks/${taskId}/${endpoint}/add`, { user_ids: ids })
-        modals.value[`add${type.charAt(0).toUpperCase()}${type.slice(1)}`] = false
+    try {
+        if (type === 'watcher') {
+            await axios.post(`/api/tasks/${taskId}/watchers`, { user_id: singleId })
+            modals.value.addWatcher = false
+        } else {
+            const endpoint = type === 'executor' ? 'executors' : 'responsibles'
+            await axios.post(`/api/tasks/${taskId}/${endpoint}/add`, { user_ids: ids })
+            modals.value[`add${type.charAt(0).toUpperCase()}${type.slice(1)}`] = false
+        }
+        await fetchTask({ silent: true })
+        toast.success('Участник добавлен')
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Не удалось добавить участника')
     }
-    await fetchTask()
 }
 
+// Точечное действие: убираем участника из локального состояния сразу
+// (оптимистично), без перезагрузки всей задачи. Если запрос упадёт —
+// откатываем обратно и показываем тост с ошибкой.
 const handlePersonnelRemove = async ({ role, id }) => {
     const endpoint = role === 'watcherstask' ? 'watchers' : role
-    await axios.delete(`/api/tasks/${taskId}/${endpoint}`, { data: { user_id: id } })
-    await fetchTask()
+    const previous = task.value[role] || []
+    task.value[role] = previous.filter(u => u.id !== id)
+
+    try {
+        await axios.delete(`/api/tasks/${taskId}/${endpoint}`, { data: { user_id: id } })
+        toast.success('Участник удалён')
+    } catch (error) {
+        task.value[role] = previous
+        toast.error(error.response?.data?.message || 'Не удалось удалить участника')
+    }
 }
 
 const onStartWork = async emittedId => {
     try {
         const { data } = await axios.post(`/api/tasks/${emittedId || task.value?.id || taskId}/start`)
         task.value = data.task
+        toast.success('Задача взята в работу')
     } catch (error) {
-        alert(error.response?.data?.message || 'Не удалось начать работу')
+        toast.error(error.response?.data?.message || 'Не удалось начать работу')
     }
 }
 
-onMounted(fetchTask)
+onMounted(() => fetchTask())
 </script>
 
 <template>
     <Head :title="task?.title || 'Задача'" />
     <AuthenticatedLayout>
-        <main class="min-h-screen bg-slate-50/70 dark:bg-slate-950">
+        <main class="min-h-screen bg-zinc-50/70 dark:bg-zinc-950">
             <div class="mx-auto max-w-[1480px] px-3 py-3 sm:px-5 lg:px-6">
                 <div v-if="loading" class="grid min-h-[55vh] place-items-center">
-                    <div class="flex items-center gap-3 text-sm font-semibold text-slate-500">
-                        <span class="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600"></span>
+                    <div class="flex items-center gap-3 text-sm font-semibold text-zinc-500">
+                        <span class="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-cyan-600"></span>
                         Загрузка задачи
                     </div>
                 </div>
 
                 <div v-else-if="loadError" class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
                     <p class="font-semibold text-rose-700">{{ loadError }}</p>
-                    <button class="mt-3 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white" @click="fetchTask">Повторить</button>
+                    <button
+                        type="button"
+                        class="mt-3 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                        @click="fetchTask()"
+                    >
+                        Повторить
+                    </button>
                 </div>
 
                 <template v-else-if="task">
@@ -138,12 +336,14 @@ onMounted(fetchTask)
                         @manageMembers="modals.manage = true"
                     />
 
-                    <section class="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
+                    <section class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
                         <div class="min-w-0 space-y-3">
-                            <TaskStats :task="task" @updateProgress="updateProgress" />
+                            <TaskStats :task="task" :saving="progressSaving" @updateProgress="updateProgress" />
 
-                            <TaskFilesHub :task="task" :loading="loading" :can-upload="perms.canUpload"
-                                :current-user="user" @uploadFiles="uploadFiles" @deleteFile="deleteFile" @refresh="fetchTask" />
+                            <TaskFilesHub :task="task" :loading="false" :can-upload="perms.canUpload"
+                                :current-user="user" @uploadFiles="uploadFiles" @deleteFile="requestDeleteFile" @refresh="() => fetchTask({ silent: true })" />
+
+                            <TaskResults :results="task.results || []" :can-add="perms.canManageTask" @add="showResultModal = true" @openFile="openResultFile" />
 
                             <TaskSubtasks :subtasks="task.subtasks" :can-create="perms.canCreateSubtask" @create="modals.subtask = true" />
                         </div>
@@ -153,13 +353,31 @@ onMounted(fetchTask)
                 </template>
             </div>
         </main>
-        
 
-        <TaskActionModals :modals="modals" :task="task" :employees="companyEmployees"
-            @close="key => modals[key] = false" @update="updateTask" @saveDescription="saveDescription"
+        <TaskActionModals :modals="modals" :task="task" :employees="companyEmployees" :loading="actionSaving" :error="actionError"
+            @close="closeModal" @update="updateTask" @saveDescription="saveDescription"
             @deleteTask="deleteTask" @createSubtask="createSubtask" />
         <TaskPersonnelModals :modals="modals" :task="task" :employees="companyEmployees"
-            @close="key => modals[key] = false" @change="handlePersonnelChange"
+            @close="closeModal" @change="handlePersonnelChange"
             @add="handlePersonnelAdd" @remove="handlePersonnelRemove" />
+
+        <ConfirmDialog
+            :show="fileToDelete !== null"
+            title="Удалить файл?"
+            message="Файл будет удалён без возможности восстановления."
+            @confirm="confirmDeleteFile"
+            @close="fileToDelete = null"
+        />
+
+        <AddResultModal
+            :show="showResultModal"
+            :my-files="myFiles"
+            :loading="resultSaving"
+            :error="resultError"
+            @submit="addResult"
+            @close="showResultModal = false"
+        />
+
+        <ToastContainer />
     </AuthenticatedLayout>
 </template>

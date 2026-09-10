@@ -15,6 +15,7 @@ class TaskFile extends Model
           'task_id',
       'file_path',
       'user_id',
+      'reviewer_id',
     'file_name',
     'status',
     'rejection_reason'
@@ -36,6 +37,12 @@ class TaskFile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    // 🔥 Пользователь, назначенный согласующим этого документа
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewer_id');
     }
 
     // 🔥 Отношение к комментариям

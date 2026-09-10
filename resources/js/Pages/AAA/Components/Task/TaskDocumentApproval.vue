@@ -83,9 +83,16 @@ const can = (action, file) => {
     const participant = permissions.value.participant
     const reviewable = ['pending', 'replacement'].includes(file.status)
 
+    // Если на документ назначен конкретный согласующий, решение принимает
+    // только он (или создатель задачи) — как на бэкенде.
+    const currentId = Number(props.currentUser?.id)
+    const isAssignedReviewer = !file.reviewer_id || Number(file.reviewer_id) === currentId
+    const isCreator = Number(props.task?.creator_id) === currentId
+    const canDecide = participant && reviewable && (isAssignedReviewer || isCreator)
+
     return {
-        approve: participant && reviewable,
-        reject: participant && reviewable,
+        approve: canDecide,
+        reject: canDecide,
         replace: permissions.value.canReplace && file.status === 'rejected',
         delete: participant && file.status !== 'approved',
         comment: participant && file.status === 'rejected',
@@ -399,6 +406,10 @@ const sectionClasses = section => ({
                                         <span>•</span>
                                         <span>{{ formatDate(file.updated_at || file.created_at) }}</span>
                                         <template v-if="file.size"><span>•</span><span>{{ formatSize(file.size) }}</span></template>
+                                        <template v-if="file.reviewer && ['pending', 'replacement'].includes(file.status)">
+                                            <span>•</span>
+                                            <span class="font-semibold text-cyan-600 dark:text-cyan-400">Согласует: {{ file.reviewer.name }}</span>
+                                        </template>
                                     </div>
                                 </div>
 

@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\User;
 use App\Services\TelegramService;
+use App\Services\TaskActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -109,6 +110,9 @@ class TaskCommentController extends Controller
                 // Email через Job
                 SendCommentNotification::dispatch($task, $comment, $mentioned->id, 'mention');
                 $notifiedUserIds->push($mentioned->id);
+
+                // Личное событие в ленте "Событий" — только упомянутому
+                TaskActivityService::notifyUser($task, $mentioned->id, 'mentioned', 'Вас отметили в обсуждении задачи', $authorId);
             }
 
             // Если были упоминания, прекращаем дальнейшую рассылку

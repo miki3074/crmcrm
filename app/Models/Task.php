@@ -39,6 +39,10 @@ class Task extends Model
         return $this->hasMany(TaskFile::class);
     }
 
+    public function results() {
+        return $this->hasMany(TaskResult::class);
+    }
+
     public function subtasks()
 {
     return $this->hasMany(Subtask::class);

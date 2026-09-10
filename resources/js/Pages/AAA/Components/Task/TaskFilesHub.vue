@@ -88,18 +88,18 @@ const pendingApprovalCount = computed(() => {
 
                 <div class="min-w-0 flex-1 text-left">
                     <div class="flex items-center gap-2">
-                        <h3 class="font-semibold text-slate-900 dark:text-white">
+                        <h3 class="font-semibold text-zinc-900 dark:text-white">
                             Вложения
                         </h3>
                     </div>
 
-                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                         {{ attachmentsCount }} файлов
                     </p>
                 </div>
 
                 <svg
-                    class="h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                    class="h-4 w-4 shrink-0 text-zinc-400 transition-transform"
                     :class="active === 'attachments' ? 'rotate-180' : ''"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -121,7 +121,7 @@ const pendingApprovalCount = computed(() => {
                 @click="toggle('approval')"
             >
                 <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400"
                 >
                     <svg
                         class="h-5 w-5"
@@ -140,12 +140,12 @@ const pendingApprovalCount = computed(() => {
 
                 <div class="min-w-0 flex-1 text-left">
                     <div class="flex items-center gap-2">
-                        <h3 class="font-semibold text-slate-900 dark:text-white">
+                        <h3 class="font-semibold text-zinc-900 dark:text-white">
                             Документы на согласование
                         </h3>
                     </div>
 
-                    <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                         {{ approvalCount }} документов
                         <span
                             v-if="pendingApprovalCount"
@@ -157,7 +157,7 @@ const pendingApprovalCount = computed(() => {
                 </div>
 
                 <svg
-                    class="h-4 w-4 shrink-0 text-slate-400 transition-transform"
+                    class="h-4 w-4 shrink-0 text-zinc-400 transition-transform"
                     :class="active === 'approval' ? 'rotate-180' : ''"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -200,11 +200,11 @@ const pendingApprovalCount = computed(() => {
 
 <style scoped>
 .hub-tile {
-    @apply flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500/40;
+    @apply flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-cyan-500/40;
 }
 
 .hub-tile-active {
-    @apply border-blue-400 shadow-md ring-2 ring-blue-100 dark:border-blue-500/60 dark:ring-blue-500/10;
+    @apply border-cyan-400 shadow-md ring-2 ring-cyan-100 dark:border-cyan-500/60 dark:ring-cyan-500/10;
 }
 
 .panel-enter-active,

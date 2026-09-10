@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Task;
+use App\Services\TaskActivityService;
 
 class TaskDescriptionController extends Controller
 {
@@ -19,9 +20,16 @@ class TaskDescriptionController extends Controller
             'description' => 'nullable|string|max:5000',
         ]);
 
+        $newDescription = $data['description'] ?? null;
+        $changed = $newDescription !== $task->description;
+
         $task->update([
-            'description' => $data['description'] ?? null,
+            'description' => $newDescription,
         ]);
+
+        if ($changed) {
+            TaskActivityService::notifyParticipants($task, 'description_changed', 'Изменено описание задачи', $request->user()->id);
+        }
 
         return response()->json([
             'message' => 'Описание задачи обновлено успешно.',

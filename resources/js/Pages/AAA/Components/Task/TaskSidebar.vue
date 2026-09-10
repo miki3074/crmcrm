@@ -42,7 +42,7 @@ const getAvatarColor = (name) => {
         'bg-green-100 text-green-600',
         'bg-teal-100 text-teal-600',
         'bg-blue-100 text-blue-600',
-        'bg-indigo-100 text-indigo-600',
+        'bg-cyan-100 text-cyan-600',
         'bg-purple-100 text-purple-600',
         'bg-pink-100 text-pink-600',
     ]
@@ -65,15 +65,15 @@ const getAvatarColor = (name) => {
         <!-- Клиенты задачи -->
 <div
     v-if="taskKlients.length > 0"
-    class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden"
+    class="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 overflow-hidden"
 >
     <!-- Заголовок -->
     <div
-        class="px-6 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30"
+        class="px-6 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-700/30"
     >
         <div class="flex items-center gap-2">
             <svg
-                class="w-5 h-5 text-gray-400"
+                class="w-5 h-5 text-zinc-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -86,12 +86,12 @@ const getAvatarColor = (name) => {
                 />
             </svg>
 
-            <h3 class="font-bold text-gray-800 dark:text-gray-200">
+            <h3 class="font-bold text-zinc-800 dark:text-zinc-200">
                 Клиенты
             </h3>
 
             <span
-                class="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
+                class="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-bold rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300"
             >
                 {{ taskKlients.length }}
             </span>
@@ -99,12 +99,12 @@ const getAvatarColor = (name) => {
     </div>
 
     <!-- Список -->
-    <div class="divide-y divide-gray-100 dark:divide-slate-800">
+    <div class="divide-y divide-zinc-100 dark:divide-zinc-800">
         <a
             v-for="klient in taskKlients"
             :key="klient.id"
             :href="route('klients.show', klient.id)"
-            class="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition"
+            class="flex items-center gap-4 px-5 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition"
         >
             <!-- Аватар -->
             <div
@@ -118,21 +118,21 @@ const getAvatarColor = (name) => {
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                     <p
-                        class="font-semibold text-gray-900 dark:text-gray-100 truncate"
+                        class="font-semibold text-zinc-900 dark:text-zinc-100 truncate"
                     >
                         {{ klient.name }}
                     </p>
 
                     <span
                         v-if="klient.status"
-                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-300"
+                        class="shrink-0 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
                     >
                         {{ klient.status }}
                     </span>
                 </div>
 
                 <div
-                    class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
+                    class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400"
                 >
                     <span v-if="klient.company">
                         {{ klient.company.name }}
@@ -150,7 +150,7 @@ const getAvatarColor = (name) => {
 
             <!-- Стрелка -->
             <svg
-                class="w-5 h-5 shrink-0 text-gray-400"
+                class="w-5 h-5 shrink-0 text-zinc-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -168,12 +168,11 @@ const getAvatarColor = (name) => {
 
 
         <!-- Блок: Чеклисты -->
-         123
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div class="px-6 py-2.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30">
+        <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+            <div class="px-6 py-2.5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-700/30">
                 <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-                    <h3 class="font-bold text-gray-800 dark:text-gray-200">Чек-листы</h3>
+                    <svg class="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                    <h3 class="font-bold text-zinc-800 dark:text-zinc-200">Чек-листы</h3>
                 </div>
             </div>
             <div class="p-4">
@@ -189,7 +188,7 @@ const getAvatarColor = (name) => {
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800">
+        <div class="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-zinc-100 dark:border-zinc-800">
             <TaskChat
                 :task-id="task.id"
                 :can-chat="true"

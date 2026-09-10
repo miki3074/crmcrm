@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\FileComment;
+use App\Services\TaskActivityService;
 
 
 use Illuminate\Support\Facades\Storage;
@@ -158,11 +159,11 @@ public function store(Request $request)
                 'klients:id,name,status,phone,email,company_id,project_id,task_id',
                 'klients.company:id,name',
                 'files' => function ($query) {
-                    $query->select('id', 'task_id', 'file_path', 'user_id', 'file_name', 'status', 'rejection_reason', 'created_at', 'updated_at')
+                    $query->select('id', 'task_id', 'file_path', 'user_id', 'reviewer_id', 'file_name', 'status', 'rejection_reason', 'created_at', 'updated_at')
                         ->with(['comments' => function ($q) {
                             $q->with('user:id,name')
                                 ->orderBy('created_at', 'desc');
-                        }, 'user:id,name']);
+                        }, 'user:id,name', 'reviewer:id,name']);
                 },
                 'watcherstask:id,name',
                 'subtasks:id,task_id,title,creator_id,start_date,due_date,progress,completed',
@@ -170,6 +171,10 @@ public function store(Request $request)
                 'subtasks.creator:id,name',
                 'producers:id,name,company_id',
                 'buyers:id,name,company_id',
+                'results' => function ($query) {
+                    $query->with(['user:id,name', 'file:id,file_name,file_path'])
+                        ->orderBy('created_at', 'desc');
+                },
             ])->findOrFail($id);
 
         $this->authorize('view', $task);
@@ -270,8 +275,11 @@ public function updateProgress(Request $request, Task $task)
             ? 'pending'
             : 'none';
 
+        $uploadedNames = [];
+
         foreach ($request->file('files', []) as $file) {
             $originalName = $file->getClientOriginalName();
+            $uploadedNames[] = $originalName;
 
             $path = $file->store('task_files', 'public');
 
@@ -281,6 +289,14 @@ public function updateProgress(Request $request, Task $task)
                 'user_id' => auth()->id(),
                 'status' => $status,
             ]);
+        }
+
+        if (!empty($uploadedNames)) {
+            $message = count($uploadedNames) === 1
+                ? "Добавлен файл «{$uploadedNames[0]}»"
+                : 'Добавлено файлов: ' . count($uploadedNames);
+
+            TaskActivityService::notifyParticipants($task, 'file_added', $message, auth()->id());
         }
 
         return response()->json([
@@ -393,12 +409,64 @@ public function complete(Task $task)
         'due_date' => 'nullable|date|after_or_equal:start_date',
     ]);
 
+    $titleChanged = $data['title'] !== $task->title;
+
     $task->update($data);
+
+    if ($titleChanged) {
+        TaskActivityService::notifyParticipants($task, 'title_changed', 'Изменено название задачи', auth()->id());
+    }
 
     return response()->json([
         'message' => 'Задача обновлена',
         'task' => $task,
     ]);
+}
+
+// Добавить результат выполнения задачи (доступно исполнителю,
+// ответственному или создателю; файл — только свой из уже загруженных)
+public function addResult(Request $request, Task $task)
+{
+    $user = $request->user();
+
+    $isExecutor = $task->executors()->where('users.id', $user->id)->exists();
+    $isResponsible = $task->responsibles()->where('users.id', $user->id)->exists();
+    $isCreator = $task->creator_id === $user->id;
+
+    abort_unless($isExecutor || $isResponsible || $isCreator, 403, 'Вы не можете добавлять результаты по этой задаче.');
+
+    $validated = $request->validate([
+        'text' => 'required|string|max:5000',
+        'file_id' => 'nullable|exists:task_files,id',
+    ], [
+        'text.required' => 'Опишите результат выполнения.',
+        'text.max' => 'Текст результата не должен превышать 5000 символов.',
+    ]);
+
+    if (!empty($validated['file_id'])) {
+        $file = TaskFile::where('id', $validated['file_id'])
+            ->where('task_id', $task->id)
+            ->first();
+
+        if (!$file || (int) $file->user_id !== (int) $user->id) {
+            throw ValidationException::withMessages([
+                'file_id' => 'Можно прикрепить только файл, который вы сами загрузили в этой задаче.',
+            ]);
+        }
+    }
+
+    $result = $task->results()->create([
+        'user_id' => $user->id,
+        'file_id' => $validated['file_id'] ?? null,
+        'text' => $validated['text'],
+    ]);
+
+    TaskActivityService::notifyParticipants($task, 'result_added', 'Добавлен результат выполнения', $user->id);
+
+    return response()->json([
+        'message' => 'Результат добавлен',
+        'result' => $result->load(['user:id,name', 'file:id,file_name,file_path']),
+    ], 201);
 }
 
 public function addWatcher(Request $request, Task $task)
@@ -412,6 +480,11 @@ public function addWatcher(Request $request, Task $task)
     $task->watcherstask()->syncWithoutDetaching([$validated['user_id']]);
 
     SendAssignedNotifications::dispatch($task, [$validated['user_id']], 'watcher');
+
+    $assignedUser = \App\Models\User::find($validated['user_id']);
+    if ($assignedUser) {
+        TaskActivityService::notifyParticipants($task, 'assigned_watcher', "{$assignedUser->name} назначен(а) наблюдателем", auth()->id());
+    }
 
     return response()->json([
         'message' => 'Наблюдатель добавлен',
@@ -472,6 +545,11 @@ public function updateExecutor(Request $request, \App\Models\Task $task)
     // Добавляем нового, не трогая остальных
     $task->executors()->syncWithoutDetaching([$data['user_id']]);
 
+    $newExecutor = \App\Models\User::find($data['user_id']);
+    if ($newExecutor) {
+        TaskActivityService::notifyParticipants($task, 'assigned_executor', "{$newExecutor->name} назначен(а) исполнителем", auth()->id());
+    }
+
     return response()->json([
         'message' => 'Исполнитель успешно изменён.',
         'executors' => $task->executors()->select('users.id', 'users.name')->get(),
@@ -508,6 +586,11 @@ public function updateResponsible(Request $request, \App\Models\Task $task)
     // Добавляем нового, не трогая остальных
     $task->responsibles()->syncWithoutDetaching([$data['user_id']]);
 
+    $newResponsible = \App\Models\User::find($data['user_id']);
+    if ($newResponsible) {
+        TaskActivityService::notifyParticipants($task, 'assigned_responsible', "{$newResponsible->name} назначен(а) ответственным", auth()->id());
+    }
+
     return response()->json([
         'message' => 'Ответственный успешно изменён.',
         'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
@@ -530,6 +613,11 @@ public function addExecutors(Request $request, Task $task)
 
     SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'executor');
 
+    $names = \App\Models\User::whereIn('id', $validated['user_ids'])->pluck('name')->implode(', ');
+    if ($names) {
+        TaskActivityService::notifyParticipants($task, 'assigned_executor', "Назначены исполнители: {$names}", auth()->id());
+    }
+
     return response()->json([
         'message' => 'Исполнители добавлены',
         'executors' => $task->executors()->select('users.id', 'users.name')->get(),
@@ -550,6 +638,11 @@ public function addResponsibles(Request $request, Task $task)
     $task->responsibles()->syncWithoutDetaching($validated['user_ids']);
 
     SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'responsible');
+
+    $names = \App\Models\User::whereIn('id', $validated['user_ids'])->pluck('name')->implode(', ');
+    if ($names) {
+        TaskActivityService::notifyParticipants($task, 'assigned_responsible', "Назначены ответственные: {$names}", auth()->id());
+    }
 
     return response()->json([
         'message' => 'Ответственные добавлены',
@@ -637,6 +730,41 @@ public function removeWatcher(Task $task, Request $request)
 }
 
 
+// Лента "Событий" для дашборда — последние события по задачам,
+// где текущий пользователь участник.
+public function myActivities(Request $request)
+{
+    $activities = \App\Models\TaskActivity::where('user_id', auth()->id())
+        ->with(['task:id,title'])
+        ->orderByDesc('created_at')
+        ->limit(50)
+        ->get()
+        ->filter(fn ($activity) => $activity->task !== null)
+        ->values();
+
+    return response()->json($activities);
+}
+
+// Удалить одно своё событие из ленты
+public function deleteActivity($id)
+{
+    $activity = \App\Models\TaskActivity::where('id', $id)
+        ->where('user_id', auth()->id())
+        ->firstOrFail();
+
+    $activity->delete();
+
+    return response()->json(['message' => 'Событие удалено']);
+}
+
+// Очистить все свои события
+public function clearActivities(Request $request)
+{
+    \App\Models\TaskActivity::where('user_id', $request->user()->id)->delete();
+
+    return response()->json(['message' => 'Все события очищены']);
+}
+
 public function withSubtasks()
 {
     // Загружаем задачи текущего пользователя
@@ -711,7 +839,7 @@ public function withSubtasks()
         ]);
     }
 
-    // Отправить обычное вложение на согласование
+    // Отправить обычное вложение на согласование конкретному участнику задачи
     public function submitForApproval(Request $request, TaskFile $file)
     {
         $this->checkReviewerPermissions($file);
@@ -722,13 +850,56 @@ public function withSubtasks()
             ], 422);
         }
 
+        $validated = $request->validate([
+            'reviewer_id' => 'required|exists:users,id',
+        ], [
+            'reviewer_id.required' => 'Выберите, кто должен согласовать документ.',
+            'reviewer_id.exists' => 'Выбранный пользователь не найден.',
+        ]);
+
+        $task = $file->task;
+        $reviewerId = (int) $validated['reviewer_id'];
+
+        $isParticipant = $task->creator_id === $reviewerId
+            || $task->executors()->where('users.id', $reviewerId)->exists()
+            || $task->responsibles()->where('users.id', $reviewerId)->exists()
+            || $task->watcherstask()->where('users.id', $reviewerId)->exists();
+
+        if (!$isParticipant) {
+            throw ValidationException::withMessages([
+                'reviewer_id' => 'Выбранный пользователь не является участником этой задачи.',
+            ]);
+        }
+
         $file->update([
             'status' => 'pending',
+            'reviewer_id' => $reviewerId,
         ]);
+
+        $reviewer = \App\Models\User::find($reviewerId);
+        if ($reviewer && $reviewer->telegram_chat_id) {
+            $taskUrl = url("/tasks/{$task->id}");
+            \App\Services\TelegramService::sendMessage(
+                $reviewer->telegram_chat_id,
+                "📄 <b>Документ на согласование</b>\n" .
+                "Задача: <b>{$task->title}</b>\n" .
+                "Файл: {$file->file_name}\n" .
+                "🔗 <a href=\"{$taskUrl}\">Открыть задачу</a>"
+            );
+        }
+
+        // Личное событие — только назначенному согласующему, а не всем участникам.
+        TaskActivityService::notifyUser(
+            $task,
+            $reviewerId,
+            'file_review_assigned',
+            "Вас назначили согласовать файл «{$file->file_name}»",
+            auth()->id()
+        );
 
         return response()->json([
             'message' => 'Документ отправлен на согласование',
-            'file' => $file,
+            'file' => $file->fresh()->load('reviewer:id,name'),
         ]);
     }
 
@@ -885,6 +1056,19 @@ public function withSubtasks()
     {
         $user = auth()->user();
         $task = $file->task;
+
+        // Если на документ уже назначен конкретный согласующий — решение
+        // принимает только он (или создатель задачи как подстраховка).
+        if (!empty($file->reviewer_id)) {
+            $isAssignedReviewer = (int) $file->reviewer_id === (int) $user->id;
+            $isCreator = $task->creator_id === $user->id;
+
+            if (!$isAssignedReviewer && !$isCreator) {
+                abort(403, 'Согласовать этот документ может только назначенный участник или создатель задачи.');
+            }
+
+            return;
+        }
 
         // Проверяем, есть ли текущий юзер в списке ответственных задачи
         $isResponsible = $task->responsibles()->where('users.id', $user->id)->exists();

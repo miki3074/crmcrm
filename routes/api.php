@@ -306,6 +306,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks', [TaskController::class, 'index']); // если нужна страница всех задач
     Route::patch('/tasks/{task}/progress', [TaskController::class, 'updateProgress']);
 Route::post('/tasks/{task}/files', [TaskController::class, 'addFiles']);
+Route::post('/tasks/{task}/results', [TaskController::class, 'addResult']);
 
 Route::get('/tasks/{task}', [TaskController::class, 'show']);
 
@@ -355,6 +356,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/summary', [CompanyController::class, 'summary']);
+    Route::get('/dashboard/activities', [TaskController::class, 'myActivities']);
+    Route::delete('/dashboard/activities', [TaskController::class, 'clearActivities']);
+    Route::delete('/dashboard/activities/{id}', [TaskController::class, 'deleteActivity']);
 });
 
 Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])

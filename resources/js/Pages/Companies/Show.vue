@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { Head, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import axios from 'axios'
@@ -17,13 +17,17 @@ const companyId = props.id
 
 // --- State ---
 const loading = ref(true)
+const loadError = ref('')
 const company = ref(null)
 const managers = ref([])
+const managersLoaded = ref(false)
 const showProjectModal = ref(false)
 const showMembersModal = ref(false)
 const submitLoading = ref(false)
 const errorText = ref('')
 const isMobile = ref(false)
+// Id только что созданного проекта — чтобы ProjectGrid сразу выделил его в списке
+const justCreatedProjectId = ref(null)
 
 // Данные для графиков
 const selectedProject = ref(null)
@@ -39,16 +43,25 @@ const isAdmin = computed(() => props.auth?.roles?.includes('admin'))
 // --- API Methods ---
 const fetchCompany = async () => {
     loading.value = true
+    loadError.value = ''
     try {
         const { data } = await axios.get(`/api/companies/${companyId}`)
         company.value = data
-    } catch (e) { console.error(e) }
-    finally { loading.value = false }
+    } catch (e) {
+        console.error(e)
+        loadError.value = e?.response?.data?.message || 'Не удалось загрузить компанию. Проверьте соединение и попробуйте снова.'
+    } finally {
+        loading.value = false
+    }
 }
 
+// Список менеджеров компании меняется редко — не дергаем API при каждом
+// открытии модалки создания проекта, кэшируем на время жизни страницы.
 const fetchManagers = async () => {
+    if (managersLoaded.value) return
     const { data } = await axios.get(`/api/users/managers?company_id=${companyId}`)
     managers.value = data
+    managersLoaded.value = true
 }
 
 // Chart logic
@@ -77,9 +90,10 @@ const openCreateModal = async () => {
 const handleCreateProject = async (formData) => {
     submitLoading.value = true
     try {
-        await axios.post('/api/projects', { ...formData, company_id: companyId })
+        const { data } = await axios.post('/api/projects', { ...formData, company_id: companyId })
         showProjectModal.value = false
         await fetchCompany() // refresh
+        justCreatedProjectId.value = data?.id ?? null
     } catch (e) {
         errorText.value = e?.response?.data?.message || 'Ошибка создания'
     } finally {
@@ -87,9 +101,18 @@ const handleCreateProject = async (formData) => {
     }
 }
 
+const syncViewport = () => {
+    isMobile.value = window.innerWidth < 768
+}
+
 onMounted(() => {
     fetchCompany()
-    isMobile.value = window.innerWidth < 768
+    syncViewport()
+    window.addEventListener('resize', syncViewport)
+})
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', syncViewport)
 })
 </script>
 
@@ -99,21 +122,37 @@ onMounted(() => {
     <AuthenticatedLayout>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
 
-            <!-- 1. Hero Section -->
-            <CompanyHero
-                :company="company"
-                :is-owner="isOwner"
-                :is-admin="isAdmin"
-                :can-create="canCreateProject"
-                @create="openCreateModal"
-                @open-members="showMembersModal = true"
-            />
+            <!-- Ошибка загрузки компании -->
+            <div v-if="loadError && !loading" class="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
+                <p class="text-sm font-medium text-rose-700 dark:text-rose-300">{{ loadError }}</p>
+                <button
+                    type="button"
+                    class="mt-4 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                    @click="fetchCompany"
+                >
+                    Повторить
+                </button>
+            </div>
 
-            <!-- 2. Projects Grid -->
-            <ProjectGrid
-                :projects="company?.projects"
-                :loading="loading"
-            />
+            <template v-else>
+                <!-- 1. Hero Section -->
+                <CompanyHero
+                    :company="company"
+                    :is-owner="isOwner"
+                    :is-admin="isAdmin"
+                    :can-create="canCreateProject"
+                    @create="openCreateModal"
+                    @open-members="showMembersModal = true"
+                />
+
+                <!-- 2. Projects Grid -->
+                <ProjectGrid
+                    :projects="company?.projects"
+                    :loading="loading"
+                    :select-project-id="justCreatedProjectId"
+                />
+            </template>
 
             <!-- 3. Analytics Section (Desktop only) -->
             <!-- <div v-if="!isMobile && company?.projects?.length" class="space-y-8">

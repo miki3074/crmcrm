@@ -7,6 +7,7 @@ use App\Jobs\SendChecklistNotification;
 use App\Models\Task;
 use App\Models\TaskChecklist;
 use App\Services\TelegramService;
+use App\Services\TaskActivityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -92,6 +93,8 @@ class TaskChecklistController extends Controller
             }
         }
         // ========= КОНЕЦ ОТПРАВКИ УВЕДОМЛЕНИЙ =========
+
+        TaskActivityService::notifyParticipants($task, 'checklist_item_added', "Добавлен пункт чек-листа «{$checklist->title}»", $request->user()->id);
 
         return response()->json($checklist->load('assignee', 'files', 'creator'), 201);
     }

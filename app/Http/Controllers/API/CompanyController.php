@@ -429,15 +429,30 @@ class CompanyController extends Controller
     {
         $this->authorize('view', $company);
         $userId = auth()->id();
+        $isCompanyOwner = $company->user_id === $userId;
 
-        // 1. Загрузка данных
+        // 1. Загрузка проектов — доступ фильтруется в SQL (whereHas), а не в памяти
+        // после полной загрузки всех проектов/задач компании.
         $company->load([
-            'projects' => function ($q) {
+            'projects' => function ($q) use ($userId, $isCompanyOwner) {
+                if (!$isCompanyOwner) {
+                    $q->where(function ($sub) use ($userId) {
+                        $sub->where('initiator_id', $userId)
+                            ->orWhereHas('managers', fn ($m) => $m->where('users.id', $userId))
+                            ->orWhereHas('executors', fn ($e) => $e->where('users.id', $userId))
+                            ->orWhereHas('watchers', fn ($w) => $w->where('users.id', $userId))
+                            ->orWhereHas('tasks.executors', fn ($e) => $e->where('users.id', $userId))
+                            ->orWhereHas('tasks.responsibles', fn ($r) => $r->where('users.id', $userId))
+                            ->orWhereHas('tasks.subtasks.executors', fn ($e) => $e->where('users.id', $userId))
+                            ->orWhereHas('tasks.subtasks.responsibles', fn ($r) => $r->where('users.id', $userId));
+                    });
+                }
+
                 $q->with([
                     'managers:id,name',
                     'executors:id,name',
                     'watchers:id,name',
-                    'tasks' => function($t) {
+                    'tasks' => function ($t) {
                         $t->orderBy('created_at', 'desc');
                     },
                     'tasks.executors:id,name',
@@ -457,25 +472,6 @@ class CompanyController extends Controller
             $pivot = $company->users()->where('user_id', $userId)->first()?->pivot;
             $userRole = $pivot?->role ?? null;
         }
-
-        // 3. Фильтрация списка ПРОЕКТОВ
-        $company->projects = $company->projects->filter(function ($project) use ($userId, $company) {
-            if ($company->user_id === $userId) return true;
-            if ($project->initiator_id === $userId) return true;
-            if ($project->managers->contains('id', $userId)) return true;
-            if ($project->executors->contains('id', $userId)) return true;
-            if ($project->watchers->contains('id', $userId)) return true;
-            if ($project->tasks->contains(fn($t) => $t->executors->contains('id', $userId))) return true;
-            if ($project->tasks->contains(fn($t) => $t->responsibles->contains('id', $userId))) return true;
-            if ($project->tasks->contains(fn($t) =>
-            $t->subtasks->contains(fn($s) => $s->executors->contains('id', $userId))
-            )) return true;
-            if ($project->tasks->contains(fn($t) =>
-            $t->subtasks->contains(fn($s) => $s->responsibles->contains('id', $userId))
-            )) return true;
-
-            return false;
-        })->values();
 
         // 4. Формируем ответ
         return response()->json([
@@ -640,6 +636,17 @@ public function summary(Request $request)
         })
         ->latest('id')
         // ->take(8)
+        ->get(['id','name','company_id']);
+
+    // Проекты, где пользователь состоит в любой роли (руководитель, исполнитель, наблюдатель)
+    $myProjects = Project::with(['company:id,name'])
+        ->withCount('tasks')
+        ->where(function ($q) use ($user) {
+            $q->whereHas('managers', fn ($sq) => $sq->where('users.id', $user->id))
+                ->orWhereHas('executors', fn ($sq) => $sq->where('users.id', $user->id))
+                ->orWhereHas('watchers', fn ($sq) => $sq->where('users.id', $user->id));
+        })
+        ->latest('id')
         ->get(['id','name','company_id']);
 
 
@@ -831,6 +838,7 @@ foreach ($allSubtasks as $sub) {
 
     return response()->json([
         'managing_projects'       => $managingProjects,
+        'my_projects'             => $myProjects,
         'all_tasks'               => $allTasks,
         'all_subtasks'            => $groupedSubtasks,
         // 'all_subtasks'            => $allSubtasks,
