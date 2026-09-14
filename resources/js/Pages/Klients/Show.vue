@@ -2,8 +2,13 @@
 import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CreateTaskDrawer from '../AAA/Components/Klients/CreateTaskDrawer.vue';
-import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import ConfirmDialog from '../AAA/Components/Task/ConfirmDialog.vue';
+import ToastContainer from '@/Components/ToastContainer.vue';
+import { useToast } from '@/Composables/useToast';
+
+const toast = useToast();
 
 const props = defineProps({
     klient: Object,
@@ -170,16 +175,29 @@ const uploadFile = () => {
     fileForm.post(route('klient-files.store', props.klient.id), {
         onSuccess: () => {
             fileForm.reset();
-            // Используем более элегантное уведомление (можно заменить на toast)
-            alert('Файл успешно загружен');
+            toast.success('Файл успешно загружен');
+        },
+        onError: () => {
+            toast.error('Не удалось загрузить файл');
         },
     });
 };
 
-const deleteFile = (fileId) => {
-    if (confirm('Вы уверены, что хотите удалить этот файл?')) {
-        router.delete(route('klient-files.destroy', fileId));
-    }
+const fileToDelete = ref(null);
+
+const requestDeleteFile = (fileId) => {
+    fileToDelete.value = fileId;
+};
+
+const confirmDeleteFile = () => {
+    const fileId = fileToDelete.value;
+    fileToDelete.value = null;
+    if (!fileId) return;
+
+    router.delete(route('klient-files.destroy', fileId), {
+        onSuccess: () => toast.success('Файл удалён'),
+        onError: () => toast.error('Не удалось удалить файл'),
+    });
 };
 
 // Вспомогательная функция для размера файла
@@ -198,21 +216,21 @@ const statusClasses = (status) => {
         'Потенциальный': 'bg-blue-50 text-blue-700 border-blue-200',
         'Партнёр': 'bg-purple-50 text-purple-700 border-purple-200',
         'Проблемный': 'bg-rose-50 text-rose-700 border-rose-200',
-        'Архивный': 'bg-slate-100 text-slate-600 border-slate-300',
+        'Архивный': 'bg-zinc-100 text-zinc-600 border-zinc-300',
     };
-    return map[status] || 'bg-gray-100 text-gray-800';
+    return map[status] || 'bg-zinc-100 text-zinc-800';
 };
 
 const dealStatusClasses = (status) => {
     const map = {
-        'Первичный контакт': 'bg-gray-100 text-gray-700',
+        'Первичный контакт': 'bg-zinc-100 text-zinc-700',
         'Переговоры': 'bg-blue-100 text-blue-800',
-        'КП отправлено': 'bg-indigo-100 text-indigo-800',
+        'КП отправлено': 'bg-cyan-100 text-cyan-800',
         'Согласование договора': 'bg-purple-100 text-purple-800',
         'Успешно': 'bg-emerald-100 text-emerald-800',
         'Отказ': 'bg-rose-100 text-rose-800',
     };
-    return map[status] || 'bg-gray-50 text-gray-500';
+    return map[status] || 'bg-zinc-50 text-zinc-500';
 };
 
 const isTaskDrawerOpen = ref(false);
@@ -289,30 +307,31 @@ const otherDeals = computed(() => {
 <template>
     <Head :title="`Клиент: ${klient.name}`" />
 
-    <div class="min-h-screen bg-slate-50 py-8">
-
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div style="margin-bottom: 1%">
-            <Link :href="route('dashboard')" class="flex-shrink-0 transition-transform duration-300 hover:scale-105" >
-                <ApplicationLogo class="block h-8 w-auto fill-current " />
-            </Link>
-        </div>
+    <AuthenticatedLayout>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <!-- Хлебные крошки (обновленный стиль) -->
             <div class="flex justify-between items-center mb-6">
                 <nav class="flex items-center text-sm">
 
-                    <Link :href="route('klients.index')" class="text-slate-500 hover:text-indigo-600 transition-colors">
+                    <Link :href="route('klients.index')" class="text-zinc-500 hover:text-cyan-600 transition-colors">
                          Клиенты
                     </Link>
-                    <span class="mx-2 text-slate-300">/</span>
-                    <span class="text-slate-900 font-medium">Карточка клиента</span>
+                    <span class="mx-2 text-zinc-300">/</span>
+                    <span class="text-zinc-900 font-medium">Карточка клиента</span>
                 </nav>
                 <div class="flex space-x-3">
+                    <button
+                        type="button"
+                        @click="isTaskDrawerOpen = true"
+                        class="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-md font-bold text-sm shadow-sm transition"
+                    >
+                        <i class="fas fa-plus"></i> Поставить задачу
+                    </button>
                     <!-- Кнопка видна только если ID текущего юзера совпадает с создателем клиента -->
                     <Link
                         v-if="klient.user_id === authId"
                         :href="route('klients.edit', klient.id)"
-                        class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition"
+                        class="bg-white border border-zinc-300 text-zinc-700 px-4 py-2 rounded-md hover:bg-zinc-50 text-sm font-medium transition"
                     >
                         Редактировать
                     </Link>
@@ -320,15 +339,15 @@ const otherDeals = computed(() => {
             </div>
 
             <!-- ========== ШАПКА КАРТОЧКИ (НОВЫЙ ДИЗАЙН) ========== -->
-            <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden mb-6">
+            <div class="bg-white rounded-3xl shadow-lg border border-zinc-100 overflow-hidden mb-6">
                 <div class="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div class="flex items-center gap-6">
                         <!-- Аватар с градиентом (как в примере) -->
-                        <div class="w-24 h-24 bg-gradient-to-br from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-indigo-200">
+                        <div class="w-24 h-24 bg-gradient-to-br from-cyan-600 to-blue-500 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-cyan-200">
                             {{ klient.name.charAt(0).toUpperCase() }}
                         </div>
                         <div>
-                            <h1 class="text-3xl font-bold text-slate-800">{{ klient.name }}</h1>
+                            <h1 class="text-3xl font-bold text-zinc-800">{{ klient.name }}</h1>
                             <div class="flex items-center mt-3 flex-wrap gap-2">
                                 <span :class="['px-3 py-1.5 rounded-full text-xs font-bold border', statusClasses(klient.status)]">
                                     <i class="fas fa-circle mr-1 text-[0.5rem] align-middle"></i> {{ klient.status }}
@@ -336,7 +355,7 @@ const otherDeals = computed(() => {
                                 <span class="bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold border border-amber-200">
                                     <i class="fas fa-star mr-1 text-[0.7rem]"></i> Рейтинг: {{ klient.rating }}
                                 </span>
-                                <span class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200">
+                                <span class="bg-zinc-100 text-zinc-600 px-3 py-1.5 rounded-full text-xs font-medium border border-zinc-200">
                                     {{ klient.segment || 'Без сегмента' }}
                                 </span>
                             </div>
@@ -345,29 +364,31 @@ const otherDeals = computed(() => {
 
                     <!-- Быстрые контакты (как чипсы) -->
                     <div class="flex gap-3 flex-wrap">
-                        <div v-if="klient.phone" class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-200">
-                            <i class="fas fa-phone-alt text-indigo-500 text-sm"></i>
-                            <a :href="`tel:${klient.phone}`" class="text-sm font-medium text-slate-700 hover:text-indigo-600">{{ klient.phone }}</a>
+                        <div v-if="klient.phone" class="flex items-center gap-2 bg-zinc-50 px-4 py-2 rounded-full border border-zinc-200">
+                            <i class="fas fa-phone-alt text-cyan-500 text-sm"></i>
+                            <a :href="`tel:${klient.phone}`" class="text-sm font-medium text-zinc-700 hover:text-cyan-600">{{ klient.phone }}</a>
                         </div>
-                        <div v-if="klient.email" class="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-full border border-slate-200">
-                            <i class="fas fa-envelope text-indigo-500 text-sm"></i>
-                            <a :href="`mailto:${klient.email}`" class="text-sm font-medium text-slate-700 hover:text-indigo-600">{{ klient.email }}</a>
+                        <div v-if="klient.email" class="flex items-center gap-2 bg-zinc-50 px-4 py-2 rounded-full border border-zinc-200">
+                            <i class="fas fa-envelope text-cyan-500 text-sm"></i>
+                            <a :href="`mailto:${klient.email}`" class="text-sm font-medium text-zinc-700 hover:text-cyan-600">{{ klient.email }}</a>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Основной грид: 2 колонки (левая широкая, правая узкая) -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Основной грид: слева — всё, что связано со взаимодействием с клиентом
+                 (документы, медиапланы, сделки, задачи, история), справа — статичная
+                 карточка клиента (связи, контакты, реквизиты, системная информация) -->
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
 
-                <!-- ========== ЛЕВАЯ КОЛОНКА (2/3) ========== -->
-                <div class="lg:col-span-2 space-y-6">
+                <!-- ========== ЛЕВАЯ КОЛОНКА: Взаимодействия с клиентом ========== -->
+                <div class="space-y-6">
 
                     <!-- БЛОК: Документы и файлы (обновленный дизайн) -->
-                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
+                    <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6">
                         <div class="flex justify-between items-center mb-5">
-                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <i class="fas fa-folder-open text-indigo-500"></i>
+                            <h2 class="text-lg font-bold text-zinc-800 flex items-center gap-2">
+                                <i class="fas fa-folder-open text-cyan-500"></i>
                                 Документы и файлы
                             </h2>
 
@@ -379,14 +400,14 @@ const otherDeals = computed(() => {
                                         @input="fileForm.file = $event.target.files[0]"
                                         class="hidden"
                                     />
-                                    <span class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2">
+                                    <span class="bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2">
                                         <i class="fas fa-paperclip"></i> Выбрать файл
                                     </span>
                                 </label>
                                 <button
                                     type="submit"
                                     :disabled="fileForm.processing || !fileForm.file"
-                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md shadow-indigo-200 flex items-center gap-2"
+                                    class="bg-cyan-600 hover:bg-cyan-700 text-white px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md shadow-cyan-200 flex items-center gap-2"
                                 >
                                     <i class="fas fa-upload"></i> {{ fileForm.processing ? '...' : 'Загрузить' }}
                                 </button>
@@ -395,16 +416,16 @@ const otherDeals = computed(() => {
 
                         <!-- Список файлов в виде карточек (более современно, чем таблица) -->
                         <div v-if="klient.files?.length" class="space-y-2">
-                            <div v-for="file in klient.files" :key="file.id" class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-white hover:shadow-sm transition group">
+                            <div v-for="file in klient.files" :key="file.id" class="flex items-center justify-between p-4 bg-zinc-50 rounded-xl border border-zinc-100 hover:bg-white hover:shadow-sm transition group">
                                 <div class="flex items-center gap-3 overflow-hidden">
-                                    <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600">
+                                    <div class="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center text-cyan-600">
                                         <i class="fas fa-file-alt"></i>
                                     </div>
                                     <div class="overflow-hidden">
-                                        <div class="font-medium text-slate-800 truncate max-w-[200px] sm:max-w-xs" :title="file.original_name">
+                                        <div class="font-medium text-zinc-800 truncate max-w-[200px] sm:max-w-xs" :title="file.original_name">
                                             {{ file.original_name }}
                                         </div>
-                                        <div class="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                                        <div class="flex items-center gap-3 text-xs text-zinc-500 mt-1">
                                             <span><i class="far fa-circle"></i> {{ formatFileSize(file.file_size) }}</span>
                                             <span><i class="far fa-user"></i> {{ file.user?.name || 'Система' }}</span>
                                         </div>
@@ -413,15 +434,15 @@ const otherDeals = computed(() => {
                                 <div class="flex items-center gap-2">
                                     <a
                                         :href="route('klient-files.download', file.id)"
-                                        class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-indigo-600 hover:bg-indigo-50 transition"
+                                        class="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-cyan-600 hover:bg-cyan-50 transition"
                                         title="Скачать"
                                     >
                                         <i class="fas fa-download text-sm"></i>
                                     </a>
                                     <button
                                         v-if="file.user_id === authId"
-                                        @click="deleteFile(file.id)"
-                                        class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-rose-500 hover:bg-rose-50 transition"
+                                        @click="requestDeleteFile(file.id)"
+                                        class="w-8 h-8 rounded-full bg-white border border-zinc-200 flex items-center justify-center text-rose-500 hover:bg-rose-50 transition"
                                         title="Удалить"
                                     >
                                         <i class="fas fa-trash-alt text-sm"></i>
@@ -429,101 +450,27 @@ const otherDeals = computed(() => {
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="py-12 text-center border-2 border-dashed border-slate-200 rounded-xl">
-                            <i class="fas fa-cloud-upload-alt text-4xl text-slate-300 mb-3"></i>
-                            <p class="text-slate-400 text-sm">Файлы еще не загружены</p>
-                        </div>
-                    </div>
-
-                    <!-- БЛОК: Контактные лица (карточки вместо таблицы) -->
-                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-                        <h2 class="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
-                            <i class="fas fa-user-friends text-indigo-500"></i>
-                            Контактные лица
-                        </h2>
-
-                        <div v-if="klient.contact_persons?.length" class="space-y-3">
-                            <div v-for="person in klient.contact_persons" :key="person.id" class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border" :class="person.is_primary ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-700 font-bold text-lg">
-                                        {{ person.full_name.charAt(0) }}
-                                    </div>
-                                    <div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-bold text-slate-800">{{ person.full_name }}</span>
-                                            <span v-if="person.is_primary" class="text-[0.6rem] bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">ОСНОВНОЙ</span>
-                                        </div>
-                                        <div class="text-sm text-slate-500">{{ person.position }}</div>
-                                        <div class="flex items-center gap-3 mt-1 text-xs">
-                                            <span v-if="person.phone" class="text-slate-600"><i class="fas fa-phone-alt mr-1 text-indigo-400"></i>{{ person.phone }}</span>
-                                            <span v-if="person.email" class="text-slate-600"><i class="fas fa-envelope mr-1 text-indigo-400"></i>{{ person.email }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="text-xs text-slate-400">{{ person.role }}</div>
-                            </div>
-                        </div>
-                        <div v-else class="py-8 text-center text-slate-400 text-sm border border-dashed rounded-xl">
-                            Контактные лица не добавлены
-                        </div>
-                    </div>
-
-                    <!-- БЛОК: Реквизиты и адреса (сетка) -->
-                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-                        <h2 class="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
-                            <i class="fas fa-building text-indigo-500"></i>
-                            Детальная информация
-                        </h2>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="bg-slate-50 p-5 rounded-xl">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Реквизиты</h3>
-                                <dl class="space-y-2">
-                                    <div class="flex justify-between border-b border-dashed border-slate-200 pb-2">
-                                        <dt class="text-sm text-slate-500">ИНН</dt>
-                                        <dd class="text-sm font-mono font-medium text-slate-800">{{ klient.inn || '—' }}</dd>
-                                    </div>
-                                    <div class="flex justify-between border-b border-dashed border-slate-200 pb-2">
-                                        <dt class="text-sm text-slate-500">КПП</dt>
-                                        <dd class="text-sm font-mono font-medium text-slate-800">{{ klient.kpp || '—' }}</dd>
-                                    </div>
-                                    <div class="flex justify-between border-b border-dashed border-slate-200 pb-2">
-                                        <dt class="text-sm text-slate-500">ОГРН</dt>
-                                        <dd class="text-sm font-mono font-medium text-slate-800">{{ klient.ogrn || '—' }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-
-                            <div class="bg-slate-50 p-5 rounded-xl">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Деятельность</h3>
-                                <p class="text-sm text-slate-700">{{ klient.industry || 'Сфера не указана' }}</p>
-                            </div>
-
-                            <div class="md:col-span-2 bg-slate-50 p-5 rounded-xl">
-                                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Юридический адрес</h3>
-                                <p class="text-sm text-slate-700 flex items-start gap-2">
-                                    <i class="fas fa-map-marker-alt text-indigo-400 mt-0.5"></i>
-                                    {{ klient.legal_address || 'Не указан' }}
-                                </p>
-                            </div>
+                        <div v-else class="py-12 text-center border-2 border-dashed border-zinc-200 rounded-xl">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-zinc-300 mb-3"></i>
+                            <p class="text-zinc-400 text-sm">Файлы еще не загружены</p>
                         </div>
                     </div>
 
                     <!-- Медиапланы -->
 <div
-    class="bg-white rounded-2xl shadow-md border border-slate-100 p-6"
+    class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6"
 >
     <div class="flex items-center justify-between mb-5">
         <div>
             <h2
-                class="text-lg font-bold text-slate-800 flex items-center gap-2"
+                class="text-lg font-bold text-zinc-800 flex items-center gap-2"
             >
-                <i class="fas fa-broadcast-tower text-indigo-500"></i>
+                <i class="fas fa-broadcast-tower text-cyan-500"></i>
 
                 Медиапланы
             </h2>
 
-            <p class="text-xs text-slate-400 mt-1">
+            <p class="text-xs text-zinc-400 mt-1">
                 Радио и мультиплатформенные активности
             </p>
         </div>
@@ -531,7 +478,7 @@ const otherDeals = computed(() => {
         <button
             type="button"
             @click="openMediaPlanModal"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-bold transition"
         >
             <i class="fas fa-plus"></i>
             Добавить медиаплан
@@ -546,11 +493,11 @@ const otherDeals = computed(() => {
     v-for="plan in klient.media_plans"
     :key="plan.id"
     :href="route('media-plans.show', plan.id)"
-    class="block p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-indigo-300 hover:shadow-md transition"
+    class="block p-4 rounded-xl border border-zinc-100 bg-zinc-50 hover:bg-white hover:border-cyan-300 hover:shadow-md transition"
 >
     <div class="flex justify-between gap-4">
         <div class="min-w-0">
-            <h3 class="font-bold text-slate-800 truncate">
+            <h3 class="font-bold text-zinc-800 truncate">
                 {{ plan.name }}
             </h3>
 
@@ -558,7 +505,7 @@ const otherDeals = computed(() => {
                 <span
                     v-for="city in plan.cities"
                     :key="city.id"
-                    class="px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold"
+                    class="px-2 py-1 rounded-full bg-cyan-50 text-cyan-700 text-[10px] font-bold"
                 >
                     {{ city.name }}
                 </span>
@@ -566,7 +513,7 @@ const otherDeals = computed(() => {
         </div>
 
         <div class="text-right shrink-0">
-            <div class="text-sm font-bold text-slate-700">
+            <div class="text-sm font-bold text-zinc-700">
                 {{
                     new Intl.NumberFormat('ru-RU').format(
                         Number(plan.total_amount || 0)
@@ -574,7 +521,7 @@ const otherDeals = computed(() => {
                 }} ₽
             </div>
 
-            <i class="fas fa-chevron-right text-slate-300 mt-2"></i>
+            <i class="fas fa-chevron-right text-zinc-300 mt-2"></i>
         </div>
     </div>
 </Link>
@@ -582,39 +529,39 @@ const otherDeals = computed(() => {
 
     <div
         v-else
-        class="py-10 text-center border-2 border-dashed border-slate-200 rounded-xl"
+        class="py-10 text-center border-2 border-dashed border-zinc-200 rounded-xl"
     >
         <i
-            class="fas fa-broadcast-tower text-3xl text-slate-300 mb-3"
+            class="fas fa-broadcast-tower text-3xl text-zinc-300 mb-3"
         ></i>
 
-        <p class="text-sm text-slate-400">
+        <p class="text-sm text-zinc-400">
             Для клиента пока нет медиапланов
         </p>
     </div>
 </div>
 
                     <!-- БЛОК: Сделки (обновленный) -->
-                    <div class="bg-white shadow rounded-lg p-6 mt-6 border-t-4 border-indigo-500">
+                    <div class="bg-white shadow rounded-lg p-6 mt-6 border-t-4 border-cyan-500">
                         <div class="flex justify-between items-center mb-4">
-                            <h2 class="text-lg font-bold text-gray-900 flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <h2 class="text-lg font-bold text-zinc-900 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
                                 Сделки
                             </h2>
 
                             <!-- ПЕРЕКЛЮЧАТЕЛЬ ВКЛАДОК СДЕЛКИ -->
-                            <div class="flex bg-slate-100 p-1 rounded-lg">
+                            <div class="flex bg-zinc-100 p-1 rounded-lg">
                                 <button
                                     @click="dealTab = 'my'"
-                                    :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', dealTab === 'my' ? 'bg-white shadow text-indigo-600' : 'text-slate-500']"
+                                    :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', dealTab === 'my' ? 'bg-white shadow text-cyan-600' : 'text-zinc-500']"
                                 >
                                     МОИ ({{ myDeals.length }})
                                 </button>
                                 <button
                                     @click="dealTab = 'all'"
-                                    :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', dealTab === 'all' ? 'bg-white shadow text-indigo-600' : 'text-slate-500']"
+                                    :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', dealTab === 'all' ? 'bg-white shadow text-cyan-600' : 'text-zinc-500']"
                                 >
                                     ВСЕ ({{ klient.deals?.length || 0 }})
                                 </button>
@@ -630,14 +577,14 @@ const otherDeals = computed(() => {
                                 <Link
                                     v-if="isMyDeal(deal)"
                                     :href="route('klient-deals.show', deal.id)"
-                                    class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-300 hover:bg-white hover:shadow-md transition group"
+                                    class="flex items-center justify-between p-4 bg-zinc-50 rounded-xl border border-zinc-100 hover:border-cyan-300 hover:bg-white hover:shadow-md transition group"
                                 >
                                     <div>
-                                        <div class="font-bold text-slate-800 group-hover:text-indigo-700 flex items-center">
+                                        <div class="font-bold text-zinc-800 group-hover:text-cyan-700 flex items-center">
                                             {{ deal.name }}
-                                            <span v-if="deal.creator_id === authId" class="ml-2 text-[8px] bg-indigo-100 text-indigo-600 px-1 rounded">АВТОР</span>
+                                            <span v-if="deal.creator_id === authId" class="ml-2 text-[8px] bg-cyan-100 text-cyan-600 px-1 rounded">АВТОР</span>
                                         </div>
-                                        <div class="text-xs text-slate-400 mt-1">
+                                        <div class="text-xs text-zinc-400 mt-1">
                                             <i class="fas fa-ruble-sign mr-1"></i> {{ new Intl.NumberFormat('ru-RU').format(deal.total_amount) }} ₽
                                         </div>
                                     </div>
@@ -645,24 +592,24 @@ const otherDeals = computed(() => {
                     <span :class="['text-[10px] px-2 py-1 rounded-full font-bold uppercase', dealStatusClasses(deal.status)]">
                         {{ deal.status }}
                     </span>
-                                        <i class="fas fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>
+                                        <i class="fas fa-chevron-right text-zinc-300 group-hover:text-cyan-500"></i>
                                     </div>
                                 </Link>
 
                                 <!-- ВАРИАНТ 2: ЧУЖАЯ СДЕЛКА (Недоступна) -->
                                 <div
                                     v-else
-                                    class="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 opacity-60 grayscale-[0.5] cursor-not-allowed"
+                                    class="flex items-center justify-between p-4 bg-zinc-50/50 rounded-xl border border-dashed border-zinc-200 opacity-60 grayscale-[0.5] cursor-not-allowed"
                                 >
                                     <div>
-                                        <div class="font-bold text-slate-500 flex items-center">
+                                        <div class="font-bold text-zinc-500 flex items-center">
                                             <i class="fas fa-lock mr-2 text-[10px]"></i>
                                             {{ deal.name }}
                                         </div>
-                                        <div class="text-[10px] text-slate-400 mt-1">Сумма скрыта (только чтение)</div>
+                                        <div class="text-[10px] text-zinc-400 mt-1">Сумма скрыта (только чтение)</div>
                                     </div>
                                     <div>
-                    <span class="text-[9px] px-2 py-1 rounded-full bg-slate-100 text-slate-400 font-bold uppercase">
+                    <span class="text-[9px] px-2 py-1 rounded-full bg-zinc-100 text-zinc-400 font-bold uppercase">
                         {{ deal.status }}
                     </span>
                                     </div>
@@ -671,49 +618,40 @@ const otherDeals = computed(() => {
 
                             <!-- Если список пуст -->
                             <div v-if="(dealTab === 'my' && !myDeals.length) || (dealTab === 'all' && !klient.deals?.length)" class="text-center py-8">
-                                <p class="text-xs text-slate-400 italic">Сделок не найдено</p>
+                                <p class="text-xs text-zinc-400 italic">Сделок не найдено</p>
                             </div>
                         </div>
 
                         <!-- Кнопка создания -->
                         <Link
                             :href="route('klient-deals.create', klient.id)"
-                            class="mt-4 block w-full text-center py-2 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs font-bold hover:border-indigo-300 hover:text-indigo-500 transition"
+                            class="mt-4 block w-full text-center py-2 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 text-xs font-bold hover:border-cyan-300 hover:text-cyan-500 transition"
                         >
                             + Создать новую сделку
                         </Link>
                     </div>
 
                     <!-- БЛОК ЗАДАЧ И ВЗАИМОДЕЙСТВИЙ (2 колонки внутри левой) -->
-                    <div class="flex justify-end mb-4">
-                        <button
-                            @click="isTaskDrawerOpen = true"
-                            class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-200 transition-all hover:shadow-lg"
-                        >
-                            <i class="fas fa-plus mr-2"></i> Поставить задачу
-                        </button>
-                    </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Активные задачи -->
                         <div class="bg-white shadow rounded-lg p-6 mt-6">
                             <div class="flex justify-between items-center mb-4">
-                                <h2 class="text-lg font-bold text-gray-900 flex items-center">
+                                <h2 class="text-lg font-bold text-zinc-900 flex items-center">
                                     <span class="flex h-3 w-3 rounded-full bg-green-500 mr-2"></span>
                                     Задачи
                                 </h2>
 
                                 <!-- ПЕРЕКЛЮЧАТЕЛЬ ВКЛАДОК -->
-                                <div class="flex bg-slate-100 p-1 rounded-lg">
+                                <div class="flex bg-zinc-100 p-1 rounded-lg">
                                     <button
                                         @click="taskTab = 'my'"
-                                        :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', taskTab === 'my' ? 'bg-white shadow text-indigo-600' : 'text-slate-500']"
+                                        :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', taskTab === 'my' ? 'bg-white shadow text-cyan-600' : 'text-zinc-500']"
                                     >
                                         МОИ ({{ myTasks.length }})
                                     </button>
                                     <button
                                         @click="taskTab = 'all'"
-                                        :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', taskTab === 'all' ? 'bg-white shadow text-indigo-600' : 'text-slate-500']"
+                                        :class="['px-3 py-1 text-[10px] font-bold rounded-md transition', taskTab === 'all' ? 'bg-white shadow text-cyan-600' : 'text-zinc-500']"
                                     >
                                         ВСЕ ({{ activeTasks.length }})
                                     </button>
@@ -728,24 +666,24 @@ const otherDeals = computed(() => {
                                         v-for="task in myTasks"
                                         :key="task.id"
                                         :href="route('klient-tasks.show', task.id)"
-                                        class="block p-4 bg-slate-50 rounded-xl border-l-4 hover:bg-white hover:shadow-sm transition border-l-indigo-400"
-                                        :class="task.priority === 'high' ? 'border-l-rose-500' : 'border-l-indigo-400'"
+                                        class="block p-4 bg-zinc-50 rounded-xl border-l-4 hover:bg-white hover:shadow-sm transition border-l-cyan-400"
+                                        :class="task.priority === 'high' ? 'border-l-rose-500' : 'border-l-cyan-400'"
                                     >
                                         <!-- Содержимое карточки (заголовок, приоритет, описание и т.д.) -->
                                         <div class="flex justify-between items-start">
-                                            <h4 class="font-bold text-sm text-slate-800">{{ task.title }}</h4>
+                                            <h4 class="font-bold text-sm text-zinc-800">{{ task.title }}</h4>
                                             <span :class="['text-[0.6rem] px-2 py-1 rounded-full font-bold', priorityBadge(task.priority)]">
                         {{ task.priority }}
                     </span>
                                         </div>
-                                        <p class="text-xs text-slate-500 mt-1">{{ task.description }}</p>
-                                        <div class="mt-3 flex justify-between items-center text-xs text-slate-400">
+                                        <p class="text-xs text-zinc-500 mt-1">{{ task.description }}</p>
+                                        <div class="mt-3 flex justify-between items-center text-xs text-zinc-400">
                                             <span><i class="far fa-user mr-1"></i> {{ task.responsible?.name }}</span>
                                             <span><i class="far fa-calendar-alt mr-1"></i> {{ task.deadline }}</span>
                                         </div>
                                     </Link>
                                 </div>
-                                <div v-else class="text-center py-10 text-slate-400 text-xs italic">У вас нет активных задач</div>
+                                <div v-else class="text-center py-10 text-zinc-400 text-xs italic">У вас нет активных задач</div>
                             </div>
 
                             <div v-if="taskTab === 'all'">
@@ -756,10 +694,10 @@ const otherDeals = computed(() => {
                                         <Link
                                             v-if="task.creator_id === authId || task.responsible_id === authId"
                                             :href="route('klient-tasks.show', task.id)"
-                                            class="block p-4 bg-slate-50 rounded-xl border-l-4 hover:bg-white transition border-l-indigo-400"
+                                            class="block p-4 bg-zinc-50 rounded-xl border-l-4 hover:bg-white transition border-l-cyan-400"
                                         >
                                             <div class="flex justify-between items-start">
-                                                <h4 class="font-bold text-sm text-indigo-600">{{ task.title }} <span class="text-[10px] font-normal text-slate-400">(моя)</span></h4>
+                                                <h4 class="font-bold text-sm text-cyan-600">{{ task.title }} <span class="text-[10px] font-normal text-zinc-400">(моя)</span></h4>
                                             </div>
                                             <!-- ... остальной контент задачи ... -->
                                         </Link>
@@ -767,31 +705,31 @@ const otherDeals = computed(() => {
                                         <!-- ЕСЛИ ЧУЖАЯ - ДЕЛАЕМ ОБЫЧНЫМ DIV (НЕКЛИКАБЕЛЬНО) -->
                                         <div
                                             v-else
-                                            class="block p-4 bg-slate-50/50 rounded-xl border-l-4 border-l-slate-300 opacity-60 grayscale-[0.5]"
+                                            class="block p-4 bg-zinc-50/50 rounded-xl border-l-4 border-l-zinc-300 opacity-60 grayscale-[0.5]"
                                         >
                                             <div class="flex justify-between items-start">
                                                 <div class="flex items-center gap-2">
-                                                    <i class="fas fa-lock text-[10px] text-slate-400"></i>
-                                                    <h4 class="font-bold text-sm text-slate-500">{{ task.title }}</h4>
+                                                    <i class="fas fa-lock text-[10px] text-zinc-400"></i>
+                                                    <h4 class="font-bold text-sm text-zinc-500">{{ task.title }}</h4>
                                                 </div>
-                                                <span class="text-[0.6rem] px-2 py-1 rounded-full bg-slate-200 text-slate-500 font-bold uppercase">Только просмотр</span>
+                                                <span class="text-[0.6rem] px-2 py-1 rounded-full bg-zinc-200 text-zinc-500 font-bold uppercase">Только просмотр</span>
                                             </div>
-                                            <p class="text-xs text-slate-400 mt-1 line-clamp-1">{{ task.description }}</p>
-                                            <div class="mt-3 flex justify-between items-center text-[10px] text-slate-400">
+                                            <p class="text-xs text-zinc-400 mt-1 line-clamp-1">{{ task.description }}</p>
+                                            <div class="mt-3 flex justify-between items-center text-[10px] text-zinc-400">
                                                 <span>Ответственный: {{ task.responsible?.name }}</span>
                                             </div>
                                         </div>
 
                                     </template>
                                 </div>
-                                <div v-else class="text-center py-10 text-slate-400 text-xs italic">Задач нет</div>
+                                <div v-else class="text-center py-10 text-zinc-400 text-xs italic">Задач нет</div>
                             </div>
                         </div>
 
                         <!-- Последние взаимодействия -->
-                        <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5">
-                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <i class="fas fa-history text-indigo-400"></i>
+                        <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-5">
+                            <h3 class="font-bold text-zinc-800 mb-4 flex items-center gap-2">
+                                <i class="fas fa-history text-cyan-400"></i>
                                 Последние взаимодействия
                             </h3>
 
@@ -800,23 +738,23 @@ const otherDeals = computed(() => {
                                     v-for="task in completedTasks"
                                     :key="task.id"
                                     :href="route('klient-tasks.show', task.id)"
-                                    class="flex items-start gap-3 p-3 bg-slate-50 rounded-xl hover:bg-white transition border border-slate-100"
+                                    class="flex items-start gap-3 p-3 bg-zinc-50 rounded-xl hover:bg-white transition border border-zinc-100"
                                 >
                                     <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                                         <i class="fas fa-check text-sm"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex justify-between">
-                                            <h4 class="font-bold text-sm text-slate-700 truncate">{{ task.title }}</h4>
-                                            <span class="text-[0.6rem] text-slate-400 font-mono whitespace-nowrap ml-2">
+                                            <h4 class="font-bold text-sm text-zinc-700 truncate">{{ task.title }}</h4>
+                                            <span class="text-[0.6rem] text-zinc-400 font-mono whitespace-nowrap ml-2">
                                                 {{ new Date(task.updated_at).toLocaleDateString() }}
                                             </span>
                                         </div>
-                                        <p class="text-xs text-slate-500 truncate">{{ task.description }}</p>
+                                        <p class="text-xs text-zinc-500 truncate">{{ task.description }}</p>
                                     </div>
                                 </Link>
                             </div>
-                            <div v-else class="py-8 text-center text-slate-400 text-sm border border-dashed rounded-xl">
+                            <div v-else class="py-8 text-center text-zinc-400 text-sm border border-dashed rounded-xl">
                                 История взаимодействий пуста
                             </div>
                         </div>
@@ -827,27 +765,100 @@ const otherDeals = computed(() => {
                 <!-- ========== ПРАВАЯ КОЛОНКА (1/3) ========== -->
                 <div class="space-y-6">
                     <!-- Карточка связей -->
-                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Связи</h3>
+                    <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6">
+                        <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Связи</h3>
 
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <span class="text-sm text-slate-500"><i class="fas fa-building mr-2 text-indigo-400"></i>Компания</span>
-                                <span class="text-sm font-semibold text-slate-800">{{ klient.company?.name || 'Личный клиент' }}</span>
+                            <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
+                                <span class="text-sm text-zinc-500"><i class="fas fa-building mr-2 text-cyan-400"></i>Компания</span>
+                                <span class="text-sm font-semibold text-zinc-800">{{ klient.company?.name || 'Личный клиент' }}</span>
                             </div>
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <span class="text-sm text-slate-500"><i class="fas fa-project-diagram mr-2 text-indigo-400"></i>Проект</span>
-                                <span class="text-sm font-semibold text-slate-800">{{ klient.project?.name || 'Без проекта' }}</span>
+                            <div class="flex items-center justify-between border-b border-zinc-100 pb-3">
+                                <span class="text-sm text-zinc-500"><i class="fas fa-project-diagram mr-2 text-cyan-400"></i>Проект</span>
+                                <span class="text-sm font-semibold text-zinc-800">{{ klient.project?.name || 'Без проекта' }}</span>
                             </div>
                             <div class="flex items-center justify-between">
-                                <span class="text-sm text-slate-500"><i class="fas fa-tasks mr-2 text-indigo-400"></i>Задача</span>
-                                <span class="text-sm font-semibold text-slate-800">{{ klient.task?.title || 'Без задачи' }}</span>
+                                <span class="text-sm text-zinc-500"><i class="fas fa-tasks mr-2 text-cyan-400"></i>Задача</span>
+                                <span class="text-sm font-semibold text-zinc-800">{{ klient.task?.title || 'Без задачи' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- БЛОК: Контактные лица -->
+                    <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6">
+                        <h2 class="text-lg font-bold text-zinc-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-user-friends text-cyan-500"></i>
+                            Контактные лица
+                        </h2>
+
+                        <div v-if="klient.contact_persons?.length" class="space-y-3">
+                            <div v-for="person in klient.contact_persons" :key="person.id" class="p-4 bg-zinc-50 rounded-xl border" :class="person.is_primary ? 'border-amber-200 bg-amber-50/30' : 'border-zinc-100'">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 shrink-0 bg-cyan-100 rounded-xl flex items-center justify-center text-cyan-700 font-bold">
+                                        {{ person.full_name.charAt(0) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-zinc-800 truncate">{{ person.full_name }}</span>
+                                            <span v-if="person.is_primary" class="shrink-0 text-[0.6rem] bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">ОСНОВНОЙ</span>
+                                        </div>
+                                        <div class="text-sm text-zinc-500 truncate">{{ person.position }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1 mt-2 text-xs">
+                                    <span v-if="person.phone" class="text-zinc-600"><i class="fas fa-phone-alt mr-1 text-cyan-400"></i>{{ person.phone }}</span>
+                                    <span v-if="person.email" class="text-zinc-600 truncate block"><i class="fas fa-envelope mr-1 text-cyan-400"></i>{{ person.email }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="py-8 text-center text-zinc-400 text-sm border border-dashed rounded-xl">
+                            Контактные лица не добавлены
+                        </div>
+                    </div>
+
+                    <!-- БЛОК: Реквизиты и адреса -->
+                    <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6">
+                        <h2 class="text-lg font-bold text-zinc-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-building text-cyan-500"></i>
+                            Детальная информация
+                        </h2>
+
+                        <div class="space-y-4">
+                            <div class="bg-zinc-50 p-5 rounded-xl">
+                                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Реквизиты</h3>
+                                <dl class="space-y-2">
+                                    <div class="flex justify-between border-b border-dashed border-zinc-200 pb-2">
+                                        <dt class="text-sm text-zinc-500">ИНН</dt>
+                                        <dd class="text-sm font-mono font-medium text-zinc-800">{{ klient.inn || '—' }}</dd>
+                                    </div>
+                                    <div class="flex justify-between border-b border-dashed border-zinc-200 pb-2">
+                                        <dt class="text-sm text-zinc-500">КПП</dt>
+                                        <dd class="text-sm font-mono font-medium text-zinc-800">{{ klient.kpp || '—' }}</dd>
+                                    </div>
+                                    <div class="flex justify-between border-b border-dashed border-zinc-200 pb-2">
+                                        <dt class="text-sm text-zinc-500">ОГРН</dt>
+                                        <dd class="text-sm font-mono font-medium text-zinc-800">{{ klient.ogrn || '—' }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+
+                            <div class="bg-zinc-50 p-5 rounded-xl">
+                                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Деятельность</h3>
+                                <p class="text-sm text-zinc-700">{{ klient.industry || 'Сфера не указана' }}</p>
+                            </div>
+
+                            <div class="bg-zinc-50 p-5 rounded-xl">
+                                <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Юридический адрес</h3>
+                                <p class="text-sm text-zinc-700 flex items-start gap-2">
+                                    <i class="fas fa-map-marker-alt text-cyan-400 mt-0.5"></i>
+                                    {{ klient.legal_address || 'Не указан' }}
+                                </p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Мессенджеры (стильный блок) -->
-                    <div v-if="klient.messengers?.telegram || klient.messengers?.whatsapp" class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl shadow-lg p-6 text-white">
+                    <div v-if="klient.messengers?.telegram || klient.messengers?.whatsapp" class="bg-gradient-to-br from-cyan-600 to-cyan-800 rounded-2xl shadow-lg p-6 text-white">
                         <h3 class="text-sm font-bold uppercase opacity-80 mb-4 tracking-wider">Мессенджеры</h3>
                         <div class="space-y-4">
                             <div v-if="klient.messengers.telegram" class="flex items-center gap-3 bg-white/10 p-3 rounded-xl backdrop-blur-sm">
@@ -862,41 +873,41 @@ const otherDeals = computed(() => {
                     </div>
 
                     <!-- Системная информация -->
-                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Системная информация</h3>
+                    <div class="bg-white rounded-2xl shadow-md border border-zinc-100 p-6">
+                        <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Системная информация</h3>
                         <div class="space-y-4">
                             <!-- Создатель -->
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                <div class="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-600">
                                     <i class="fas fa-user-plus text-xs"></i>
                                 </div>
                                 <div>
-                                    <div class="text-xs text-slate-400">Создал</div>
-                                    <div class="text-sm font-medium text-slate-700">{{ klient.creator?.name }}</div>
+                                    <div class="text-xs text-zinc-400">Создал</div>
+                                    <div class="text-sm font-medium text-zinc-700">{{ klient.creator?.name }}</div>
                                 </div>
                             </div>
 
                             <!-- Дата создания -->
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                                <div class="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
                                     <i class="fas fa-calendar-alt text-xs"></i>
                                 </div>
                                 <div>
-                                    <div class="text-xs text-slate-400">Дата создания</div>
-                                    <div class="text-sm font-medium text-slate-700">{{ new Date(klient.created_at).toLocaleString() }}</div>
+                                    <div class="text-xs text-zinc-400">Дата создания</div>
+                                    <div class="text-sm font-medium text-zinc-700">{{ new Date(klient.created_at).toLocaleString() }}</div>
                                 </div>
                             </div>
 
                             <!-- КТО ИМЕЕТ ДОСТУП -->
                             <!-- Заменили allowedUsers на allowed_users -->
-                            <div v-if="klient.allowed_users?.length" class="pt-3 border-t border-slate-50">
+                            <div v-if="klient.allowed_users?.length" class="pt-3 border-t border-zinc-50">
                                 <div class="flex items-start gap-3">
                                     <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
                                         <i class="fas fa-users text-xs"></i>
                                     </div>
                                     <div>
                                         <!-- Заменили allowedUsers на allowed_users -->
-                                        <div class="text-xs text-slate-400 mb-1">Доступ предоставлен ({{ klient.allowed_users.length }})</div>
+                                        <div class="text-xs text-zinc-400 mb-1">Доступ предоставлен ({{ klient.allowed_users.length }})</div>
                                         <div class="flex flex-wrap gap-1">
                                             <!-- Заменили allowedUsers на allowed_users -->
 
@@ -913,13 +924,7 @@ const otherDeals = computed(() => {
                             </div>
 
                             <!-- Если доступ есть только у создателя -->
-                            <div v-else class="pt-3 border-t border-slate-50 flex items-center gap-3 text-slate-400 italic">
-                                <i class="fas fa-lock text-[10px] ml-2"></i>
-                                <span class="text-[10px]">Приватная карточка</span>
-                            </div>
-
-                            <!-- Если доступ есть только у создателя -->
-                            <div v-else class="pt-3 border-t border-slate-50 flex items-center gap-3 text-slate-400 italic">
+                            <div v-else class="pt-3 border-t border-zinc-50 flex items-center gap-3 text-zinc-400 italic">
                                 <i class="fas fa-lock text-[10px] ml-2"></i>
                                 <span class="text-[10px]">Приватная карточка</span>
                             </div>
@@ -928,7 +933,7 @@ const otherDeals = computed(() => {
                 </div> <!-- Конец правой колонки -->
             </div> <!-- Конец грида -->
         </div> <!-- Конец контейнера -->
-    </div> <!-- Конец фона -->
+    </AuthenticatedLayout>
 
     <!-- Боковой компонент создания задачи -->
     <CreateTaskDrawer
@@ -948,7 +953,7 @@ const otherDeals = computed(() => {
         <button
             type="button"
             aria-label="Закрыть"
-            class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            class="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
             @click="closeMediaPlanModal"
         ></button>
 
@@ -958,14 +963,14 @@ const otherDeals = computed(() => {
         >
             <!-- Заголовок -->
             <div
-                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+                class="px-6 py-5 border-b border-zinc-100 flex items-center justify-between"
             >
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800">
+                    <h2 class="text-xl font-bold text-zinc-800">
                         Новый медиаплан
                     </h2>
 
-                    <p class="text-sm text-slate-400">
+                    <p class="text-sm text-zinc-400">
                         {{ klient.name }}
                     </p>
                 </div>
@@ -973,7 +978,7 @@ const otherDeals = computed(() => {
                 <button
                     type="button"
                     @click="closeMediaPlanModal"
-                    class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500"
+                    class="w-9 h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500"
                 >
                     <i class="fas fa-times"></i>
                 </button>
@@ -987,7 +992,7 @@ const otherDeals = computed(() => {
                     <!-- Основные данные -->
                     <section>
                         <h3
-                            class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4"
+                            class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4"
                         >
                             Основные данные
                         </h3>
@@ -997,7 +1002,7 @@ const otherDeals = computed(() => {
                         >
                             <div class="md:col-span-2">
                                 <label
-                                    class="block text-sm font-medium text-slate-700"
+                                    class="block text-sm font-medium text-zinc-700"
                                 >
                                     Название *
                                 </label>
@@ -1005,7 +1010,7 @@ const otherDeals = computed(() => {
                                 <input
                                     v-model="mediaPlanForm.name"
                                     type="text"
-                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                    class="mt-1 w-full rounded-xl border-zinc-300"
                                 >
 
                                 <p
@@ -1018,7 +1023,7 @@ const otherDeals = computed(() => {
 
                             <div>
                                 <label
-                                    class="block text-sm font-medium text-slate-700"
+                                    class="block text-sm font-medium text-zinc-700"
                                 >
                                     Дата начала
                                 </label>
@@ -1026,13 +1031,13 @@ const otherDeals = computed(() => {
                                 <input
                                     v-model="mediaPlanForm.start_date"
                                     type="date"
-                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                    class="mt-1 w-full rounded-xl border-zinc-300"
                                 >
                             </div>
 
                             <div>
                                 <label
-                                    class="block text-sm font-medium text-slate-700"
+                                    class="block text-sm font-medium text-zinc-700"
                                 >
                                     Дата завершения
                                 </label>
@@ -1040,13 +1045,13 @@ const otherDeals = computed(() => {
                                 <input
                                     v-model="mediaPlanForm.end_date"
                                     type="date"
-                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                    class="mt-1 w-full rounded-xl border-zinc-300"
                                 >
                             </div>
 
                             <div class="md:col-span-2">
                                 <label
-                                    class="block text-sm font-medium text-slate-700"
+                                    class="block text-sm font-medium text-zinc-700"
                                 >
                                     Описание
                                 </label>
@@ -1054,7 +1059,7 @@ const otherDeals = computed(() => {
                                 <textarea
                                     v-model="mediaPlanForm.description"
                                     rows="3"
-                                    class="mt-1 w-full rounded-xl border-slate-300"
+                                    class="mt-1 w-full rounded-xl border-zinc-300"
                                 ></textarea>
                             </div>
                         </div>
@@ -1065,18 +1070,18 @@ const otherDeals = computed(() => {
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <h3
-                                    class="text-xs font-bold uppercase tracking-wider text-slate-400"
+                                    class="text-xs font-bold uppercase tracking-wider text-zinc-400"
                                 >
                                     Города
                                 </h3>
 
-                                <p class="text-xs text-slate-400 mt-1">
+                                <p class="text-xs text-zinc-400 mt-1">
                                     Можно выбрать один или несколько
                                 </p>
                             </div>
 
                             <span
-                                class="text-xs font-bold text-indigo-600"
+                                class="text-xs font-bold text-cyan-600"
                             >
                                 Выбрано:
                                 {{ mediaPlanForm.city_ids.length }}
@@ -1092,19 +1097,19 @@ const otherDeals = computed(() => {
                                 class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition"
                                 :class="
                                     mediaPlanForm.city_ids.includes(city.id)
-                                        ? 'border-indigo-500 bg-indigo-50'
-                                        : 'border-slate-200 hover:border-indigo-300'
+                                        ? 'border-cyan-500 bg-cyan-50'
+                                        : 'border-zinc-200 hover:border-cyan-300'
                                 "
                             >
                                 <input
                                     v-model="mediaPlanForm.city_ids"
                                     type="checkbox"
                                     :value="city.id"
-                                    class="rounded text-indigo-600"
+                                    class="rounded text-cyan-600"
                                 >
 
                                 <span
-                                    class="text-sm font-medium text-slate-700"
+                                    class="text-sm font-medium text-zinc-700"
                                 >
                                     {{ city.name }}
                                 </span>
@@ -1123,26 +1128,26 @@ const otherDeals = computed(() => {
                     <section>
                         <div class="mb-4">
                             <h3
-                                class="text-xs font-bold uppercase tracking-wider text-slate-400"
+                                class="text-xs font-bold uppercase tracking-wider text-zinc-400"
                             >
                                 Радиостанции
                             </h3>
 
-                            <p class="text-xs text-slate-400 mt-1">
+                            <p class="text-xs text-zinc-400 mt-1">
                                 Показываются станции только выбранных городов
                             </p>
                         </div>
 
                         <div
                             v-if="!mediaPlanForm.city_ids.length"
-                            class="p-5 rounded-xl bg-slate-50 text-center text-sm text-slate-400"
+                            class="p-5 rounded-xl bg-zinc-50 text-center text-sm text-zinc-400"
                         >
                             Сначала выберите хотя бы один город
                         </div>
 
                         <div
                             v-else-if="!availableRadioStations.length"
-                            class="p-5 rounded-xl bg-slate-50 text-center text-sm text-slate-400"
+                            class="p-5 rounded-xl bg-zinc-50 text-center text-sm text-zinc-400"
                         >
                             Для выбранных городов радиостанции не добавлены
                         </div>
@@ -1159,25 +1164,25 @@ const otherDeals = computed(() => {
                                     mediaPlanForm.radio_station_ids.includes(
                                         station.id
                                     )
-                                        ? 'border-indigo-500 bg-indigo-50'
-                                        : 'border-slate-200'
+                                        ? 'border-cyan-500 bg-cyan-50'
+                                        : 'border-zinc-200'
                                 "
                             >
                                 <input
                                     v-model="mediaPlanForm.radio_station_ids"
                                     type="checkbox"
                                     :value="station.id"
-                                    class="rounded text-indigo-600"
+                                    class="rounded text-cyan-600"
                                 >
 
                                 <div class="min-w-0">
                                     <div
-                                        class="font-semibold text-sm text-slate-700"
+                                        class="font-semibold text-sm text-zinc-700"
                                     >
                                         {{ station.name }}
                                     </div>
 
-                                    <div class="text-xs text-slate-400">
+                                    <div class="text-xs text-zinc-400">
                                         {{ station.city_name }}
 
                                         <template v-if="station.frequency">
@@ -1203,7 +1208,7 @@ const otherDeals = computed(() => {
                     <!-- Мультиплатформенные активности -->
                     <section>
                         <h3
-                            class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4"
+                            class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4"
                         >
                             Мультиплатформенные активности
                         </h3>
@@ -1219,8 +1224,8 @@ const otherDeals = computed(() => {
                                     mediaPlanForm.multiplatform_activities.includes(
                                         option.value
                                     )
-                                        ? 'border-indigo-500 bg-indigo-50'
-                                        : 'border-slate-200'
+                                        ? 'border-cyan-500 bg-cyan-50'
+                                        : 'border-zinc-200'
                                 "
                             >
                                 <input
@@ -1229,11 +1234,11 @@ const otherDeals = computed(() => {
                                     "
                                     type="checkbox"
                                     :value="option.value"
-                                    class="rounded text-indigo-600"
+                                    class="rounded text-cyan-600"
                                 >
 
                                 <span
-                                    class="text-sm font-medium text-slate-700"
+                                    class="text-sm font-medium text-zinc-700"
                                 >
                                     {{ option.label }}
                                 </span>
@@ -1244,12 +1249,12 @@ const otherDeals = computed(() => {
 
                 <!-- Нижняя панель -->
                 <div
-                    class="sticky bottom-0 px-6 py-4 bg-white border-t border-slate-100 flex justify-end gap-3"
+                    class="sticky bottom-0 px-6 py-4 bg-white border-t border-zinc-100 flex justify-end gap-3"
                 >
                     <button
                         type="button"
                         @click="closeMediaPlanModal"
-                        class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-medium"
+                        class="px-5 py-2.5 rounded-xl border border-zinc-300 text-zinc-600 font-medium"
                     >
                         Отмена
                     </button>
@@ -1257,7 +1262,7 @@ const otherDeals = computed(() => {
                     <button
                         type="submit"
                         :disabled="mediaPlanForm.processing"
-                        class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50"
+                        class="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold disabled:opacity-50"
                     >
                         {{
                             mediaPlanForm.processing
@@ -1271,5 +1276,13 @@ const otherDeals = computed(() => {
     </div>
 </Teleport>
 
+<ConfirmDialog
+    :show="fileToDelete !== null"
+    title="Удалить файл?"
+    message="Файл будет удалён без возможности восстановления."
+    @confirm="confirmDeleteFile"
+    @close="fileToDelete = null"
+/>
 
+<ToastContainer />
 </template>

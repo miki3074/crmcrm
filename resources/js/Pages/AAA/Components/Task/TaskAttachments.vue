@@ -259,6 +259,18 @@ const canSubmitForApproval = (file) => {
     return props.canUpload && (!file?.status || file.status === 'none')
 }
 
+// Статус согласования — тот же, что и во вкладке "Документы на
+// согласование", чтобы во "Вложениях" было видно, что файл вернули
+// на доработку или согласовали, не переключаясь на другую вкладку.
+const APPROVAL_STATUS = {
+    pending: { text: 'Ждёт проверки', class: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-300' },
+    rejected: { text: 'На доработке', class: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300' },
+    approved: { text: 'Согласовано', class: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
+    replacement: { text: 'Заменён, ждёт проверки', class: 'bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-300' },
+}
+
+const approvalStatus = (file) => APPROVAL_STATUS[file?.status] || null
+
 // Участники задачи, из которых можно выбрать согласующего
 const taskParticipants = computed(() => {
     const map = new Map()
@@ -759,6 +771,14 @@ onBeforeUnmount(() => {
                                         {{ getFileSize(file) }}
                                     </span>
                                 </template>
+
+                                <span
+                                    v-if="approvalStatus(file)"
+                                    class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                                    :class="approvalStatus(file).class"
+                                >
+                                    {{ approvalStatus(file).text }}
+                                </span>
                             </span>
                         </button>
 

@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import axios from 'axios'
 import { usePage } from '@inertiajs/vue3'
+import ConfirmDialog from '@/Pages/AAA/Components/Task/ConfirmDialog.vue'
 
 const props = defineProps({
     taskId: { type: Number, required: true },
@@ -37,6 +38,10 @@ const textareaRef = ref(null)
 const editingComment = ref(null)
 const editBody = ref('')
 // ------------------------
+
+// --- Для удаления ---
+const commentToDelete = ref(null)
+// --------------------
 
 let timer = null
 let lastMessageId = null
@@ -100,19 +105,20 @@ const send = async () => {
 
     const payload = {
         body: body.value,
-        parent_id: replyingTo.value ? replyingTo.value.id : null,
-        edit_id: editingComment.value ? editingComment.value.id : null
+        parent_id: replyingTo.value ? replyingTo.value.id : null
     }
 
     try {
-        await axios.post(`/api/tasks/${props.taskId}/comments`, payload, {
+        const { data } = await axios.post(`/api/tasks/${props.taskId}/comments`, payload, {
             withCredentials: true
         })
+
+        comments.value.push(data)
+        lastMessageId = data.id
 
         body.value = ''
         cancelReply()
         cancelEdit()
-        await fetchComments()
         scrollToBottom()
         hasNewMessages.value = false
         unreadCount.value = 0
@@ -145,17 +151,18 @@ const saveEdit = async () => {
     error.value = ''
 
     try {
-        await axios.put(`/api/task-comments/${editingComment.value.id}`, {
+        const { data } = await axios.put(`/api/task-comments/${editingComment.value.id}`, {
             body: editBody.value
         }, {
             withCredentials: true
         })
 
-        await fetchComments()
-        cancelEdit()
+        const index = comments.value.findIndex(c => c.id === data.id)
+        if (index !== -1) {
+            comments.value[index] = data
+        }
 
-        // Показываем успешное уведомление (опционально)
-        // toast.success('Сообщение обновлено')
+        cancelEdit()
 
     } catch (e) {
         console.error(e)
@@ -171,12 +178,18 @@ const saveEdit = async () => {
 }
 
 // --- Удаление ---
-const remove = async (commentId) => {
-    if (!confirm('Удалить сообщение?')) return
+const requestRemove = (commentId) => {
+    commentToDelete.value = commentId
+}
+
+const confirmRemove = async () => {
+    const commentId = commentToDelete.value
+    commentToDelete.value = null
+    if (!commentId) return
 
     try {
         await axios.delete(`/api/task-comments/${commentId}`)
-        await fetchComments()
+        comments.value = comments.value.filter(c => c.id !== commentId)
     } catch (e) {
         error.value = 'Не удалось удалить сообщение'
     }
@@ -256,16 +269,35 @@ const selectMention = (user) => {
 }
 
 // --- Форматирование ---
+// Текст сообщения — данные пользователя, поэтому сначала экранируем HTML
+// через textContent браузера и только потом подсвечиваем упоминания в уже
+// безопасной строке (иначе v-html ниже выполнял бы любой вставленный тег).
+const escapeHtml = (text) => {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
+}
+
 const highlightMentions = (text) => {
     if (!text) return ''
-    return text.replace(/@([\p{L}0-9_]+)/gu, (match, nameToken) => {
+    return escapeHtml(text).replace(/@([\p{L}0-9_]+)/gu, (match, nameToken) => {
         const visibleName = nameToken.replace(/_/g, ' ')
         const user = props.members.find(m =>
             m.name.replace(/\s+/g, '_') === nameToken
         )
-        return `<span class="inline-flex items-center gap-1 text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded-full text-xs">
+        return `<span style="display: inline-flex;
+align-items: center;
+gap: 0.25rem;
+color: #0891b2;
+font-weight: 600;
+background-color: #ecfeff;
+padding: 0.1rem 0.35rem;      /* было 0.125rem 0.375rem */
+border-radius: 9999px;
+font-size: 0.65rem;           /* было 0.75rem */
+line-height: 1;               /* убираем лишнюю высоту строки */
+vertical-align: middle;       /* выравнивание по тексту */">
             @${visibleName}
-            ${user ? `<span class="w-1 h-1 bg-indigo-400 rounded-full"></span>` : ''}
+            ${user ? `<span class="w-1 h-1 bg-cyan-400 rounded-full"></span>` : ''}
         </span>`
     })
 }
@@ -280,12 +312,12 @@ const getInitials = (name) => {
 const getAvatarColor = (id) => {
     const colors = [
         'bg-red-100 text-red-600',
-        'bg-blue-100 text-blue-600',
+        'bg-cyan-100 text-cyan-600',
         'bg-green-100 text-green-600',
         'bg-amber-100 text-amber-600',
         'bg-purple-100 text-purple-600',
         'bg-pink-100 text-pink-600',
-        'bg-indigo-100 text-indigo-600'
+        'bg-cyan-100 text-cyan-600'
     ]
     return colors[(id || 0) % colors.length]
 }
@@ -364,22 +396,22 @@ onBeforeUnmount(() => {
         <!-- Шапка чата -->
         <div class="px-3 py-2.5 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-sm z-10">
             <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100">
-                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg class="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
                 Обсуждение задачи
             </h3>
             <div class="flex items-center gap-2.5">
-                <span class="text-xs text-gray-400 font-medium">
+                <span class="text-xs text-zinc-400 font-medium">
                     {{ messageCount }} {{ messageCount === 1 ? 'сообщение' :
                     messageCount >= 2 && messageCount <= 4 ? 'сообщения' : 'сообщений' }}
                 </span>
                 <button
                     v-if="hasNewMessages"
                     @click="scrollToBottom()"
-                    class="flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium hover:bg-indigo-200 transition"
+                    class="flex items-center gap-1 px-2 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-medium hover:bg-cyan-200 transition"
                 >
-                    <span class="w-5 h-5 bg-indigo-500 text-white rounded-full flex items-center justify-center text-[10px]">
+                    <span class="w-5 h-5 bg-cyan-500 text-white rounded-full flex items-center justify-center text-[10px]">
                         {{ unreadCount }}
                     </span>
                     Новые сообщения ↓
@@ -395,15 +427,15 @@ onBeforeUnmount(() => {
         <!-- Список сообщений -->
         <div
             ref="commentsContainer"
-            class="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-slate-50/70 p-3 dark:bg-slate-950ray-900"
+            class="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-slate-50/70 p-3 dark:bg-slate-950"
         >
             <!-- Загрузка -->
             <div v-if="loading" class="flex justify-center py-8">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
             </div>
 
             <!-- Пустое состояние -->
-            <div v-else-if="!comments.length" class="flex flex-col items-center justify-center h-full text-gray-400 text-sm opacity-60">
+            <div v-else-if="!comments.length" class="flex flex-col items-center justify-center h-full text-zinc-400 text-sm opacity-60">
                 <svg class="w-12 h-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
@@ -429,26 +461,26 @@ onBeforeUnmount(() => {
                 <!-- Контент -->
                 <div class="flex-1 min-w-0">
                     <div class="flex items-baseline gap-2 mb-0.5 flex-wrap">
-                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100 cursor-pointer hover:underline">
+                        <span class="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer hover:underline">
                             {{ c.user?.name || 'Неизвестный' }}
                         </span>
-                        <span class="text-[10px] text-gray-400">{{ formatTime(c.created_at) }}</span>
-                        <span v-if="isEdited(c)" class="text-[9px] text-gray-400 italic">(ред.)</span>
+                        <span class="text-[10px] text-zinc-400">{{ formatTime(c.created_at) }}</span>
+                        <span v-if="isEdited(c)" class="text-[9px] text-zinc-400 italic">(ред.)</span>
                     </div>
 
                     <!-- Карточка сообщения -->
-                    <div class="relative bg-white dark:bg-slate-900 p-3 rounded-xl rounded-tl-none border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="relative bg-white dark:bg-slate-900 p-3 rounded-xl rounded-tl-none border border-zinc-100 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow">
 
                         <!-- Цитата (Reply) -->
-                        <div v-if="c.parent" class="mb-2 pl-3 border-l-4 border-indigo-200 dark:border-indigo-700/50 py-1 bg-gray-50 dark:bg-gray-700/30 rounded-r-lg">
-                            <div class="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                        <div v-if="c.parent" class="mb-2 pl-3 border-l-4 border-cyan-200 dark:border-cyan-700/50 py-1 bg-zinc-50 dark:bg-zinc-700/30 rounded-r-lg">
+                            <div class="flex items-center gap-1 text-xs font-semibold text-cyan-600 dark:text-cyan-400">
                                 <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6m-6-6l6-6" />
                                 </svg>
                                 {{ c.parent.user?.name }}
                                 <button
                                     @click="scrollToComment(c.parent.id)"
-                                    class="ml-1 text-indigo-400 hover:text-indigo-600"
+                                    class="ml-1 text-cyan-400 hover:text-cyan-600"
                                     title="Перейти к сообщению"
                                 >
                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -456,7 +488,7 @@ onBeforeUnmount(() => {
                                     </svg>
                                 </button>
                             </div>
-                            <div class="text-xs text-gray-500 line-clamp-2 mt-0.5">{{ c.parent.body }}</div>
+                            <div class="text-xs text-zinc-500 line-clamp-2 mt-0.5">{{ c.parent.body }}</div>
                         </div>
 
                         <!-- Текст (обычный или редактирование) -->
@@ -464,7 +496,7 @@ onBeforeUnmount(() => {
                             <textarea
                                 v-model="editBody"
                                 rows="2"
-                                class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
                                 @input="onInput"
                                 @keydown.ctrl.enter="saveEdit"
                                 @keydown.esc="cancelEdit"
@@ -472,20 +504,20 @@ onBeforeUnmount(() => {
                             <div class="flex justify-end gap-2">
                                 <button
                                     @click="cancelEdit"
-                                    class="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                                    class="px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-100 rounded"
                                 >
                                     Отмена
                                 </button>
                                 <button
                                     @click="saveEdit"
-                                    class="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                    class="px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700"
                                     :disabled="!editBody.trim()"
                                 >
                                     Сохранить
                                 </button>
                             </div>
                         </div>
-                        <div v-else class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed break-words"
+                        <div v-else class="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed break-words"
                              v-html="highlightMentions(c.body)">
                         </div>
 
@@ -494,7 +526,7 @@ onBeforeUnmount(() => {
                             <button
                                 v-if="canChat"
                                 @click="startReply(c)"
-                                class="p-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full shadow-sm text-gray-500 hover:text-indigo-600 hover:border-indigo-200 transition"
+                                class="p-1.5 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-full shadow-sm text-zinc-500 hover:text-cyan-600 hover:border-cyan-200 transition"
                                 title="Ответить"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -505,7 +537,7 @@ onBeforeUnmount(() => {
                             <button
                                 v-if="currentUser && c.user_id === currentUser.id"
                                 @click="startEdit(c)"
-                                class="p-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full shadow-sm text-gray-500 hover:text-blue-600 hover:border-blue-200 transition"
+                                class="p-1.5 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-full shadow-sm text-zinc-500 hover:text-cyan-600 hover:border-cyan-200 transition"
                                 title="Редактировать"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -515,8 +547,8 @@ onBeforeUnmount(() => {
 
                             <button
                                 v-if="currentUser && c.user_id === currentUser.id"
-                                @click="remove(c.id)"
-                                class="p-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full shadow-sm text-gray-500 hover:text-rose-600 hover:border-rose-200 transition"
+                                @click="requestRemove(c.id)"
+                                class="p-1.5 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-full shadow-sm text-zinc-500 hover:text-rose-600 hover:border-rose-200 transition"
                                 title="Удалить"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -541,15 +573,15 @@ onBeforeUnmount(() => {
                 leave-from-class="opacity-100 translate-y-0"
                 leave-to-class="opacity-0 translate-y-2"
             >
-                <div v-if="replyingTo" class="absolute bottom-full left-4 right-4 mb-2 bg-indigo-50 dark:bg-gray-700 p-3 rounded-lg border border-indigo-100 dark:border-indigo-500/30 shadow-md flex justify-between items-center z-30">
+                <div v-if="replyingTo" class="absolute bottom-full left-4 right-4 mb-2 bg-cyan-50 dark:bg-zinc-700 p-3 rounded-lg border border-cyan-100 dark:border-cyan-500/30 shadow-md flex justify-between items-center z-30">
                     <div class="flex items-center gap-2.5 overflow-hidden">
-                        <div class="w-1 bg-indigo-500 h-8 rounded-full"></div>
+                        <div class="w-1 bg-cyan-500 h-8 rounded-full"></div>
                         <div class="flex flex-col text-sm">
-                            <span class="font-bold text-indigo-700 dark:text-indigo-300">Ответ {{ replyingTo.user?.name }}</span>
+                            <span class="font-bold text-cyan-700 dark:text-cyan-300">Ответ {{ replyingTo.user?.name }}</span>
                             <span class="text-slate-500 dark:text-slate-400 truncate max-w-xs text-xs">{{ replyingTo.body }}</span>
                         </div>
                     </div>
-                    <button @click="cancelReply" class="p-1 hover:bg-black/5 rounded-full text-gray-400 hover:text-gray-600 transition">
+                    <button @click="cancelReply" class="p-1 hover:bg-black/5 rounded-full text-zinc-400 hover:text-zinc-600 transition">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -559,12 +591,12 @@ onBeforeUnmount(() => {
 
             <!-- Панель редактирования -->
             <transition name="slide-down">
-                <div v-if="editingComment" class="absolute bottom-full left-4 right-4 mb-2 bg-blue-50 dark:bg-gray-700 p-3 rounded-lg border border-blue-100 dark:border-blue-500/30 shadow-md flex justify-between items-center z-30">
+                <div v-if="editingComment" class="absolute bottom-full left-4 right-4 mb-2 bg-cyan-50 dark:bg-zinc-700 p-3 rounded-lg border border-cyan-100 dark:border-cyan-500/30 shadow-md flex justify-between items-center z-30">
                     <div class="flex items-center gap-2.5 overflow-hidden">
-                        <div class="w-1 bg-blue-500 h-8 rounded-full"></div>
-                        <span class="font-bold text-blue-700 dark:text-blue-300 text-sm">Редактирование сообщения</span>
+                        <div class="w-1 bg-cyan-500 h-8 rounded-full"></div>
+                        <span class="font-bold text-cyan-700 dark:text-cyan-300 text-sm">Редактирование сообщения</span>
                     </div>
-                    <button @click="cancelEdit" class="p-1 hover:bg-black/5 rounded-full text-gray-400 hover:text-gray-600 transition">
+                    <button @click="cancelEdit" class="p-1 hover:bg-black/5 rounded-full text-zinc-400 hover:text-zinc-600 transition">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -573,7 +605,7 @@ onBeforeUnmount(() => {
             </transition>
 
             <!-- Поле ввода + Кнопка -->
-            <div class="relative flex items-end gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl p-2 focus-within:ring-2 focus-within:ring-indigo-500/50 focus-within:border-indigo-500 transition-all">
+            <div class="relative flex items-end gap-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-600 rounded-xl p-2 focus-within:ring-2 focus-within:ring-cyan-500/50 focus-within:border-cyan-500 transition-all">
                 <textarea
                     ref="textareaRef"
                     v-model="currentMessage"
@@ -581,7 +613,7 @@ onBeforeUnmount(() => {
                     :placeholder="replyingTo ? `Ответить ${replyingTo.user?.name}...` :
                                  editingComment ? 'Редактирование...' :
                                  'Написать сообщение...'"
-                    class="w-full bg-transparent border-none focus:ring-0 text-sm text-gray-800 dark:text-gray-200 resize-none max-h-28 py-2.5 px-2 custom-scrollbar"
+                    class="w-full bg-transparent border-none focus:ring-0 text-sm text-zinc-800 dark:text-zinc-200 resize-none max-h-28 py-2.5 px-2 custom-scrollbar"
                     style="min-height: 40px;"
                     @input="onInput"
                     @keydown.ctrl.enter="editingComment ? saveEdit() : send()"
@@ -592,7 +624,7 @@ onBeforeUnmount(() => {
                 <button
                     @click="editingComment ? saveEdit() : send()"
                     :disabled="sending || !(editingComment ? editBody.trim() : body.trim())"
-                    class="mb-1 p-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg shadow-sm transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
+                    class="mb-1 p-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-700 text-white rounded-lg shadow-sm transition-all transform hover:scale-105 active:scale-95 flex-shrink-0"
                 >
                     <svg v-if="sending" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -604,20 +636,20 @@ onBeforeUnmount(() => {
                 </button>
             </div>
 
-            <div class="text-[10px] text-gray-400 mt-2 ml-1 flex justify-between">
+            <div class="text-[10px] text-zinc-400 mt-2 ml-1 flex justify-between">
                 <span><b>Ctrl + Enter</b> для отправки</span>
                 <span>Используйте <b>@</b> для упоминания</span>
             </div>
 
             <!-- Модалка Mention -->
-            <div v-if="mentionOpen && mentionList.length" class="absolute bottom-full left-4 mb-2 bg-white dark:bg-slate-900 border dark:border-gray-600 rounded-xl shadow-2xl w-64 max-h-56 overflow-y-auto z-50 custom-scrollbar">
+            <div v-if="mentionOpen && mentionList.length" class="absolute bottom-full left-4 mb-2 bg-white dark:bg-slate-900 border dark:border-zinc-600 rounded-xl shadow-2xl w-64 max-h-56 overflow-y-auto z-50 custom-scrollbar">
                 <div
                     v-for="m in mentionList"
                     :key="m.id"
                     @click="selectMention(m)"
-                    class="px-3 py-2.5 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700 text-sm flex items-center gap-2.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition"
+                    class="px-3 py-2.5 cursor-pointer hover:bg-cyan-50 dark:hover:bg-zinc-700 text-sm flex items-center gap-2.5 border-b border-zinc-50 dark:border-zinc-700/50 last:border-0 transition"
                 >
-                    <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-700 flex items-center justify-center text-xs font-bold shadow-sm">
+                    <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-100 to-purple-100 text-cyan-700 flex items-center justify-center text-xs font-bold shadow-sm">
                         {{ m.name[0] }}
                     </div>
                     <span class="font-medium text-slate-700 dark:text-slate-200">{{ m.name }}</span>
@@ -625,10 +657,18 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
-        <div v-else class="p-4 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 text-center text-xs text-gray-500 italic">
+        <div v-else class="p-4 bg-zinc-50 dark:bg-zinc-900 border-t dark:border-zinc-700 text-center text-xs text-zinc-500 italic">
             Чат доступен только участникам задачи.
         </div>
     </div>
+
+    <ConfirmDialog
+        :show="commentToDelete !== null"
+        title="Удалить сообщение?"
+        message="Сообщение будет удалено без возможности восстановления."
+        @confirm="confirmRemove"
+        @close="commentToDelete = null"
+    />
 </template>
 
 <style scoped>
@@ -665,7 +705,7 @@ onBeforeUnmount(() => {
         background-color: transparent;
     }
     50% {
-        background-color: rgba(99, 102, 241, 0.1);
+        background-color: rgba(8, 145, 178, 0.1);
     }
 }
 .highlight-pulse {
