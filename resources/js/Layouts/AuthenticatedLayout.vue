@@ -262,6 +262,25 @@ const unreadChat = computed(() => page.props.unreadChatCount);
                 </Link>
 
                 <Link
+                    :href="route('sales-standards')"
+                    class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 whitespace-nowrap"
+                    :class="route().current('sales-standards')
+                    ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'"
+                >
+                    <svg class="flex-shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+
+                    <span
+                        class="ml-3 transition-all duration-300 ease-in-out overflow-hidden"
+                        :class="isSidebarOpen ? 'opacity-100 w-auto translate-x-0' : 'opacity-0 w-0 -translate-x-2'"
+                    >
+                        Стандарты продаж
+                    </span>
+                </Link>
+
+                <Link
                     :href="route('chat.index')"
                     class="group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 relative whitespace-nowrap"
                     :class="route().current('chat.index')

@@ -487,6 +487,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
+    Route::get('/sales-standards', function () {
+        return Inertia::render('SalesStandards/Index');
+    })->name('sales-standards');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+
     Route::get('/supportmessages', function () {
         return Inertia::render('Supporttwo/Chat');
     })->name('support.chat');
