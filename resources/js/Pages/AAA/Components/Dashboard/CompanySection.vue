@@ -136,24 +136,24 @@ const confirmDelete = async () => {
     >
         <!-- Мои компании -->
         <div
-            class="overflow-hidden rounded-2xl border
+            class="overflow-hidden rounded-lg border
                    border-zinc-200 bg-white shadow-sm
-                   dark:border-white/5 dark:bg-zinc-900/60"
+                   dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none"
         >
             <header
-                class="flex items-center justify-between border-b
-                       border-zinc-100 px-4 py-3
-                       dark:border-white/5"
+                class="flex items-center justify-between gap-3 border-b
+                       border-zinc-200 px-4 py-3
+                       dark:border-white/[0.06]"
             >
                 <div class="flex items-center gap-3">
                     <span
-                        class="flex h-9 w-9 items-center justify-center
-                               rounded-xl bg-cyan-100 text-cyan-600
-                               dark:bg-cyan-500/10
-                               dark:text-cyan-300"
+                        class="flex h-8 w-8 items-center justify-center
+                               rounded-md border border-zinc-200 text-zinc-500
+                               dark:border-white/10
+                               dark:text-zinc-400"
                     >
                         <svg
-                            class="h-5 w-5"
+                            class="h-4 w-4"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -161,7 +161,7 @@ const confirmDelete = async () => {
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                stroke-width="2"
+                                stroke-width="1.75"
                                 d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01"
                             />
                         </svg>
@@ -169,14 +169,14 @@ const confirmDelete = async () => {
 
                     <div>
                         <h2
-                            class="text-sm font-bold
-                                   text-zinc-900 dark:text-white"
+                            class="text-sm font-semibold
+                                   text-zinc-900 dark:text-zinc-100"
                         >
                             Мои компании
                         </h2>
 
                         <p
-                            class="text-[11px] text-zinc-400"
+                            class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
                         >
                             {{ myCompanies.length }} организаций
                         </p>
@@ -186,10 +186,11 @@ const confirmDelete = async () => {
                 <button
                     v-if="myCompanies.length > 8"
                     type="button"
-                    class="rounded-lg px-2.5 py-1.5 text-xs
-                           font-bold text-cyan-600 transition
-                           hover:bg-cyan-50
-                           dark:hover:bg-cyan-500/10"
+                    class="rounded-md px-2 py-1 text-xs
+                           font-medium text-blue-700 transition-colors
+                           hover:bg-blue-50
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                           dark:text-blue-400 dark:hover:bg-blue-500/10"
                     @click="showAllMyCompaniesModal = true"
                 >
                     Все компании
@@ -205,49 +206,50 @@ const confirmDelete = async () => {
                     v-for="company in visibleMyCompanies"
                     :key="company.id"
                     class="group flex min-w-0 cursor-pointer
-                           items-center gap-3 rounded-xl border
-                           border-zinc-100 bg-zinc-50/70 p-3
-                           transition hover:border-cyan-300
-                           hover:bg-white hover:shadow-sm
-                           dark:border-white/5
-                           dark:bg-white/[0.03]
-                           dark:hover:border-cyan-500/30
-                           dark:hover:bg-white/5"
+                           items-center gap-3 rounded-md border
+                           border-zinc-200 bg-white p-2.5
+                           transition-colors hover:border-zinc-300
+                           hover:bg-zinc-50
+                           dark:border-white/[0.06]
+                           dark:bg-transparent
+                           dark:hover:border-white/15
+                           dark:hover:bg-white/[0.03]"
                     @click="visitCompany(company)"
                 >
                     <img
                         v-if="company.logo"
                         :src="`/storage/${company.logo}`"
                         :alt="company.name"
-                        class="h-11 w-11 shrink-0 rounded-xl
-                               object-cover"
+                        class="h-10 w-10 shrink-0 rounded-md
+                               object-cover ring-1 ring-zinc-200 dark:ring-white/10"
                     />
 
                     <div
                         v-else
-                        class="flex h-11 w-11 shrink-0
-                               items-center justify-center rounded-xl
-                               bg-cyan-100 text-xs font-black
-                               text-cyan-600
-                               dark:bg-cyan-500/10
-                               dark:text-cyan-300"
+                        class="flex h-10 w-10 shrink-0
+                               items-center justify-center rounded-md
+                               bg-zinc-100 text-xs font-semibold
+                               text-zinc-600
+                               dark:bg-white/[0.06]
+                               dark:text-zinc-300"
                     >
                         {{ getInitials(company.name) }}
                     </div>
 
                     <div class="min-w-0 flex-1">
                         <h3
-                            class="truncate text-sm font-bold
-                                   text-zinc-800
-                                   group-hover:text-cyan-600
-                                   dark:text-white"
+                            class="truncate text-sm font-medium
+                                   text-zinc-900
+                                   group-hover:text-blue-700
+                                   dark:text-zinc-100
+                                   dark:group-hover:text-blue-400"
                         >
                             {{ company.name }}
                         </h3>
 
                         <p
-                            class="mt-0.5 text-[11px]
-                                   text-zinc-400"
+                            class="mt-0.5 text-xs tabular-nums
+                                   text-zinc-500 dark:text-zinc-400"
                         >
                             {{ getProjectsCount(company) }}
                             проектов
@@ -258,11 +260,12 @@ const confirmDelete = async () => {
                         v-if="isAdmin"
                         type="button"
                         class="flex h-7 w-7 shrink-0 items-center
-                               justify-center rounded-lg
-                               text-zinc-500 opacity-0 transition
-                               hover:bg-rose-50 hover:text-rose-500
+                               justify-center rounded-md
+                               text-zinc-400 opacity-0 transition
+                               hover:bg-rose-50 hover:text-rose-600
                                group-hover:opacity-100
-                               dark:hover:bg-rose-950/40"
+                               focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60
+                               dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                         title="Удалить компанию"
                         @click.stop="openDelete(company)"
                     >
@@ -275,7 +278,7 @@ const confirmDelete = async () => {
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                stroke-width="2"
+                                stroke-width="1.75"
                                 d="M6 18 18 6M6 6l12 12"
                             />
                         </svg>
@@ -285,7 +288,7 @@ const confirmDelete = async () => {
 
             <div
                 v-else
-                class="p-8 text-center text-sm text-zinc-400"
+                class="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400"
             >
                 У вас пока нет компаний
             </div>
@@ -293,25 +296,25 @@ const confirmDelete = async () => {
 
         <!-- Другие компании -->
         <div
-            class="overflow-hidden rounded-2xl border
+            class="overflow-hidden rounded-lg border
                    border-zinc-200 bg-white shadow-sm
-                   dark:border-white/5 dark:bg-zinc-900/60"
+                   dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none"
         >
             <header
-                class="flex items-center justify-between border-b
-                       border-zinc-100 px-4 py-3
-                       dark:border-white/5"
+                class="flex items-center justify-between gap-3 border-b
+                       border-zinc-200 px-4 py-3
+                       dark:border-white/[0.06]"
             >
                 <div>
                     <h2
-                        class="text-sm font-bold
-                               text-zinc-900 dark:text-white"
+                        class="text-sm font-semibold
+                               text-zinc-900 dark:text-zinc-100"
                     >
                         Другие компании
                     </h2>
 
                     <p
-                        class="text-[11px] text-zinc-400"
+                        class="text-xs text-zinc-500 dark:text-zinc-400"
                     >
                         Доступные пространства
                     </p>
@@ -320,7 +323,10 @@ const confirmDelete = async () => {
                 <button
                     v-if="otherCompanies.length > 5"
                     type="button"
-                    class="text-xs font-bold text-emerald-600"
+                    class="rounded-md px-2 py-1 text-xs font-medium tabular-nums
+                           text-blue-700 transition-colors hover:bg-blue-50
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                           dark:text-blue-400 dark:hover:bg-blue-500/10"
                     @click="showAllOtherCompaniesModal = true"
                 >
                     Все {{ otherCompanies.length }}
@@ -330,46 +336,49 @@ const confirmDelete = async () => {
             <div
                 v-if="visibleOtherCompanies.length"
                 class="divide-y divide-zinc-100
-                       dark:divide-white/5"
+                       dark:divide-white/[0.06]"
             >
                 <button
                     v-for="company in visibleOtherCompanies"
                     :key="company.id"
                     type="button"
-                    class="flex w-full items-center gap-3 px-4
-                           py-2.5 text-left transition
-                           hover:bg-emerald-50/60
-                           dark:hover:bg-emerald-500/10"
+                    class="group flex w-full items-center gap-3 px-4
+                           py-2.5 text-left transition-colors
+                           hover:bg-zinc-50
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60
+                           dark:hover:bg-white/[0.03]"
                     @click="visitCompany(company)"
                 >
                     <img
                         v-if="company.logo"
                         :src="`/storage/${company.logo}`"
-                        class="h-9 w-9 rounded-lg object-cover"
+                        class="h-8 w-8 rounded-md object-cover ring-1 ring-zinc-200 dark:ring-white/10"
                     />
 
                     <div
                         v-else
-                        class="flex h-9 w-9 items-center
-                               justify-center rounded-lg
-                               bg-emerald-100 text-[10px]
-                               font-black text-emerald-600
-                               dark:bg-emerald-500/10
-                               dark:text-emerald-300"
+                        class="flex h-8 w-8 items-center
+                               justify-center rounded-md
+                               bg-zinc-100 text-[11px]
+                               font-semibold text-zinc-600
+                               dark:bg-white/[0.06]
+                               dark:text-zinc-300"
                     >
                         {{ getInitials(company.name) }}
                     </div>
 
                     <span
                         class="min-w-0 flex-1 truncate text-sm
-                               font-semibold text-zinc-700
-                               dark:text-zinc-300"
+                               font-medium text-zinc-800
+                               group-hover:text-blue-700
+                               dark:text-zinc-200
+                               dark:group-hover:text-blue-400"
                     >
                         {{ company.name }}
                     </span>
 
                     <span
-                        class="text-[10px] text-zinc-400"
+                        class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
                     >
                         {{ getProjectsCount(company) }}
                     </span>
@@ -378,7 +387,7 @@ const confirmDelete = async () => {
 
             <div
                 v-else
-                class="p-8 text-center text-sm text-zinc-400"
+                class="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400"
             >
                 Других компаний нет
             </div>
@@ -393,41 +402,46 @@ const confirmDelete = async () => {
         <div
             v-if="showAllMyCompaniesModal"
             class="fixed inset-0 z-[90] flex items-center
-                   justify-center bg-black/70 p-4
-                   backdrop-blur-sm"
+                   justify-center bg-zinc-950/50 p-4
+                   backdrop-blur-[2px]"
             @click.self="showAllMyCompaniesModal = false"
         >
             <div
                 class="flex max-h-[88vh] w-full max-w-5xl
-                       flex-col overflow-hidden rounded-2xl
-                       border border-zinc-200 bg-white shadow-2xl
-                       dark:border-white/5 dark:bg-zinc-900/60"
+                       flex-col overflow-hidden rounded-xl
+                       border border-zinc-200 bg-white shadow-xl
+                       dark:border-white/10 dark:bg-zinc-900"
             >
                 <header
                     class="flex items-center justify-between
-                           border-b border-zinc-100 px-5 py-4
-                           dark:border-white/5"
+                           border-b border-zinc-200 px-5 py-4
+                           dark:border-white/[0.06]"
                 >
                     <div>
                         <h3
-                            class="text-lg font-bold
-                                   text-zinc-900 dark:text-white"
+                            class="text-base font-semibold
+                                   text-zinc-900 dark:text-zinc-50"
                         >
                             Все мои компании
                         </h3>
 
-                        <p class="text-xs text-zinc-400">
+                        <p class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
                             Всего {{ myCompanies.length }}
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 hover:bg-zinc-100
-                               dark:hover:bg-white/5"
+                        aria-label="Закрыть"
+                        class="flex h-8 w-8 items-center justify-center rounded-md
+                               text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                               dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100"
                         @click="showAllMyCompaniesModal = false"
                     >
-                        ✕
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </header>
 
@@ -440,39 +454,42 @@ const confirmDelete = async () => {
                         v-for="company in myCompanies"
                         :key="company.id"
                         type="button"
-                        class="flex items-center gap-3 rounded-xl
+                        class="group flex items-center gap-3 rounded-md
                                border border-zinc-200 p-3 text-left
-                               transition hover:border-cyan-400
-                               hover:bg-cyan-50/60
-                               dark:border-white/10
-                               dark:hover:bg-cyan-500/10"
+                               transition-colors hover:border-zinc-300
+                               hover:bg-zinc-50
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                               dark:border-white/[0.08]
+                               dark:hover:border-white/15
+                               dark:hover:bg-white/[0.03]"
                         @click="visitCompany(company)"
                     >
                         <img
                             v-if="company.logo"
                             :src="`/storage/${company.logo}`"
-                            class="h-12 w-12 rounded-xl object-cover"
+                            class="h-10 w-10 rounded-md object-cover ring-1 ring-zinc-200 dark:ring-white/10"
                         />
 
                         <div
                             v-else
-                            class="flex h-12 w-12 items-center
-                                   justify-center rounded-xl
-                                   bg-cyan-100 text-xs font-black
-                                   text-cyan-600"
+                            class="flex h-10 w-10 items-center
+                                   justify-center rounded-md
+                                   bg-zinc-100 text-xs font-semibold
+                                   text-zinc-600 dark:bg-white/[0.06] dark:text-zinc-300"
                         >
                             {{ getInitials(company.name) }}
                         </div>
 
                         <div class="min-w-0">
                             <p
-                                class="truncate text-sm font-bold
-                                       text-zinc-800 dark:text-white"
+                                class="truncate text-sm font-medium
+                                       text-zinc-900 group-hover:text-blue-700
+                                       dark:text-zinc-100 dark:group-hover:text-blue-400"
                             >
                                 {{ company.name }}
                             </p>
 
-                            <p class="text-xs text-zinc-400">
+                            <p class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
                                 {{ getProjectsCount(company) }}
                                 проектов
                             </p>
@@ -488,40 +505,46 @@ const confirmDelete = async () => {
         <div
             v-if="showAllOtherCompaniesModal"
             class="fixed inset-0 z-[90] flex items-center
-                   justify-center bg-black/70 p-4
-                   backdrop-blur-sm"
+                   justify-center bg-zinc-950/50 p-4
+                   backdrop-blur-[2px]"
             @click.self="showAllOtherCompaniesModal = false"
         >
             <div
                 class="flex max-h-[88vh] w-full max-w-3xl
-                       flex-col overflow-hidden rounded-2xl
-                       bg-white shadow-2xl dark:bg-zinc-900/60"
+                       flex-col overflow-hidden rounded-xl
+                       border border-zinc-200 bg-white shadow-xl
+                       dark:border-white/10 dark:bg-zinc-900"
             >
                 <header
                     class="flex items-center justify-between
-                           border-b border-zinc-100 px-5 py-4
-                           dark:border-white/5"
+                           border-b border-zinc-200 px-5 py-4
+                           dark:border-white/[0.06]"
                 >
                     <div>
                         <h3
-                            class="text-lg font-bold
-                                   text-zinc-900 dark:text-white"
+                            class="text-base font-semibold
+                                   text-zinc-900 dark:text-zinc-50"
                         >
                             Другие компании
                         </h3>
 
-                        <p class="text-xs text-zinc-400">
+                        <p class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
                             Всего {{ otherCompanies.length }}
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        class="rounded-lg p-2 hover:bg-zinc-100
-                               dark:hover:bg-white/5"
+                        aria-label="Закрыть"
+                        class="flex h-8 w-8 items-center justify-center rounded-md
+                               text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                               dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100"
                         @click="showAllOtherCompaniesModal = false"
                     >
-                        ✕
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </header>
 
@@ -533,31 +556,34 @@ const confirmDelete = async () => {
                         v-for="company in otherCompanies"
                         :key="company.id"
                         type="button"
-                        class="flex items-center gap-3 rounded-xl
+                        class="group flex items-center gap-3 rounded-md
                                border border-zinc-200 p-3 text-left
-                               transition hover:border-emerald-400
-                               dark:border-white/10"
+                               transition-colors hover:border-zinc-300 hover:bg-zinc-50
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                               dark:border-white/[0.08] dark:hover:border-white/15 dark:hover:bg-white/[0.03]"
                         @click="visitCompany(company)"
                     >
                         <img
                             v-if="company.logo"
                             :src="`/storage/${company.logo}`"
-                            class="h-10 w-10 rounded-lg object-cover"
+                            class="h-9 w-9 rounded-md object-cover ring-1 ring-zinc-200 dark:ring-white/10"
                         />
 
                         <div
                             v-else
-                            class="flex h-10 w-10 items-center
-                                   justify-center rounded-lg
-                                   bg-emerald-100 text-[10px]
-                                   font-black text-emerald-600"
+                            class="flex h-9 w-9 items-center
+                                   justify-center rounded-md
+                                   bg-zinc-100 text-[11px]
+                                   font-semibold text-zinc-600
+                                   dark:bg-white/[0.06] dark:text-zinc-300"
                         >
                             {{ getInitials(company.name) }}
                         </div>
 
                         <p
-                            class="min-w-0 truncate text-sm font-bold
-                                   text-zinc-800 dark:text-white"
+                            class="min-w-0 truncate text-sm font-medium
+                                   text-zinc-900 group-hover:text-blue-700
+                                   dark:text-zinc-100 dark:group-hover:text-blue-400"
                         >
                             {{ company.name }}
                         </p>
@@ -572,25 +598,25 @@ const confirmDelete = async () => {
         <div
             v-if="showDeleteModal"
             class="fixed inset-0 z-[100] flex items-center
-                   justify-center bg-black/70 p-4
-                   backdrop-blur-sm"
+                   justify-center bg-zinc-950/50 p-4
+                   backdrop-blur-[2px]"
             @click.self="closeDelete"
         >
             <div
-                class="w-full max-w-sm rounded-2xl
-                       bg-white p-5 shadow-2xl
-                       dark:bg-zinc-900/60"
+                class="w-full max-w-sm rounded-xl border
+                       border-zinc-200 bg-white p-5 shadow-xl
+                       dark:border-white/10 dark:bg-zinc-900"
             >
                 <h4
-                    class="text-lg font-bold
-                           text-zinc-900 dark:text-white"
+                    class="text-base font-semibold
+                           text-zinc-900 dark:text-zinc-50"
                 >
                     Удалить компанию?
                 </h4>
 
                 <p
                     class="mt-1 text-sm leading-6
-                           text-zinc-500"
+                           text-zinc-600 dark:text-zinc-400"
                 >
                     Для подтверждения введите пароль
                     от вашего аккаунта.
@@ -599,32 +625,35 @@ const confirmDelete = async () => {
                 <input
                     v-model="deletePassword"
                     type="password"
-                    class="mt-4 w-full rounded-xl border
-                           border-zinc-200 bg-white px-4 py-3
-                           text-sm outline-none focus:border-rose-400
-                           focus:ring-4 focus:ring-rose-100
+                    class="mt-4 w-full rounded-md border
+                           border-zinc-300 bg-white px-3 py-2.5
+                           text-sm text-zinc-900 placeholder:text-zinc-400
+                           outline-none focus:border-rose-500
+                           focus:ring-2 focus:ring-rose-500/20
                            dark:border-white/10
-                           dark:bg-white/5 dark:text-white"
+                           dark:bg-zinc-950 dark:text-zinc-100"
                     placeholder="Пароль"
                     @keyup.enter="confirmDelete"
                 />
 
                 <p
                     v-if="deleteError"
-                    class="mt-2 rounded-lg bg-rose-50 px-3 py-2
-                           text-xs font-medium text-rose-600
-                           dark:bg-rose-950/40 dark:text-rose-400"
+                    class="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2
+                           text-xs font-medium text-rose-700
+                           dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
                 >
                     {{ deleteError }}
                 </p>
 
-                <div class="mt-4 flex gap-2">
+                <div class="mt-5 flex gap-2">
                     <button
                         type="button"
-                        class="flex-1 rounded-xl px-4 py-2.5
-                               text-sm font-bold text-zinc-500
-                               hover:bg-zinc-100
-                               dark:hover:bg-white/5"
+                        class="flex-1 rounded-md border border-zinc-300 bg-white
+                               px-4 py-2 text-sm font-medium text-zinc-700
+                               transition-colors hover:bg-zinc-50
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                               dark:border-white/10 dark:bg-transparent dark:text-zinc-300
+                               dark:hover:bg-white/[0.04]"
                         @click="closeDelete"
                     >
                         Отмена
@@ -633,9 +662,12 @@ const confirmDelete = async () => {
                     <button
                         type="button"
                         :disabled="deleting || !deletePassword"
-                        class="flex-1 rounded-xl bg-rose-600
-                               px-4 py-2.5 text-sm font-bold
-                               text-white disabled:opacity-50"
+                        class="flex-1 rounded-md bg-rose-600
+                               px-4 py-2 text-sm font-medium
+                               text-white transition-colors hover:bg-rose-700
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60 focus-visible:ring-offset-2
+                               disabled:cursor-not-allowed disabled:opacity-50
+                               dark:focus-visible:ring-offset-zinc-900"
                         @click="confirmDelete"
                     >
                         {{ deleting ? 'Удаление...' : 'Удалить' }}
@@ -649,7 +681,7 @@ const confirmDelete = async () => {
 <style scoped>
 .company-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: rgb(203 213 225) transparent;
+    scrollbar-color: rgb(212 212 216) transparent;
 }
 
 .company-scrollbar::-webkit-scrollbar {
@@ -657,7 +689,7 @@ const confirmDelete = async () => {
 }
 
 .company-scrollbar::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgb(203 213 225);
+    border-radius: 3px;
+    background: rgb(212 212 216);
 }
 </style>

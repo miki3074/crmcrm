@@ -229,6 +229,12 @@ class MeetingController extends Controller
             }
         }
 
+        \App\Services\SiteNotificationService::send(
+            $recipientIds, 'meeting', 'meeting_created', $meeting->title,
+            'Вас пригласили на совещание ' . Carbon::parse($meeting->start_time)->format('d.m.Y в H:i'),
+            "/meetings/{$meeting->id}", Auth::id()
+        );
+
         // ========= КОНЕЦ УВЕДОМЛЕНИЙ =========
 
         return redirect()->route('meetings.index')->with('success', 'Совещание создано и уведомления отправлены');
@@ -430,6 +436,15 @@ class MeetingController extends Controller
             'agenda_status' => $validated['status'],
             'agenda_comment' => $validated['comment'] ?? null,
         ]);
+
+        // Замечание к повестке — только ответственному за совещание
+        if ($validated['status'] === 'rejected') {
+            \App\Services\SiteNotificationService::send(
+                [$meeting->responsible_id], 'meeting', 'agenda_remark', $meeting->title,
+                "{$user->name} оставил(а) замечание к повестке: " . \Illuminate\Support\Str::limit($validated['comment'] ?? '', 200),
+                "/meetings/{$meeting->id}", $user->id
+            );
+        }
 
         return back()->with('success', 'Ваш отзыв по повестке сохранен.');
     }

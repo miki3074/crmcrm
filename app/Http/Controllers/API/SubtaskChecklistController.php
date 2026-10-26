@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Subtask;
 use App\Models\SubtaskChecklist;
+use App\Services\SiteNotificationService;
 
 class SubtaskChecklistController extends Controller
 {
@@ -56,6 +57,17 @@ class SubtaskChecklistController extends Controller
             'responsible_id' => $data['responsible_id'] ?? null,
             'creator_id' => $user->id, // Записываем создателя
         ]);
+
+        // Назначен ответственный — только ему, иначе пункт общий — всем
+        $responsibleId = $data['responsible_id'] ?? null;
+        SiteNotificationService::send(
+            $responsibleId ? [$responsibleId] : SiteNotificationService::subtaskParticipantIds($subtask),
+            'subtask', 'checklist_item_added', $subtask->title,
+            $responsibleId
+                ? "Вам назначен пункт чек-листа «{$item->title}»"
+                : "Добавлен пункт чек-листа «{$item->title}»",
+            SiteNotificationService::subtaskLink($subtask), $user->id
+        );
 
         return response()->json($item->load('responsible:id,name', 'creator:id,name'));
     }

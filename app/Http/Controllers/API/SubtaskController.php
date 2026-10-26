@@ -19,6 +19,8 @@ use App\Models\User;
 
 use App\Services\TelegramService;
 use App\Services\TaskActivityService;
+use App\Services\SiteNotificationService;
+use Illuminate\Support\Str;
 
 class SubtaskController extends Controller
 {
@@ -107,6 +109,17 @@ class SubtaskController extends Controller
 
         TaskActivityService::notifyParticipants($task, 'subtask_created', "Создана подзадача «{$subtask->title}»", auth()->id());
 
+        $subtaskLink = SiteNotificationService::subtaskLink($subtask);
+        SiteNotificationService::send(
+            $validated['executor_id'], 'task', 'subtask_created', $task->title,
+            "Создана подзадача «{$subtask->title}», вы — исполнитель", $subtaskLink, auth()->id()
+        );
+        SiteNotificationService::send(
+            $validated['responsible_id'], 'task', 'subtask_created', $task->title,
+            "Создана подзадача «{$subtask->title}», вы — ответственный", $subtaskLink, auth()->id(),
+            $validated['executor_id']
+        );
+
         return response()->json(
             $subtask->load(['executors:id,name', 'responsibles:id,name', 'creator:id,name']),
             201
@@ -185,6 +198,12 @@ class SubtaskController extends Controller
             'completed_at' => now(),
         ])->save();
 
+        SiteNotificationService::send(
+            SiteNotificationService::subtaskParticipantIds($subtask),
+            'subtask', 'subtask_completed', $subtask->title, 'Подзадача завершена',
+            SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
+
         return response()->json([
             'message'      => 'Подзадача завершена.',
             'completed'    => true,
@@ -197,8 +216,16 @@ public function destroy(Subtask $subtask)
 {
     $this->authorize('delete', $subtask);
 
+    // Получателей собираем до удаления
+    $recipientIds = SiteNotificationService::subtaskParticipantIds($subtask);
+    $subtaskTitle = $subtask->title;
+
     // удаляем подзадачу
     $subtask->delete();
+
+    SiteNotificationService::send(
+        $recipientIds, 'subtask', 'subtask_deleted', $subtaskTitle, 'Подзадача удалена', null, auth()->id()
+    );
 
     return response()->json(['message' => 'Подзадача успешно удалена']);
 }
@@ -222,12 +249,21 @@ public function changeResponsible(Request $request, Subtask $subtask)
     }
 
     // ⚙️ Если есть кого заменить — удаляем только его
-    if (!empty($data['replace_user_id'])) {
-        $subtask->responsibles()->detach($data['replace_user_id']);
+    if (!empty($data['replace_user_id']) && $subtask->responsibles()->detach($data['replace_user_id'])) {
+        SiteNotificationService::memberRemoved(
+            'subtask', (int) $data['replace_user_id'], 'ответственный', $subtask->title, null, auth()->id()
+        );
     }
 
     // ⚙️ Добавляем нового без удаления остальных
-    $subtask->responsibles()->syncWithoutDetaching([$data['user_id']]);
+    $changes = $subtask->responsibles()->syncWithoutDetaching([$data['user_id']]);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'subtask', SiteNotificationService::subtaskParticipantIds($subtask), $changes['attached'],
+            'ответственный', $subtask->title, SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
+    }
 
     return response()->json([
         'message' => 'Ответственный успешно изменён.',
@@ -254,12 +290,21 @@ public function changeExecutor(Request $request, Subtask $subtask)
     }
 
     // ⚙️ Если передан заменяемый — удаляем только его
-    if (!empty($data['replace_user_id'])) {
-        $subtask->executors()->detach($data['replace_user_id']);
+    if (!empty($data['replace_user_id']) && $subtask->executors()->detach($data['replace_user_id'])) {
+        SiteNotificationService::memberRemoved(
+            'subtask', (int) $data['replace_user_id'], 'исполнитель', $subtask->title, null, auth()->id()
+        );
     }
 
     // ⚙️ Добавляем нового
-    $subtask->executors()->syncWithoutDetaching([$data['user_id']]);
+    $changes = $subtask->executors()->syncWithoutDetaching([$data['user_id']]);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'subtask', SiteNotificationService::subtaskParticipantIds($subtask), $changes['attached'],
+            'исполнитель', $subtask->title, SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
+    }
 
     return response()->json([
         'message' => 'Исполнитель успешно изменён.',
@@ -278,7 +323,14 @@ public function addExecutors(Request $request, Subtask $subtask)
         'user_ids.*' => 'exists:users,id',
     ]);
 
-    $subtask->executors()->syncWithoutDetaching($data['user_ids']);
+    $changes = $subtask->executors()->syncWithoutDetaching($data['user_ids']);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'subtask', SiteNotificationService::subtaskParticipantIds($subtask), $changes['attached'],
+            'исполнитель', $subtask->title, SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
+    }
 
     return response()->json([
         'message' => 'Исполнители добавлены',
@@ -296,7 +348,14 @@ public function addResponsibles(Request $request, Subtask $subtask)
         'user_ids.*' => 'exists:users,id',
     ]);
 
-    $subtask->responsibles()->syncWithoutDetaching($data['user_ids']);
+    $changes = $subtask->responsibles()->syncWithoutDetaching($data['user_ids']);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'subtask', SiteNotificationService::subtaskParticipantIds($subtask), $changes['attached'],
+            'ответственный', $subtask->title, SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
+    }
 
     return response()->json([
         'message' => 'Ответственные добавлены',
@@ -322,6 +381,8 @@ public function removeExecutor(Request $request, Subtask $subtask)
 
     $subtask->executors()->detach($data['user_id']);
 
+    SiteNotificationService::memberRemoved('subtask', (int) $data['user_id'], 'исполнитель', $subtask->title, null, auth()->id());
+
     return response()->json([
         'message' => 'Исполнитель удалён',
         'executors' => $subtask->executors()->get(['users.id', 'users.name']),
@@ -345,6 +406,8 @@ public function removeResponsible(Request $request, Subtask $subtask)
     }
 
     $subtask->responsibles()->detach($data['user_id']);
+
+    SiteNotificationService::memberRemoved('subtask', (int) $data['user_id'], 'ответственный', $subtask->title, null, auth()->id());
 
     return response()->json([
         'message' => 'Ответственный удалён',
@@ -410,6 +473,12 @@ public function update(Request $request, Subtask $subtask)
             'file_size' => $file->getSize(), // опционально: сохраняем размер
             'mime_type' => $file->getMimeType(), // опционально: сохраняем MIME тип
         ]);
+
+        SiteNotificationService::send(
+            SiteNotificationService::subtaskParticipantIds($subtask),
+            'subtask', 'file_added', $subtask->title, "Добавлен файл «{$originalName}»",
+            SiteNotificationService::subtaskLink($subtask), auth()->id()
+        );
 
         return response()->json($subtaskFile, 201);
     }
@@ -560,6 +629,17 @@ public function storeChild(Request $request, Subtask $subtask)
     $child->executors()->sync($data['executor_ids']);
     $child->responsibles()->sync($data['responsible_ids']);
 
+    $childLink = SiteNotificationService::subtaskLink($child);
+    SiteNotificationService::send(
+        $data['executor_ids'], 'subtask', 'subtask_child_created', $subtask->title,
+        "Создана вложенная подзадача «{$child->title}», вы — исполнитель", $childLink, auth()->id()
+    );
+    SiteNotificationService::send(
+        $data['responsible_ids'], 'subtask', 'subtask_child_created', $subtask->title,
+        "Создана вложенная подзадача «{$child->title}», вы — ответственный", $childLink, auth()->id(),
+        $data['executor_ids']
+    );
+
     return response()->json($child->load(['executors:id,name', 'responsibles:id,name']), 201);
 }
 
@@ -609,6 +689,20 @@ private function canComment($user, $subtask)
 
         // Загружаем связи для ответа фронтенду и для уведомлений
         $comment->load(['user:id,name', 'parent.user']);
+
+        // Уведомления на сайте: отмеченным — «вас отметили», остальным — «новый комментарий»
+        $mentionedIds = array_map('intval', $data['mentions'] ?? []);
+        $subtaskLink = SiteNotificationService::subtaskLink($subtask);
+        $preview = $user->name . ': ' . Str::limit($data['comment'], 150);
+
+        SiteNotificationService::send(
+            $mentionedIds, 'subtask', 'mentioned', $subtask->title,
+            "Вас отметили в комментарии. {$preview}", $subtaskLink, $user->id
+        );
+        SiteNotificationService::send(
+            SiteNotificationService::subtaskParticipantIds($subtask), 'subtask', 'comment_added', $subtask->title,
+            "Новый комментарий. {$preview}", $subtaskLink, $user->id, $mentionedIds
+        );
 
         // Списки ID для исключения повторных уведомлений
         $notifiedUserIds = [];

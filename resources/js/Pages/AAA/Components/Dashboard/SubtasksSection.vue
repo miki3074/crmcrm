@@ -96,10 +96,10 @@ const getProgress = subtask => {
     <div>
         <div
             v-if="!normalizedSubtasks.length"
-            class="rounded-xl border-2 border-dashed
+            class="rounded-md border border-dashed
                    border-zinc-200 py-14 text-center
-                   text-sm text-zinc-400
-                   dark:border-white/5"
+                   text-sm text-zinc-500
+                   dark:border-white/10 dark:text-zinc-400"
         >
             Подзадач пока нет
         </div>
@@ -108,44 +108,41 @@ const getProgress = subtask => {
             <section
                 v-for="group in groupedSubtasks"
                 :key="`${group.projectName}-${group.taskTitle}`"
-                class="overflow-hidden rounded-xl border
+                class="overflow-hidden rounded-md border
                        border-zinc-200
-                       dark:border-white/5"
+                       dark:border-white/[0.08]"
             >
                 <header
                     class="flex flex-col gap-1 border-b
-                           border-zinc-100 bg-zinc-50/70
-                           px-3 py-2.5 dark:border-white/5
-                           dark:bg-white/[0.03] sm:flex-row
-                           sm:items-center"
+                           border-zinc-200 bg-zinc-50
+                           px-3 py-2 dark:border-white/[0.06]
+                           dark:bg-white/[0.02] sm:flex-row
+                           sm:items-center sm:gap-2"
                 >
                     <span
-                        class="max-w-full truncate rounded-md
-                               bg-cyan-100 px-2 py-1
-                               text-[10px] font-bold
-                               text-cyan-600
-                               dark:bg-cyan-500/10
-                               dark:text-cyan-300"
+                        class="max-w-full truncate text-xs
+                               font-medium text-zinc-500
+                               dark:text-zinc-400"
                     >
                         {{ group.projectName }}
                     </span>
 
                     <span
-                        class="hidden text-zinc-500 sm:block"
+                        class="hidden text-zinc-300 dark:text-zinc-600 sm:block"
                     >
                         /
                     </span>
 
                     <h4
                         class="min-w-0 flex-1 truncate text-xs
-                               font-bold text-zinc-700
-                               dark:text-zinc-300"
+                               font-semibold text-zinc-800
+                               dark:text-zinc-200"
                     >
                         {{ group.taskTitle }}
                     </h4>
 
                     <span
-                        class="text-[10px] text-zinc-400"
+                        class="text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400"
                     >
                         {{ group.items.length }}
                     </span>
@@ -153,7 +150,7 @@ const getProgress = subtask => {
 
                 <div
                     class="divide-y divide-zinc-100
-                           dark:divide-white/5"
+                           dark:divide-white/[0.06]"
                 >
                     <button
                         v-for="subtask in group.items"
@@ -161,8 +158,9 @@ const getProgress = subtask => {
                         type="button"
                         class="group flex w-full items-center
                                gap-3 px-3 py-2.5 text-left
-                               transition hover:bg-cyan-50/60
-                               dark:hover:bg-cyan-500/10"
+                               transition-colors hover:bg-zinc-50
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60
+                               dark:hover:bg-white/[0.03]"
                         @click="
                             router.visit(
                                 `/subtasks/${subtask.id}`,
@@ -170,45 +168,46 @@ const getProgress = subtask => {
                         "
                     >
                         <span
-                            class="h-2 w-2 shrink-0 rounded-full"
+                            class="h-1.5 w-1.5 shrink-0 rounded-full"
                             :class="
                                 getProgress(subtask) >= 100
                                     ? 'bg-emerald-500'
-                                    : 'bg-cyan-400'
+                                    : 'bg-zinc-400 dark:bg-zinc-500'
                             "
                         />
 
                         <span
                             class="min-w-0 flex-1 truncate
-                                   text-sm font-medium
-                                   text-zinc-700
-                                   group-hover:text-cyan-600
-                                   dark:text-zinc-500"
+                                   text-sm
+                                   text-zinc-800
+                                   group-hover:text-blue-700
+                                   dark:text-zinc-200
+                                   dark:group-hover:text-blue-400"
                         >
                             {{ subtask.title }}
                         </span>
 
                         <span
-                            class="hidden shrink-0 text-[10px]
-                                   text-zinc-400 sm:block"
+                            class="hidden shrink-0 text-xs
+                                   text-zinc-500 dark:text-zinc-400 sm:block"
                         >
                             {{ group.companyName }}
                         </span>
 
                         <span
-                            class="shrink-0 rounded-md
-                                   bg-zinc-100 px-2 py-1
-                                   text-[10px] font-bold
-                                   text-zinc-500
-                                   dark:bg-white/5"
+                            class="shrink-0 rounded border
+                                   border-zinc-200 px-1.5 py-0.5
+                                   text-[11px] font-medium tabular-nums
+                                   text-zinc-600
+                                   dark:border-white/10 dark:text-zinc-400"
                         >
                             {{ formatDate(subtask.due_date) }}
                         </span>
 
                         <span
-                            class="w-8 shrink-0 text-right
-                                   text-[10px] font-black
-                                   text-zinc-500"
+                            class="w-9 shrink-0 text-right
+                                   text-[11px] font-medium tabular-nums
+                                   text-zinc-600 dark:text-zinc-400"
                         >
                             {{ getProgress(subtask) }}%
                         </span>

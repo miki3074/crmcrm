@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Models\KlientDealFile;
+use App\Services\SiteNotificationService;
 class KlientDealController extends Controller
 {
 
@@ -143,6 +144,12 @@ class KlientDealController extends Controller
                 }
             }
 
+            SiteNotificationService::send(
+                $validated['responsible_ids'], 'klient', 'klient_deal_assigned', $deal->name,
+                "Вы ответственный по новой сделке с клиентом «{$klient->name}»",
+                "/klient-deals/{$deal->id}", Auth::id()
+            );
+
             // ПРАВКА: Перенаправляем в карточку клиента (в раздел сделок)
             return redirect()->route('klients.show', $klient->id)->with('success', 'Сделка успешно создана');
         });
@@ -176,10 +183,13 @@ class KlientDealController extends Controller
 
         // Дополнительная проверка: если новый статус - завершающий, то блокируем дальнейшие изменения
         $newStatus = $request->status;
+        $oldStatus = $deal->status;
 
         $deal->update([
             'status' => $newStatus
         ]);
+
+        $this->notifyStatusChanged($deal, $oldStatus);
 
         return back()->with('success', 'Статус сделки обновлен');
     }
@@ -237,6 +247,7 @@ class KlientDealController extends Controller
         return DB::transaction(function () use ($validated, $deal, $request) {
             // 1. Обновляем основные поля
             $dealData = collect($validated)->except(['responsible_ids', 'task_ids', 'items', 'new_files'])->toArray();
+            $oldStatus = $deal->status;
             $deal->update($dealData);
 
             // 2. Обновляем товары (удаляем старые, записываем новые)
@@ -249,8 +260,21 @@ class KlientDealController extends Controller
             $deal->update(['total_amount' => $totalAmount]);
 
             // 3. Обновляем команду и задачи (добавление/удаление юзеров тут)
-            $deal->responsibles()->sync($validated['responsible_ids']);
+            $teamChanges = $deal->responsibles()->sync($validated['responsible_ids']);
             $deal->tasks()->sync($validated['task_ids'] ?? []);
+
+            $dealLink = "/klient-deals/{$deal->id}";
+
+            SiteNotificationService::send(
+                $teamChanges['attached'], 'klient', 'klient_deal_assigned', $deal->name,
+                'Вас назначили ответственным по сделке', $dealLink, Auth::id()
+            );
+            SiteNotificationService::send(
+                $teamChanges['detached'], 'klient', 'klient_deal_unassigned', $deal->name,
+                'Вас сняли с ответственных по сделке', null, Auth::id()
+            );
+
+            $this->notifyStatusChanged($deal, $oldStatus);
 
             // 4. Загрузка новых файлов, если они есть
             if ($request->hasFile('new_files')) {
@@ -263,6 +287,8 @@ class KlientDealController extends Controller
                         'file_size' => $file->getSize(),
                     ]);
                 }
+
+                $this->notifyFilesAdded($deal, count($request->file('new_files')));
             }
 
             return redirect()->route('klient-deals.show', $deal->id)->with('success', 'Сделка обновлена');
@@ -338,11 +364,52 @@ class KlientDealController extends Controller
             $uploadedFiles[] = $dealFile;
         }
 
+        $this->notifyFilesAdded($deal, count($uploadedFiles));
+
         return response()->json([
             'success' => true,
             'message' => 'Файлы успешно загружены',
             'files' => $uploadedFiles
         ]);
+    }
+
+    /**
+     * Смена статуса сделки: ответственным и создателю. Закрытие
+     * («Успешно» / «Отказ») — дополнительно всей команде клиента.
+     */
+    private function notifyStatusChanged(KlientDeal $deal, ?string $oldStatus): void
+    {
+        if ($oldStatus === $deal->status) {
+            return;
+        }
+
+        $recipientIds = SiteNotificationService::klientDealParticipantIds($deal);
+        $isClosed = in_array($deal->status, ['Успешно', 'Отказ'], true);
+
+        if ($isClosed && $deal->klient) {
+            $recipientIds = array_merge($recipientIds, SiteNotificationService::klientTeamIds($deal->klient));
+        }
+
+        SiteNotificationService::send(
+            $recipientIds, 'klient', $isClosed ? 'klient_deal_closed' : 'klient_deal_status_changed', $deal->name,
+            $isClosed
+                ? "Сделка закрыта: {$deal->status}"
+                : "Статус сделки изменён: {$oldStatus} → {$deal->status}",
+            "/klient-deals/{$deal->id}", Auth::id()
+        );
+    }
+
+    private function notifyFilesAdded(KlientDeal $deal, int $count): void
+    {
+        if ($count < 1) {
+            return;
+        }
+
+        SiteNotificationService::send(
+            SiteNotificationService::klientDealParticipantIds($deal), 'klient', 'klient_deal_file_added', $deal->name,
+            $count === 1 ? 'К сделке загружен файл' : "К сделке загружено файлов: {$count}",
+            "/klient-deals/{$deal->id}", Auth::id()
+        );
     }
 
 

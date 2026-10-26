@@ -9,6 +9,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\City;
+use App\Services\SiteNotificationService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -258,6 +259,11 @@ class KlientController extends Controller
             // 3. Права доступа
             if (!empty($validated['allowed_users'])) {
                 $klient->allowedUsers()->sync($validated['allowed_users']);
+
+                SiteNotificationService::send(
+                    $validated['allowed_users'], 'klient', 'klient_access_granted', $klient->name,
+                    'Вам открыли доступ к клиенту', "/klients/{$klient->id}", Auth::id()
+                );
             }
 
             return redirect()->route('klients.index')->with('success', 'Клиент создан');
@@ -648,6 +654,8 @@ class KlientController extends Controller
             $validated['allowed_users']
         );
 
+        $oldStatus = $klient->status;
+
         $klient->update($validated);
 
         $klient->contactPersons()->delete();
@@ -665,7 +673,26 @@ class KlientController extends Controller
             }
         }
 
-        $klient->allowedUsers()->sync($allowedUsers);
+        $accessChanges = $klient->allowedUsers()->sync($allowedUsers);
+
+        $klientLink = "/klients/{$klient->id}";
+
+        SiteNotificationService::send(
+            $accessChanges['attached'], 'klient', 'klient_access_granted', $klient->name,
+            'Вам открыли доступ к клиенту', $klientLink, Auth::id()
+        );
+        SiteNotificationService::send(
+            $accessChanges['detached'], 'klient', 'klient_access_revoked', $klient->name,
+            'Вам закрыли доступ к клиенту', null, Auth::id()
+        );
+
+        if ($oldStatus !== $klient->status) {
+            SiteNotificationService::send(
+                SiteNotificationService::klientTeamIds($klient), 'klient', 'klient_status_changed', $klient->name,
+                "Статус клиента изменён: {$oldStatus} → {$klient->status}", $klientLink, Auth::id(),
+                $accessChanges['attached']
+            );
+        }
 
         return redirect()
             ->route('klients.show', $klient->id)

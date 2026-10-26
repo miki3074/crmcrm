@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\TaskFile;
 use App\Models\FileComment;
 use App\Services\TaskActivityService;
+use App\Services\SiteNotificationService;
 
 
 use Illuminate\Support\Facades\Storage;
@@ -297,6 +298,12 @@ public function updateProgress(Request $request, Task $task)
                 : 'Добавлено файлов: ' . count($uploadedNames);
 
             TaskActivityService::notifyParticipants($task, 'file_added', $message, auth()->id());
+
+            SiteNotificationService::send(
+                SiteNotificationService::taskParticipantIds($task),
+                'task', 'file_added', $task->title, $message,
+                SiteNotificationService::taskLink($task), auth()->id()
+            );
         }
 
         return response()->json([
@@ -383,6 +390,12 @@ public function complete(Task $task)
             'progress'     => 100, // на всякий случай зафиксируем
         ])->save();
 
+        SiteNotificationService::send(
+            SiteNotificationService::taskParticipantIds($task),
+            'task', 'task_completed', $task->title, 'Задача завершена',
+            SiteNotificationService::taskLink($task), auth()->id()
+        );
+
         return response()->json([
             'message' => 'Задача завершена.',
             'task' => $task->fresh()->load([
@@ -463,6 +476,12 @@ public function addResult(Request $request, Task $task)
 
     TaskActivityService::notifyParticipants($task, 'result_added', 'Добавлен результат выполнения', $user->id);
 
+    SiteNotificationService::send(
+        SiteNotificationService::taskParticipantIds($task),
+        'task', 'result_added', $task->title, 'Добавлен результат выполнения',
+        SiteNotificationService::taskLink($task), $user->id
+    );
+
     return response()->json([
         'message' => 'Результат добавлен',
         'result' => $result->load(['user:id,name', 'file:id,file_name,file_path']),
@@ -477,7 +496,14 @@ public function addWatcher(Request $request, Task $task)
         'user_id' => 'required|exists:users,id',
     ]);
 
-    $task->watcherstask()->syncWithoutDetaching([$validated['user_id']]);
+    $changes = $task->watcherstask()->syncWithoutDetaching([$validated['user_id']]);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'task', SiteNotificationService::taskParticipantIds($task), $changes['attached'],
+            'наблюдатель', $task->title, SiteNotificationService::taskLink($task), auth()->id()
+        );
+    }
 
     SendAssignedNotifications::dispatch($task, [$validated['user_id']], 'watcher');
 
@@ -497,6 +523,10 @@ public function destroy(\App\Models\Task $task)
 {
     $this->authorize('delete', $task);
 
+    // Получателей собираем до удаления — потом связей уже не будет
+    $recipientIds = SiteNotificationService::taskParticipantIds($task);
+    $taskTitle = $task->title;
+
     // Удаляем файлы задачи
     foreach ($task->files as $file) {
         if (\Storage::disk('public')->exists($file->file_path)) {
@@ -511,6 +541,10 @@ public function destroy(\App\Models\Task $task)
     }
 
     $task->delete();
+
+    SiteNotificationService::send(
+        $recipientIds, 'task', 'task_deleted', $taskTitle, 'Задача удалена', null, auth()->id()
+    );
 
     return response()->json(['message' => 'Задача и все связанные данные удалены.']);
 }
@@ -538,12 +572,21 @@ public function updateExecutor(Request $request, \App\Models\Task $task)
     }
 
     // Если есть replace_user_id — удаляем только его
-    if (!empty($data['replace_user_id'])) {
-        $task->executors()->detach($data['replace_user_id']);
+    if (!empty($data['replace_user_id']) && $task->executors()->detach($data['replace_user_id'])) {
+        SiteNotificationService::memberRemoved(
+            'task', (int) $data['replace_user_id'], 'исполнитель', $task->title, null, auth()->id()
+        );
     }
 
     // Добавляем нового, не трогая остальных
-    $task->executors()->syncWithoutDetaching([$data['user_id']]);
+    $changes = $task->executors()->syncWithoutDetaching([$data['user_id']]);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'task', SiteNotificationService::taskParticipantIds($task), $changes['attached'],
+            'исполнитель', $task->title, SiteNotificationService::taskLink($task), auth()->id()
+        );
+    }
 
     $newExecutor = \App\Models\User::find($data['user_id']);
     if ($newExecutor) {
@@ -579,12 +622,21 @@ public function updateResponsible(Request $request, \App\Models\Task $task)
     }
 
     // Если есть replace_user_id — удаляем только его
-    if (!empty($data['replace_user_id'])) {
-        $task->responsibles()->detach($data['replace_user_id']);
+    if (!empty($data['replace_user_id']) && $task->responsibles()->detach($data['replace_user_id'])) {
+        SiteNotificationService::memberRemoved(
+            'task', (int) $data['replace_user_id'], 'ответственный', $task->title, null, auth()->id()
+        );
     }
 
     // Добавляем нового, не трогая остальных
-    $task->responsibles()->syncWithoutDetaching([$data['user_id']]);
+    $changes = $task->responsibles()->syncWithoutDetaching([$data['user_id']]);
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'task', SiteNotificationService::taskParticipantIds($task), $changes['attached'],
+            'ответственный', $task->title, SiteNotificationService::taskLink($task), auth()->id()
+        );
+    }
 
     $newResponsible = \App\Models\User::find($data['user_id']);
     if ($newResponsible) {
@@ -609,9 +661,16 @@ public function addExecutors(Request $request, Task $task)
     ]);
 
     // ✅ добавляем, не заменяя существующих
-    $task->executors()->syncWithoutDetaching($validated['user_ids']);
+    $changes = $task->executors()->syncWithoutDetaching($validated['user_ids']);
 
     SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'executor');
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'task', SiteNotificationService::taskParticipantIds($task), $changes['attached'],
+            'исполнитель', $task->title, SiteNotificationService::taskLink($task), auth()->id()
+        );
+    }
 
     $names = \App\Models\User::whereIn('id', $validated['user_ids'])->pluck('name')->implode(', ');
     if ($names) {
@@ -635,9 +694,16 @@ public function addResponsibles(Request $request, Task $task)
     ]);
 
     // ✅ добавляем, не заменяя существующих
-    $task->responsibles()->syncWithoutDetaching($validated['user_ids']);
+    $changes = $task->responsibles()->syncWithoutDetaching($validated['user_ids']);
 
     SendAssignedNotifications::dispatch($task, $validated['user_ids'], 'responsible');
+
+    if (!empty($changes['attached'])) {
+        SiteNotificationService::membersAdded(
+            'task', SiteNotificationService::taskParticipantIds($task), $changes['attached'],
+            'ответственный', $task->title, SiteNotificationService::taskLink($task), auth()->id()
+        );
+    }
 
     $names = \App\Models\User::whereIn('id', $validated['user_ids'])->pluck('name')->implode(', ');
     if ($names) {
@@ -672,6 +738,8 @@ public function removeExecutor(Task $task, Request $request)
 
     SendRemovedNotifications::dispatch($task, $userId, 'executor');
 
+    SiteNotificationService::memberRemoved('task', (int) $userId, 'исполнитель', $task->title, null, auth()->id());
+
     return response()->json([
         'message' => 'Исполнитель удалён',
         'executors' => $task->executors()->select('users.id', 'users.name')->get(),
@@ -701,6 +769,8 @@ public function removeResponsible(Task $task, Request $request)
 
     SendRemovedNotifications::dispatch($task, $userId, 'responsible');
 
+    SiteNotificationService::memberRemoved('task', (int) $userId, 'ответственный', $task->title, null, auth()->id());
+
     return response()->json([
         'message' => 'Ответственный удалён',
         'responsibles' => $task->responsibles()->select('users.id', 'users.name')->get(),
@@ -722,6 +792,8 @@ public function removeWatcher(Task $task, Request $request)
     $task->watcherstask()->detach($validated['user_id']);
 
     SendRemovedNotifications::dispatch($task, $userId, 'watcher');
+
+    SiteNotificationService::memberRemoved('task', (int) $userId, 'наблюдатель', $task->title, null, auth()->id());
 
     return response()->json([
         'message' => 'Наблюдатель удалён',
@@ -897,6 +969,12 @@ public function withSubtasks()
             auth()->id()
         );
 
+        SiteNotificationService::send(
+            [$reviewerId], 'task', 'file_review_assigned', $task->title,
+            "Вас назначили согласовать файл «{$file->file_name}»",
+            SiteNotificationService::taskLink($task), auth()->id()
+        );
+
         return response()->json([
             'message' => 'Документ отправлен на согласование',
             'file' => $file->fresh()->load('reviewer:id,name'),
@@ -938,6 +1016,14 @@ public function withSubtasks()
         $file->update([
             'status' => 'rejected'
         ]);
+
+        // Замечания — только тому, кто загрузил файл
+        $task = $file->task;
+        SiteNotificationService::send(
+            [$file->user_id], 'task', 'file_rejected', $task?->title,
+            "Файл «{$file->file_name}» возвращён с замечаниями: " . \Illuminate\Support\Str::limit($request->comment, 200),
+            $task ? SiteNotificationService::taskLink($task) : null, Auth::id()
+        );
 
         return response()->json([
             'message' => 'Документ отправлен на доработку',
@@ -1134,6 +1220,16 @@ public function withSubtasks()
         // Проверяем, существует ли отношение comments
         if (method_exists($file, 'comments')) {
             $file->comments()->delete();
+        }
+
+        // Обновлённый файл — только согласующему
+        if (!empty($file->reviewer_id)) {
+            $task = $file->task;
+            SiteNotificationService::send(
+                [$file->reviewer_id], 'task', 'file_updated', $task?->title,
+                "Файл обновлён после замечаний: «{$originalName}»",
+                $task ? SiteNotificationService::taskLink($task) : null, $user->id
+            );
         }
 
         return response()->json([

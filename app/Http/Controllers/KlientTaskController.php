@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\KlientTaskFile;
+use App\Services\SiteNotificationService;
 
 class KlientTaskController extends Controller
 {
@@ -60,6 +61,12 @@ class KlientTaskController extends Controller
                 }
             }
 
+            SiteNotificationService::send(
+                [$task->responsible_id], 'klient', 'klient_task_assigned', $task->title,
+                "Вам назначена задача ({$task->type}) по клиенту «{$klient->name}»" . $this->deadlineSuffix($task),
+                "/klient-tasks/{$task->id}", Auth::id()
+            );
+
             return back()->with('success', 'Задача создана');
         });
     }
@@ -72,13 +79,17 @@ class KlientTaskController extends Controller
         // Проверяем права
         $user = auth()->user();
 
-        if ($task->responsible_id !== $user->id && $task->created_by !== $user->id) {
+        if ($task->responsible_id !== $user->id && $task->creator_id !== $user->id) {
             return back()->with('error', 'У вас нет прав на изменение статуса этой задачи');
         }
+
+        $oldStatus = $task->status;
 
         $task->update([
             'status' => $task->status === 'completed' ? 'pending' : 'completed'
         ]);
+
+        $this->notifyStatusChanged($task, $oldStatus);
 
         return back();
     }
@@ -92,11 +103,15 @@ class KlientTaskController extends Controller
         // Проверяем, имеет ли пользователь право менять статус
         $user = auth()->user();
 
-        if ($task->responsible_id !== $user->id && $task->created_by !== $user->id) {
+        if ($task->responsible_id !== $user->id && $task->creator_id !== $user->id) {
             return back()->with('error', 'У вас нет прав на изменение статуса этой задачи');
         }
 
+        $oldStatus = $task->status;
+
         $task->update(['status' => $validated['status']]);
+
+        $this->notifyStatusChanged($task, $oldStatus);
 
         return back()->with('success', 'Статус задачи обновлен');
     }
@@ -147,6 +162,8 @@ class KlientTaskController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $task, $request) {
+            $oldResponsibleId = (int) $task->responsible_id;
+
             // 1. Обновляем задачу
             $task->update([
                 'title'          => $validated['title'],
@@ -156,6 +173,20 @@ class KlientTaskController extends Controller
                 'priority'       => $validated['priority'],
                 'type'           => $validated['type'],
             ]);
+
+            $taskLink = "/klient-tasks/{$task->id}";
+
+            if ($oldResponsibleId !== (int) $task->responsible_id) {
+                SiteNotificationService::send(
+                    [$task->responsible_id], 'klient', 'klient_task_assigned', $task->title,
+                    "Вам назначена задача ({$task->type}) по клиенту «{$task->klient?->name}»" . $this->deadlineSuffix($task),
+                    $taskLink, Auth::id()
+                );
+                SiteNotificationService::send(
+                    [$oldResponsibleId], 'klient', 'klient_task_unassigned', $task->title,
+                    'Задача по клиенту передана другому сотруднику', null, Auth::id()
+                );
+            }
 
             // 2. Добавляем новые файлы
             if ($request->hasFile('files')) {
@@ -168,6 +199,8 @@ class KlientTaskController extends Controller
                         'file_size'     => $file->getSize(),
                     ]);
                 }
+
+                $this->notifyFilesAdded($task, count($request->file('files')));
             }
 
             // 3. Если нужно удалить файлы (опционально)
@@ -231,10 +264,58 @@ class KlientTaskController extends Controller
             $uploadedFiles[] = $taskFile;
         }
 
+        $this->notifyFilesAdded($task, count($uploadedFiles));
+
         return response()->json([
             'message' => 'Файлы успешно загружены',
             'files' => $uploadedFiles
         ]);
+    }
+
+    /**
+     * Выполнение — создателю (появилось новое взаимодействие),
+     * отмена — ответственному и создателю. Автор действия не уведомляется.
+     */
+    private function notifyStatusChanged(KlientTask $task, ?string $oldStatus): void
+    {
+        if ($oldStatus === $task->status) {
+            return;
+        }
+
+        $taskLink = "/klient-tasks/{$task->id}";
+        $klientName = $task->klient?->name;
+
+        if ($task->status === 'completed') {
+            SiteNotificationService::send(
+                [$task->creator_id], 'klient', 'klient_task_completed', $task->title,
+                "Задача ({$task->type}) по клиенту «{$klientName}» выполнена", $taskLink, Auth::id()
+            );
+        } elseif ($task->status === 'cancelled') {
+            SiteNotificationService::send(
+                [$task->responsible_id, $task->creator_id], 'klient', 'klient_task_cancelled', $task->title,
+                "Задача ({$task->type}) по клиенту «{$klientName}» отменена", $taskLink, Auth::id()
+            );
+        }
+    }
+
+    private function notifyFilesAdded(KlientTask $task, int $count): void
+    {
+        if ($count < 1) {
+            return;
+        }
+
+        SiteNotificationService::send(
+            [$task->responsible_id, $task->creator_id], 'klient', 'klient_task_file_added', $task->title,
+            $count === 1 ? 'К задаче по клиенту загружен файл' : "К задаче по клиенту загружено файлов: {$count}",
+            "/klient-tasks/{$task->id}", Auth::id()
+        );
+    }
+
+    private function deadlineSuffix(KlientTask $task): string
+    {
+        return $task->deadline
+            ? ', срок ' . \Carbon\Carbon::parse($task->deadline)->format('d.m.Y H:i')
+            : '';
     }
 
     /**

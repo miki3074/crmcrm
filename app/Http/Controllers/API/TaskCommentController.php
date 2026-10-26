@@ -9,6 +9,8 @@ use App\Models\TaskComment;
 use App\Models\User;
 use App\Services\TelegramService;
 use App\Services\TaskActivityService;
+use App\Services\SiteNotificationService;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -52,6 +54,8 @@ class TaskCommentController extends Controller
 
         // Отправляем уведомления (Telegram + Email)
         $this->sendNotifications($task, $comment);
+
+        $this->sendSiteNotifications($task, $comment);
 
         return response()->json($comment, 201);
     }
@@ -148,6 +152,34 @@ class TaskCommentController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Уведомления на сайте: отмеченным — «вас отметили», всем остальным
+     * участникам задачи — «новый комментарий».
+     */
+    private function sendSiteNotifications(Task $task, TaskComment $comment): void
+    {
+        $authorId = $comment->user_id;
+        $link = SiteNotificationService::taskLink($task);
+        $preview = $comment->user->name . ': ' . Str::limit($comment->body, 150);
+
+        preg_match_all('/@([\p{L}_]+)/u', $comment->body, $matches);
+        $usernames = array_map(fn($u) => str_replace('_', ' ', $u), $matches[1]);
+
+        $mentionedIds = empty($usernames)
+            ? []
+            : User::whereIn('name', $usernames)->pluck('id')->all();
+
+        SiteNotificationService::send(
+            $mentionedIds, 'task', 'mentioned', $task->title,
+            "Вас отметили в комментарии. {$preview}", $link, $authorId
+        );
+
+        SiteNotificationService::send(
+            SiteNotificationService::taskParticipantIds($task), 'task', 'comment_added', $task->title,
+            "Новый комментарий. {$preview}", $link, $authorId, $mentionedIds
+        );
     }
 
     /**

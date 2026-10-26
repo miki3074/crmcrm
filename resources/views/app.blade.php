@@ -6,6 +6,15 @@
 
         <title inertia></title>
 
+        <!-- PWA: установка на телефон/ПК и push-уведомления -->
+        <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="theme-color" content="#18181b">
+        <link rel="apple-touch-icon" href="/icons/icon-192.png">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

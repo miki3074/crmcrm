@@ -12,6 +12,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Services\TelegramService;
+use App\Services\SiteNotificationService;
+use Illuminate\Support\Str;
 class ChatController extends Controller
 {
     public function index($type = null, $targetId = null)
@@ -126,6 +128,7 @@ class ChatController extends Controller
 
         $sender = Auth::user();
         $companyId = null;
+        $group = null;
 
         if ($request->type === 'user') {
             // Находим первую общую компанию для привязки сообщения
@@ -145,6 +148,22 @@ class ChatController extends Controller
             'receiver_id' => $request->type === 'user' ? $request->target_id : null,
             'group_id' => $request->type === 'group' ? $request->target_id : null,
         ]);
+
+        // Уведомления на сайте. Пока сообщение не прочитано, новые сообщения
+        // из того же диалога обновляют одно уведомление, а не создают новые.
+        $preview = Str::limit($request->message, 150);
+
+        if ($request->type === 'user') {
+            SiteNotificationService::sendCollapsed(
+                [$request->target_id], 'chat', 'chat_message', $sender->name,
+                "Новое сообщение: {$preview}", "/chat/user/{$sender->id}", $sender->id
+            );
+        } elseif ($group) {
+            SiteNotificationService::sendCollapsed(
+                $group->users()->pluck('users.id'), 'chat', 'chat_group_message', $group->name,
+                "{$sender->name}: {$preview}", "/chat/group/{$group->id}", $sender->id
+            );
+        }
 
 //        // 1. Уведомление для личного чата
 //        if ($request->type === 'user') {
@@ -188,6 +207,11 @@ class ChatController extends Controller
         ]);
         $group->users()->attach(array_merge($request->user_ids, [$creator->id]));
 
+        SiteNotificationService::send(
+            $request->user_ids, 'chat', 'chat_group_created', $group->name,
+            "{$creator->name} создал(а) группу и добавил(а) вас", "/chat/group/{$group->id}", $creator->id
+        );
+
         // 3. Уведомление о добавлении в группу
         foreach ($request->user_ids as $userId) {
             $user = User::find($userId);
@@ -207,6 +231,11 @@ class ChatController extends Controller
         // Проверка: состоит ли пользователь уже в группе
         if (!$group->users()->where('users.id', $request->user_id)->exists()) {
             $group->users()->attach($request->user_id);
+
+            SiteNotificationService::send(
+                [$request->user_id], 'chat', 'chat_group_member_added', $group->name,
+                'Вас добавили в группу', "/chat/group/{$group->id}", Auth::id()
+            );
 
             // Опционально: уведомление в Телеграм
             $user = User::find($request->user_id);

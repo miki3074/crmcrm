@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskChecklist;
 use App\Services\TelegramService;
 use App\Services\TaskActivityService;
+use App\Services\SiteNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -95,6 +96,18 @@ class TaskChecklistController extends Controller
         // ========= КОНЕЦ ОТПРАВКИ УВЕДОМЛЕНИЙ =========
 
         TaskActivityService::notifyParticipants($task, 'checklist_item_added', "Добавлен пункт чек-листа «{$checklist->title}»", $request->user()->id);
+
+        // Назначен ответственный — только ему, иначе пункт общий — всем
+        SiteNotificationService::send(
+            !empty($validated['assigned_to'])
+                ? [$validated['assigned_to']]
+                : SiteNotificationService::taskParticipantIds($task),
+            'task', 'checklist_item_added', $task->title,
+            !empty($validated['assigned_to'])
+                ? "Вам назначен пункт чек-листа «{$checklist->title}»"
+                : "Добавлен пункт чек-листа «{$checklist->title}»",
+            SiteNotificationService::taskLink($task), $request->user()->id
+        );
 
         return response()->json($checklist->load('assignee', 'files', 'creator'), 201);
     }

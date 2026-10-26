@@ -57,6 +57,9 @@ use App\Http\Controllers\API\SupportReplyController;
 use App\Http\Controllers\API\TaskCalendarController;
 
 use App\Http\Controllers\API\SubtaskChecklistController;
+use App\Http\Controllers\API\SiteNotificationController;
+use App\Http\Controllers\API\PushSubscriptionController;
+use App\Http\Controllers\NotificationSettingsController;
 
 use App\Http\Controllers\API\MeetingDocumentController;
 
@@ -359,6 +362,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard/activities', [TaskController::class, 'myActivities']);
     Route::delete('/dashboard/activities', [TaskController::class, 'clearActivities']);
     Route::delete('/dashboard/activities/{id}', [TaskController::class, 'deleteActivity']);
+
+    // Уведомления на сайте (колокольчик на дашборде)
+    Route::get('/notifications', [SiteNotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [SiteNotificationController::class, 'unread']);
+    Route::get('/notifications/poll', [SiteNotificationController::class, 'poll']);
+    Route::put('/notifications/preferences', [NotificationSettingsController::class, 'update']);
+    Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store']);
+    Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy']);
+    Route::post('/push-subscriptions/test', [PushSubscriptionController::class, 'test']);
+    Route::post('/notifications/read-all', [SiteNotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/read', [SiteNotificationController::class, 'markRead']);
+    Route::delete('/notifications', [SiteNotificationController::class, 'clear']);
+    Route::delete('/notifications/{id}', [SiteNotificationController::class, 'destroy']);
 });
 
 Route::patch('/subtasks/{subtask}/progress', [SubtaskController::class, 'updateProgress'])

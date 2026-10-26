@@ -14,6 +14,7 @@ import ActivityFeed from './AAA/Components/Dashboard/ActivityFeed.vue'
 import SearchOverlay from './AAA/Components/Dashboard/SearchOverlay.vue'
 import CreateCompanyModal from './AAA/Components/Dashboard/CreateCompanyModal.vue'
 import EmailVerificationModal from './AAA/Components/Dashboard/EmailVerificationModal.vue'
+import { useNotifications } from '@/Composables/useNotifications'
 
 const { props } = usePage()
 const isAdmin = computed(() => props.auth?.roles?.includes('admin'))
@@ -38,6 +39,9 @@ const loading = ref(true)
 const isSearchOpen = ref(false)
 const showCreateModal = ref(false)
 const activeTab = ref('tasks')
+
+// Уведомления — общее состояние из layout (счётчик, окно, всплывающие)
+const notifications = useNotifications()
 
 const tabs = computed(() => [
     { id: 'tasks', label: 'Задачи', count: summary.value.all_tasks?.length },
@@ -197,7 +201,7 @@ onBeforeUnmount(() => {
 
     <AuthenticatedLayout>
         <div class="min-h-full bg-zinc-50 dark:bg-[#0a0b0f]">
-            <div class="mx-auto max-w-[1600px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
 
                 <EmailVerificationModal
                     :show="showEmailVerificationModal"
@@ -208,15 +212,15 @@ onBeforeUnmount(() => {
                 />
 
                 <!-- Заголовок панели -->
-                <header class="flex flex-wrap items-center justify-between gap-3">
+                <header class="flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400">Рабочая панель</p>
-                        <h1 class="mt-0.5 text-xl font-bold text-zinc-900 dark:text-white">Обзор пространства</h1>
+                        <p class="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Рабочая панель</p>
+                        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Обзор пространства</h1>
                     </div>
-                    <div class="flex items-center gap-2 text-xs font-medium">
-                        <span class="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-zinc-600 dark:border-white/5 dark:bg-zinc-900/60 dark:text-zinc-300">{{ summary.all_tasks?.length || 0 }} задач</span>
-                        <span class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-700 dark:border-amber-900/50 dark:bg-amber-500/10 dark:text-amber-300">{{ summary.due_today?.length || 0 }} сегодня</span>
-                        <span class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-700 dark:border-rose-900/50 dark:bg-rose-500/10 dark:text-rose-300">{{ summary.overdue?.length || 0 }} просрочено</span>
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-medium tabular-nums">
+                        <span class="rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-700 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300">{{ summary.all_tasks?.length || 0 }} задач</span>
+                        <span class="rounded-md border border-amber-200 bg-amber-50/70 px-2.5 py-1.5 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/[0.08] dark:text-amber-300">{{ summary.due_today?.length || 0 }} сегодня</span>
+                        <span class="rounded-md border border-rose-200 bg-rose-50/70 px-2.5 py-1.5 text-rose-800 dark:border-rose-500/20 dark:bg-rose-500/[0.08] dark:text-rose-300">{{ summary.overdue?.length || 0 }} просрочено</span>
                     </div>
                 </header>
 
@@ -224,19 +228,20 @@ onBeforeUnmount(() => {
                 <button
                     type="button"
                     @click="isSearchOpen = true"
-                    class="group flex w-full items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left transition cursor-pointer hover:border-zinc-300
-                           focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2
-                           dark:border-white/5 dark:bg-zinc-900/60 dark:hover:border-white/10 dark:focus-visible:ring-offset-zinc-900"
+                    class="group flex w-full cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-left shadow-sm transition-colors hover:border-zinc-300
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50
+                           dark:border-white/10 dark:bg-zinc-900 dark:shadow-none dark:hover:border-white/20 dark:focus-visible:ring-offset-[#0a0b0f]"
                 >
-                    <svg class="h-5 w-5 shrink-0 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+                    <svg class="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
                     </svg>
                     <span class="flex-1 text-sm text-zinc-500 dark:text-zinc-400">Поиск по всему пространству...</span>
-                    <kbd class="hidden sm:inline-block rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[10px] font-semibold uppercase text-zinc-500 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400">Ctrl K</kbd>
+                    <kbd class="hidden rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-sans text-[11px] font-medium text-zinc-500 sm:inline-block dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-400">Ctrl K</kbd>
                 </button>
 
                 <!-- Быстрые действия -->
-                <div class="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-6">
+                <div class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+                    <StatCard title="Уведомления" icon="bell" :badge="notifications.state.unreadCount" @click="notifications.open()" />
                     <StatCard title="Календарь" icon="calendar" color="violet" @click="router.visit('/calendar')" />
                     <StatCard title="База знаний" icon="folder" color="blue" @click="router.visit('/knowledge')" />
                     <StatCard v-if="isAdmin" title="Сотрудники" icon="users" color="indigo" @click="router.visit('/employees')" />
@@ -248,13 +253,13 @@ onBeforeUnmount(() => {
                 <!-- Скелетон при первой загрузке -->
                 <template v-if="loading">
                     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px_320px]" aria-hidden="true">
-                        <div class="h-40 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-white/5 dark:bg-zinc-900/60" />
-                        <div class="h-40 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-white/5 dark:bg-zinc-900/60" />
-                        <div class="h-40 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-white/5 dark:bg-zinc-900/60" />
+                        <div class="h-40 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900" />
+                        <div class="h-40 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900" />
+                        <div class="h-40 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900" />
                     </div>
-                    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]" aria-hidden="true">
-                        <div class="h-64 animate-pulse rounded-xl border border-zinc-200 bg-white dark:border-white/5 dark:bg-zinc-900/60" />
-                        <div class="h-64 animate-pulse rounded-xl border border-zinc-200 bg-white dark:border-white/5 dark:bg-zinc-900/60" />
+                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]" aria-hidden="true">
+                        <div class="h-64 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900" />
+                        <div class="h-64 animate-pulse rounded-lg border border-zinc-200 bg-white dark:border-white/[0.08] dark:bg-zinc-900" />
                     </div>
                 </template>
 
@@ -263,69 +268,69 @@ onBeforeUnmount(() => {
                     <CompanySection :companies="companies" :user-id="userId" :is-admin="isAdmin" :projects="summary.my_projects" @refresh="fetchData" />
 
                     <!-- Основной контент: Задачи и Проекты -->
-                    <div :class="['grid grid-cols-1 gap-6', panelView === 'list' ? 'xl:grid-cols-[1fr_380px]' : '']">
+                    <div :class="['grid grid-cols-1 gap-4', panelView === 'list' ? 'xl:grid-cols-[1fr_380px]' : '']">
 
-                        <div class="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-white/5 dark:bg-zinc-900/60">
+                        <div class="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none">
                             <!-- Табы + переключение вида -->
-                            <div class="m-3 flex flex-wrap items-center gap-2">
-                                <div v-if="panelView === 'list'" class="flex flex-1 flex-wrap gap-1 rounded-lg bg-zinc-100/70 p-1 dark:bg-black/20">
+                            <div class="flex flex-wrap items-center gap-2 border-b border-zinc-200 p-3 dark:border-white/[0.06]">
+                                <div v-if="panelView === 'list'" class="flex flex-1 flex-wrap gap-1 rounded-md bg-zinc-100 p-1 dark:bg-white/[0.04]">
                                     <button v-for="tab in tabs"
                                             :key="tab.id"
                                             @click="activeTab = tab.id"
                                             :class="[
-                                            'flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-semibold transition-all whitespace-nowrap',
-                                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400',
-                                            activeTab === tab.id ? 'bg-white text-zinc-900 shadow-sm dark:bg-white/10 dark:text-white' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                                            'flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded px-3 py-1.5 text-[13px] font-medium transition-colors',
+                                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60',
+                                            activeTab === tab.id ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:ring-white/10' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
                                         ]"
                                     >
                                         {{ tab.label }}
-                                        <span v-if="tab.count" class="rounded-md bg-zinc-200/70 px-1.5 py-0.5 text-[10px] font-bold text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
+                                        <span v-if="tab.count" class="rounded bg-zinc-200/70 px-1.5 text-[11px] font-medium tabular-nums text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
                                             {{ tab.count }}
                                         </span>
                                     </button>
                                 </div>
-                                <h3 v-else class="flex-1 px-1 text-sm font-bold text-zinc-900 dark:text-white">
+                                <h3 v-else class="flex-1 px-1 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                                     Доска
                                 </h3>
 
-                                <div class="flex shrink-0 rounded-lg bg-zinc-100/70 p-1 dark:bg-black/20">
+                                <div class="flex shrink-0 gap-0.5 rounded-md bg-zinc-100 p-1 dark:bg-white/[0.04]">
                                     <button
                                         type="button"
                                         title="Список по категориям"
-                                        class="flex items-center justify-center rounded-md p-1.5 transition
-                                               focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                                        class="flex h-7 w-7 items-center justify-center rounded transition-colors
+                                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                                         :class="
                                             panelView === 'list'
-                                                ? 'bg-white text-zinc-700 shadow-sm dark:bg-white/10 dark:text-white'
-                                                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                                ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:ring-white/10'
+                                                : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                                         "
                                         @click="panelView = 'list'"
                                     >
-                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 6h16M4 12h16M4 18h16" />
                                         </svg>
                                     </button>
 
                                     <button
                                         type="button"
                                         title="Доска по срокам"
-                                        class="flex items-center justify-center rounded-md p-1.5 transition
-                                               focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                                        class="flex h-7 w-7 items-center justify-center rounded transition-colors
+                                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                                         :class="
                                             panelView === 'board'
-                                                ? 'bg-white text-zinc-700 shadow-sm dark:bg-white/10 dark:text-white'
-                                                : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                                ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:ring-white/10'
+                                                : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
                                         "
                                         @click="panelView = 'board'"
                                     >
-                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h3a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM10 5a1 1 0 011-1h3a1 1 0 011 1v8a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM16 5a1 1 0 011-1h3a1 1 0 011 1v11a1 1 0 01-1 1h-3a1 1 0 01-1-1V5z" />
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 5a1 1 0 011-1h3a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM10 5a1 1 0 011-1h3a1 1 0 011 1v8a1 1 0 01-1 1h-3a1 1 0 01-1-1V5zM16 5a1 1 0 011-1h3a1 1 0 011 1v11a1 1 0 01-1 1h-3a1 1 0 01-1-1V5z" />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
 
-                            <div class="flex-1 px-5 pb-5">
+                            <div class="flex-1 p-4 sm:p-5">
                                 <TasksBoard v-if="panelView === 'board'" :items="boardItems" />
 
                                 <Transition v-else name="fade" mode="out-in">
@@ -348,7 +353,7 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <aside v-if="panelView === 'list'" class="space-y-3">
+                        <aside v-if="panelView === 'list'" class="space-y-4">
                             <ActivityFeed :activities="activities" @remove="removeActivity" @clear="clearActivities" />
                             <TasksSummary :tasks="summary.due_today" title="Сегодня" variant="warning" compact />
                             <TasksSummary :tasks="summary.overdue" title="Просрочено" variant="danger" compact />
@@ -359,11 +364,10 @@ onBeforeUnmount(() => {
         </div>
 
         <SearchOverlay v-if="isSearchOpen" @close="isSearchOpen = false" :companies="companies" :summary="summary" />
-        <CreateCompanyModal v-if="showCreateModal" @close="showCreateModal = false" @created="fetchData" />
-    </AuthenticatedLayout>
+        <CreateCompanyModal v-if="showCreateModal" @close="showCreateModal = false" @created="fetchData" />    </AuthenticatedLayout>
 </template>
 
 <style>
-.fade-enter-active, .fade-leave-active { transition: all 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(4px); }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(2px); }
 </style>

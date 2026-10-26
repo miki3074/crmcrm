@@ -1,70 +1,77 @@
 <template>
     <Transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0 scale-95"
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 scale-[0.98]"
         enter-to-class="opacity-100 scale-100"
-        leave-active-class="transition duration-150 ease-in"
+        leave-active-class="transition duration-100 ease-in"
         leave-from-class="opacity-100 scale-100"
-        leave-to-class="opacity-0 scale-95"
+        leave-to-class="opacity-0 scale-[0.98]"
     >
         <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
             <!-- Backdrop -->
-            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="close"></div>
+            <div class="absolute inset-0 bg-zinc-950/50 backdrop-blur-[2px]" @click="close"></div>
 
             <!-- Modal -->
-            <div class="relative w-full max-w-md bg-white dark:bg-zinc-900/95 rounded-2xl shadow-2xl border border-zinc-200 dark:border-white/10 overflow-hidden">
+            <div class="relative w-full max-w-md overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-zinc-900">
                 <!-- Декоративная полоса -->
-                <div class="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-cyan-400 via-sky-400 to-fuchsia-400"></div>
+                <div class="absolute left-0 top-0 h-px w-full bg-zinc-200 dark:bg-white/10"></div>
 
                 <!-- Header -->
-                <div class="px-6 py-5 border-b border-zinc-100 dark:border-white/5">
+                <div class="border-b border-zinc-200 px-6 py-5 dark:border-white/[0.06]">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500 flex items-center justify-center text-white text-lg shadow-lg shadow-cyan-500/20">
-                                ✉️
+                            <div class="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-200 text-zinc-600 dark:border-white/10 dark:text-zinc-300">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-zinc-900 dark:text-white">
+                                <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                                     Подтверждение email
                                 </h3>
-                                <p class="text-xs text-zinc-500 mt-1">
+                                <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                     Подтвердите ваш email адрес
                                 </p>
                             </div>
                         </div>
                         <button @click="close"
-                                class="w-8 h-8 rounded-full bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 flex items-center justify-center text-zinc-500 transition-colors">
+                                aria-label="Закрыть"
+                                class="flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                     </div>
                 </div>
 
                 <!-- Body -->
-                <div class="p-6 space-y-6">
+                <div class="space-y-5 p-6">
                     <!-- Информация о текущем email -->
-                    <div class="p-4 rounded-xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-100 dark:border-white/5">
+                    <div class="rounded-md border border-zinc-200 bg-zinc-50 p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center">
-                                <span class="text-lg">📧</span>
+                            <div class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-zinc-500 ring-1 ring-zinc-200 dark:bg-white/[0.04] dark:text-zinc-400 dark:ring-white/10">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-3.5 7.125" />
+                                </svg>
                             </div>
                             <div>
-                                <p class="text-xs text-zinc-500 uppercase tracking-wider">Ваш email</p>
-                                <p class="text-sm font-medium text-zinc-800 dark:text-white">{{ userEmail }}</p>
+                                <p class="text-xs text-zinc-500 dark:text-zinc-400">Ваш email</p>
+                                <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ userEmail }}</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Статус верификации -->
-                    <div v-if="isVerified" class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                    <div v-if="isVerified" class="rounded-md border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-                                <span class="text-lg">✅</span>
+                            <div class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-emerald-600 ring-1 ring-emerald-200 dark:bg-transparent dark:text-emerald-400 dark:ring-emerald-500/30">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
                             </div>
                             <div>
-                                <p class="text-xs text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Статус</p>
-                                <p class="text-sm font-medium text-emerald-700 dark:text-emerald-300">Email подтвержден</p>
+                                <p class="text-xs text-emerald-700 dark:text-emerald-400">Статус</p>
+                                <p class="text-sm font-medium text-emerald-800 dark:text-emerald-300">Email подтвержден</p>
                             </div>
                         </div>
                     </div>
@@ -75,7 +82,7 @@
                         <button
                             @click="sendCode"
                             :disabled="loading || countdown > 0"
-                            class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-medium shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            class="w-full rounded-md bg-blue-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-zinc-900"
                         >
                             <span v-if="loading" class="flex items-center justify-center gap-2">
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -84,12 +91,14 @@
                                 </svg>
                                 Отправка...
                             </span>
-                            <span v-else-if="countdown > 0">
+                            <span v-else-if="countdown > 0" class="tabular-nums">
                                 Отправить код повторно через {{ countdown }} сек
                             </span>
                             <span v-else>
                                 <span class="flex items-center justify-center gap-2">
-                                    <span>📧</span>
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
                                     Отправить код подтверждения
                                 </span>
                             </span>
@@ -98,22 +107,22 @@
                         <!-- Поле для ввода кода -->
                         <div v-if="showCodeInput" class="space-y-3">
                             <div>
-                                <label class="block text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                                <label class="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                                     Введите код подтверждения
                                 </label>
-                                <div class="flex gap-3">
+                                <div class="flex gap-2">
                                     <input
                                         v-model="verificationCode"
                                         type="text"
                                         maxlength="6"
                                         placeholder="000000"
-                                        class="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 focus:border-cyan-300 focus:ring focus:ring-cyan-200/20 transition text-center text-lg font-mono tracking-widest"
+                                        class="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-zinc-900 placeholder:text-zinc-300 transition-colors focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-600"
                                         @keyup.enter="verifyCode"
                                     />
                                     <button
                                         @click="verifyCode"
                                         :disabled="verifying"
-                                        class="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50"
+                                        class="shrink-0 rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white dark:focus-visible:ring-offset-zinc-900"
                                     >
                                         <span v-if="verifying" class="flex items-center gap-2">
                                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -122,33 +131,33 @@
                                             </svg>
                                             Проверка...
                                         </span>
-                                        <span v-else>✅ Проверить</span>
+                                        <span v-else>Проверить</span>
                                     </button>
                                 </div>
                             </div>
-                            <p class="text-xs text-zinc-500 text-center">
+                            <p class="text-center text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                                 Код отправлен на ваш email. Проверьте папку "Спам" если письмо не пришло.
                             </p>
                         </div>
 
                         <!-- Сообщение об ошибке -->
-                        <div v-if="errorMessage" class="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
-                            <p class="text-sm text-rose-600 dark:text-rose-400">{{ errorMessage }}</p>
+                        <div v-if="errorMessage" class="rounded-md border border-rose-200 bg-rose-50 p-3 dark:border-rose-500/20 dark:bg-rose-500/10">
+                            <p class="text-sm text-rose-700 dark:text-rose-300">{{ errorMessage }}</p>
                         </div>
 
                         <!-- Успешное сообщение -->
-                        <div v-if="successMessage" class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                            <p class="text-sm text-emerald-600 dark:text-emerald-400">{{ successMessage }}</p>
+                        <div v-if="successMessage" class="rounded-md border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                            <p class="text-sm text-emerald-700 dark:text-emerald-300">{{ successMessage }}</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Footer -->
-                <div class="px-6 py-4 border-t border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.03] flex justify-end">
+                <div class="flex justify-end border-t border-zinc-200 bg-zinc-50 px-6 py-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
                     <button
                         v-if="isVerified"
                         @click="close"
-                        class="px-6 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-sky-600 text-white font-medium shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:scale-105 transition-all"
+                        class="rounded-md bg-blue-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900"
                     >
                         Закрыть
                     </button>

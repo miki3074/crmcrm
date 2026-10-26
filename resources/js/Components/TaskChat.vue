@@ -291,11 +291,11 @@ gap: 0.25rem;
 color: #0891b2;
 font-weight: 600;
 background-color: #ecfeff;
-padding: 0.1rem 0.35rem;      /* было 0.125rem 0.375rem */
+padding: 0.1rem 0.35rem;      
 border-radius: 9999px;
-font-size: 0.65rem;           /* было 0.75rem */
-line-height: 1;               /* убираем лишнюю высоту строки */
-vertical-align: middle;       /* выравнивание по тексту */">
+font-size: 0.65rem;           
+line-height: 1;               
+vertical-align: middle;       
             @${visibleName}
             ${user ? `<span class="w-1 h-1 bg-cyan-400 rounded-full"></span>` : ''}
         </span>`

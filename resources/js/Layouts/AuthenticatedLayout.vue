@@ -11,6 +11,12 @@ import NavLink from '@/Components/NavLink.vue'
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'
 import SupportButton from '@/Components/SupportButton.vue'
 import DevtoolsGuard from '@/Components/DevtoolsGuard.vue'
+import NotificationBell from '@/Components/Notifications/NotificationBell.vue'
+import NotificationsModal from '@/Components/Notifications/NotificationsModal.vue'
+import NotificationToasts from '@/Components/Notifications/NotificationToasts.vue'
+import { useNotifications } from '@/Composables/useNotifications'
+
+const notifications = useNotifications()
 
 const showingNavigationDropdown = ref(false)
 const isDark = ref(false)
@@ -32,6 +38,9 @@ const toggleSidebarLock = () => {
 
 
 onMounted(() => {
+    // Уведомления: счётчик, всплывающие, push (запускается один раз на всё приложение)
+    notifications.start()
+
     // Темная тема
     if (
         localStorage.theme === 'dark' ||
@@ -382,8 +391,9 @@ const unreadChat = computed(() => page.props.unreadChatCount);
                             </div>
                         </div>
 
-                        <!-- Правая часть шапки: Профиль -->
+                        <!-- Правая часть шапки: Уведомления и Профиль -->
                         <div class="flex items-center">
+                            <NotificationBell />
                             <div class="ml-3 relative">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
@@ -402,6 +412,7 @@ const unreadChat = computed(() => page.props.unreadChatCount);
 
                                     <template #content>
                                         <DropdownLink :href="route('profile.edit')"> Профиль </DropdownLink>
+                                        <DropdownLink :href="route('notifications.settings')"> Уведомления </DropdownLink>
                                         <DropdownLink :href="route('logout')" method="post" as="button"> Выйти </DropdownLink>
                                     </template>
                                 </Dropdown>
@@ -428,6 +439,7 @@ const unreadChat = computed(() => page.props.unreadChatCount);
                         </div>
                         <div class="mt-3 space-y-1">
                             <ResponsiveNavLink :href="route('profile.edit')"> Профиль </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('notifications.settings')"> Уведомления </ResponsiveNavLink>
                             <ResponsiveNavLink :href="route('logout')" method="post" as="button"> Выйти </ResponsiveNavLink>
                         </div>
                     </div>
@@ -446,5 +458,12 @@ const unreadChat = computed(() => page.props.unreadChatCount);
 
         </div>
         <SupportButton v-if="!route().current('support.chat')" />
+
+        <NotificationToasts />
+        <NotificationsModal
+            v-if="notifications.state.isOpen"
+            @close="notifications.close()"
+            @update:unread="notifications.setUnread"
+        />
     </div>
 </template>

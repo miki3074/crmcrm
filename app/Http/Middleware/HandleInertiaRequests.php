@@ -47,6 +47,8 @@ class HandleInertiaRequests extends Middleware
                 ? $request->user()->getRoleNames() // Spatie Permission
                 : [],
         ],
+        // Публичный ключ Web Push — нужен браузеру для подписки на push
+        'vapidPublicKey' => config('notify.webpush.public_key'),
 
             'unreadSupportCount' => function () use ($request) {
                 $user = $request->user();

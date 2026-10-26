@@ -14,6 +14,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use App\Jobs\SendMediaPlanResponsibleNotification;
+use App\Services\SiteNotificationService;
 
 class MediaPlanController extends Controller
 {
@@ -207,6 +208,12 @@ class MediaPlanController extends Controller
 
             return $mediaPlan;
         });
+
+        SiteNotificationService::send(
+            SiteNotificationService::klientTeamIds($klient), 'klient', 'media_plan_created', $mediaPlan->name,
+            "Создан медиаплан для клиента «{$klient->name}»",
+            "/media-plans/{$mediaPlan->id}", Auth::id()
+        );
 
         return redirect()
             ->route(
@@ -565,6 +572,7 @@ class MediaPlanController extends Controller
      * завершения транзакции.
      */
     $notificationsToSend = [];
+    $oldStatus = $mediaPlan->status;
 
     DB::transaction(function () use (
         $validated,
@@ -805,6 +813,40 @@ class MediaPlanController extends Controller
         );
     }
 
+    $planLink = "/media-plans/{$mediaPlan->id}";
+
+    // Назначения ответственными — одно уведомление на человека
+    collect($notificationsToSend)
+        ->countBy('user_id')
+        ->each(function ($count, $userId) use ($mediaPlan, $planLink) {
+            SiteNotificationService::send(
+                [$userId], 'klient', 'media_plan_item_assigned', $mediaPlan->name,
+                $count === 1
+                    ? 'Вас назначили ответственным по строке медиаплана'
+                    : "Вас назначили ответственным по строкам медиаплана: {$count}",
+                $planLink, Auth::id()
+            );
+        });
+
+    $statusLabels = [
+        'draft' => 'Черновик',
+        'active' => 'Активный',
+        'completed' => 'Завершён',
+        'cancelled' => 'Отменён',
+    ];
+
+    if ($oldStatus !== $mediaPlan->status && $mediaPlan->status !== 'draft') {
+        SiteNotificationService::send(
+            array_merge(
+                [$mediaPlan->creator_id],
+                SiteNotificationService::mediaPlanResponsibleIds($mediaPlan)
+            ),
+            'klient', 'media_plan_status_changed', $mediaPlan->name,
+            'Статус медиаплана: ' . ($statusLabels[$mediaPlan->status] ?? $mediaPlan->status),
+            $planLink, Auth::id()
+        );
+    }
+
     return back()->with(
         'success',
         'Медиаплан сохранён'
@@ -1024,6 +1066,10 @@ class MediaPlanController extends Controller
      */
     $klientId = $mediaPlan->klient_id;
 
+    // Получателей собираем до удаления строк
+    $responsibleIds = SiteNotificationService::mediaPlanResponsibleIds($mediaPlan);
+    $planName = $mediaPlan->name;
+
     DB::transaction(function () use ($mediaPlan) {
 
         /*
@@ -1038,6 +1084,11 @@ class MediaPlanController extends Controller
 
         $mediaPlan->delete();
     });
+
+    SiteNotificationService::send(
+        $responsibleIds, 'klient', 'media_plan_deleted', $planName,
+        'Медиаплан удалён', null, Auth::id()
+    );
 
     return redirect()
         ->route('klients.show', $klientId)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Klient;
 use App\Models\KlientFile;
+use App\Services\SiteNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +47,12 @@ class KlientFileController extends Controller
             'file_path' => $path,
             'file_size' => $file->getSize(),
         ]);
+
+        SiteNotificationService::send(
+            SiteNotificationService::klientTeamIds($klient), 'klient', 'klient_file_added', $klient->name,
+            "В карточку клиента загружен файл «{$file->getClientOriginalName()}»",
+            "/klients/{$klient->id}", Auth::id()
+        );
 
         return back()->with('success', 'Файл успешно загружен');
     }

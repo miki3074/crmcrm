@@ -96,24 +96,24 @@ const getTasksCount = project => {
 
 <template>
     <section
-        class="overflow-hidden rounded-2xl border
+        class="overflow-hidden rounded-lg border
                border-zinc-200 bg-white shadow-sm
-               dark:border-white/5 dark:bg-zinc-900/60"
+               dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-none"
     >
         <header
-            class="flex items-center justify-between
-                   border-b border-zinc-100 px-4 py-3
-                   dark:border-white/5"
+            class="flex items-center justify-between gap-3
+                   border-b border-zinc-200 px-4 py-3
+                   dark:border-white/[0.06]"
         >
             <div>
                 <h3
-                    class="text-sm font-bold
-                           text-zinc-900 dark:text-white"
+                    class="text-sm font-semibold
+                           text-zinc-900 dark:text-zinc-100"
                 >
                     Мои проекты
                 </h3>
 
-                <p class="text-[11px] text-zinc-400">
+                <p class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
                     {{ projects.length }} проектов
                 </p>
             </div>
@@ -121,10 +121,11 @@ const getTasksCount = project => {
             <button
                 v-if="projects.length"
                 type="button"
-                class="rounded-lg px-2.5 py-1.5
-                       text-xs font-bold text-cyan-600
-                       transition hover:bg-cyan-50
-                       dark:hover:bg-cyan-500/10"
+                class="rounded-md px-2 py-1
+                       text-xs font-medium text-blue-700
+                       transition-colors hover:bg-blue-50
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                       dark:text-blue-400 dark:hover:bg-blue-500/10"
                 @click="isModalOpen = true"
             >
                 Открыть все
@@ -134,42 +135,44 @@ const getTasksCount = project => {
         <div
             v-if="visibleProjects.length"
             class="divide-y divide-zinc-100
-                   dark:divide-white/5"
+                   dark:divide-white/[0.06]"
         >
             <button
                 v-for="project in visibleProjects"
                 :key="project.id"
                 type="button"
                 class="group block w-full px-4 py-3
-                       text-left transition hover:bg-cyan-50/60
-                       dark:hover:bg-cyan-500/10"
+                       text-left transition-colors hover:bg-zinc-50
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60
+                       dark:hover:bg-white/[0.03]"
                 @click="router.visit(`/projects/${project.id}`)"
             >
                 <div class="flex items-start gap-3">
                     <span
-                        class="mt-0.5 flex h-8 w-8 shrink-0
-                               items-center justify-center rounded-lg
-                               bg-cyan-100 text-xs font-black
-                               text-cyan-600
-                               dark:bg-cyan-500/10
-                               dark:text-cyan-300"
+                        class="mt-0.5 flex h-7 min-w-[1.75rem] shrink-0
+                               items-center justify-center rounded-md
+                               border border-zinc-200 px-1 text-xs font-medium
+                               tabular-nums text-zinc-600
+                               dark:border-white/10
+                               dark:text-zinc-300"
                     >
                         {{ getTasksCount(project) }}
                     </span>
 
                     <div class="min-w-0 flex-1">
                         <p
-                            class="truncate text-sm font-bold
-                                   text-zinc-800
-                                   group-hover:text-cyan-600
-                                   dark:text-white"
+                            class="truncate text-sm font-medium
+                                   text-zinc-900
+                                   group-hover:text-blue-700
+                                   dark:text-zinc-100
+                                   dark:group-hover:text-blue-400"
                         >
                             {{ project.name }}
                         </p>
 
                         <p
-                            class="mt-0.5 truncate text-[11px]
-                                   text-zinc-400"
+                            class="mt-0.5 truncate text-xs
+                                   text-zinc-500 dark:text-zinc-400"
                         >
                             {{
                                 project.company?.name ||
@@ -180,16 +183,15 @@ const getTasksCount = project => {
 
                     <div class="shrink-0 text-right">
                         <p
-                            class="text-[10px] font-semibold
-                                   text-zinc-400"
+                            class="text-[11px] text-zinc-500 dark:text-zinc-400"
                         >
                             Дедлайн
                         </p>
 
                         <p
-                            class="mt-0.5 text-[11px]
-                                   font-bold text-zinc-600
-                                   dark:text-zinc-500"
+                            class="mt-0.5 text-xs
+                                   font-medium tabular-nums text-zinc-700
+                                   dark:text-zinc-300"
                         >
                             {{ calculateDeadline(project) }}
                         </p>
@@ -201,7 +203,7 @@ const getTasksCount = project => {
         <div
             v-else
             class="px-4 py-8 text-center text-sm
-                   text-zinc-400"
+                   text-zinc-500 dark:text-zinc-400"
         >
             Проектов нет
         </div>
@@ -209,12 +211,13 @@ const getTasksCount = project => {
         <button
             v-if="hiddenCount > 0"
             type="button"
-            class="w-full border-t border-zinc-100
-                   px-4 py-2.5 text-xs font-bold
-                   text-cyan-600 transition
-                   hover:bg-cyan-50
-                   dark:border-white/5
-                   dark:hover:bg-cyan-500/10"
+            class="w-full border-t border-zinc-200
+                   px-4 py-2.5 text-xs font-medium tabular-nums
+                   text-blue-700 transition-colors
+                   hover:bg-zinc-50
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500/60
+                   dark:border-white/[0.06] dark:text-blue-400
+                   dark:hover:bg-white/[0.03]"
             @click="isModalOpen = true"
         >
             Ещё {{ hiddenCount }} проектов
@@ -224,30 +227,31 @@ const getTasksCount = project => {
             <div
                 v-if="isModalOpen"
                 class="fixed inset-0 z-[100] flex items-center
-                       justify-center bg-black/70 p-4
-                       backdrop-blur-sm"
+                       justify-center bg-zinc-950/50 p-4
+                       backdrop-blur-[2px]"
                 @click.self="isModalOpen = false"
             >
                 <div
                     class="flex max-h-[90vh] w-full max-w-5xl
-                           flex-col overflow-hidden rounded-2xl
-                           bg-white shadow-2xl dark:bg-zinc-900/60"
+                           flex-col overflow-hidden rounded-xl
+                           border border-zinc-200 bg-white shadow-xl
+                           dark:border-white/10 dark:bg-zinc-900"
                 >
                     <header
                         class="flex flex-col gap-3 border-b
-                               border-zinc-100 px-5 py-4
-                               dark:border-white/5 sm:flex-row
+                               border-zinc-200 px-5 py-4
+                               dark:border-white/[0.06] sm:flex-row
                                sm:items-center"
                     >
                         <div class="min-w-0 flex-1">
                             <h2
-                                class="text-lg font-bold
-                                       text-zinc-900 dark:text-white"
+                                class="text-base font-semibold
+                                       text-zinc-900 dark:text-zinc-50"
                             >
                                 Все мои проекты
                             </h2>
 
-                            <p class="text-xs text-zinc-400">
+                            <p class="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
                                 Найдено:
                                 {{ filteredProjects.length }}
                             </p>
@@ -256,40 +260,45 @@ const getTasksCount = project => {
                         <input
                             v-model="search"
                             type="search"
-                            class="w-full rounded-xl border
-                                   border-zinc-200 px-4 py-2.5
-                                   text-sm outline-none
-                                   focus:border-cyan-400
+                            class="w-full rounded-md border
+                                   border-zinc-300 bg-white px-3 py-2
+                                   text-sm text-zinc-900 placeholder:text-zinc-400 outline-none
+                                   focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20
                                    dark:border-white/10
-                                   dark:bg-white/5
-                                   dark:text-white sm:max-w-xs"
+                                   dark:bg-zinc-950
+                                   dark:text-zinc-100 sm:max-w-xs"
                             placeholder="Поиск проекта..."
                         />
 
                         <button
                             type="button"
-                            class="rounded-lg p-2
-                                   hover:bg-zinc-100
-                                   dark:hover:bg-white/5"
+                            aria-label="Закрыть"
+                            class="flex h-8 w-8 shrink-0 items-center justify-center self-end rounded-md
+                                   text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                                   dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-zinc-100 sm:self-auto"
                             @click="isModalOpen = false"
                         >
-                            ✕
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M6 18 18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </header>
 
                     <div
-                        class="flex gap-2 overflow-x-auto border-b
-                               border-zinc-100 px-5 py-3
-                               dark:border-white/5"
+                        class="flex gap-1.5 overflow-x-auto border-b
+                               border-zinc-200 px-5 py-3
+                               dark:border-white/[0.06]"
                     >
                         <button
                             type="button"
-                            class="whitespace-nowrap rounded-lg
-                                   px-3 py-1.5 text-xs font-bold"
+                            class="whitespace-nowrap rounded-md border
+                                   px-2.5 py-1 text-xs font-medium transition-colors
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                             :class="
                                 selectedCompanyFilter === 'all'
-                                    ? 'bg-cyan-600 text-white'
-                                    : 'bg-zinc-100 text-zinc-500 dark:bg-white/5'
+                                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                                    : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-400 dark:hover:bg-white/[0.04]'
                             "
                             @click="selectedCompanyFilter = 'all'"
                         >
@@ -300,12 +309,13 @@ const getTasksCount = project => {
                             v-for="companyName in companyNames"
                             :key="companyName"
                             type="button"
-                            class="whitespace-nowrap rounded-lg
-                                   px-3 py-1.5 text-xs font-bold"
+                            class="whitespace-nowrap rounded-md border
+                                   px-2.5 py-1 text-xs font-medium transition-colors
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
                             :class="
                                 selectedCompanyFilter === companyName
-                                    ? 'bg-cyan-600 text-white'
-                                    : 'bg-zinc-100 text-zinc-500 dark:bg-white/5'
+                                    ? 'border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                                    : 'border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-400 dark:hover:bg-white/[0.04]'
                             "
                             @click="
                                 selectedCompanyFilter =
@@ -325,12 +335,14 @@ const getTasksCount = project => {
                             v-for="project in filteredProjects"
                             :key="project.id"
                             type="button"
-                            class="rounded-xl border
+                            class="group rounded-md border
                                    border-zinc-200 p-3 text-left
-                                   transition hover:border-cyan-400
-                                   hover:bg-cyan-50/60
-                                   dark:border-white/10
-                                   dark:hover:bg-cyan-500/10"
+                                   transition-colors hover:border-zinc-300
+                                   hover:bg-zinc-50
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+                                   dark:border-white/[0.08]
+                                   dark:hover:border-white/15
+                                   dark:hover:bg-white/[0.03]"
                             @click="
                                 router.visit(
                                     `/projects/${project.id}`,
@@ -339,15 +351,15 @@ const getTasksCount = project => {
                         >
                             <p
                                 class="line-clamp-2 text-sm
-                                       font-bold text-zinc-800
-                                       dark:text-white"
+                                       font-medium text-zinc-900 group-hover:text-blue-700
+                                       dark:text-zinc-100 dark:group-hover:text-blue-400"
                             >
                                 {{ project.name }}
                             </p>
 
                             <p
                                 class="mt-1 truncate text-xs
-                                       text-zinc-400"
+                                       text-zinc-500 dark:text-zinc-400"
                             >
                                 {{
                                     project.company?.name ||
@@ -357,16 +369,16 @@ const getTasksCount = project => {
 
                             <div
                                 class="mt-3 flex items-center
-                                       justify-between text-[11px]"
+                                       justify-between text-xs tabular-nums"
                             >
-                                <span class="text-zinc-500">
+                                <span class="text-zinc-500 dark:text-zinc-400">
                                     {{ calculateDeadline(project) }}
                                 </span>
 
                                 <span
-                                    class="rounded-md bg-cyan-100
-                                           px-2 py-1 font-bold
-                                           text-cyan-600"
+                                    class="rounded border border-zinc-200
+                                           px-1.5 py-0.5 font-medium
+                                           text-zinc-600 dark:border-white/10 dark:text-zinc-300"
                                 >
                                     {{ getTasksCount(project) }}
                                     задач
